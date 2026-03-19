@@ -7,18 +7,52 @@ import type {
 import { Form, useActionData, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import tocStyles from "../../extensions/toc-theme/assets/toc.css?raw";
+import tocStyles from "../styles/toc-preview.css?raw";
 import { authenticate } from "../shopify.server";
 
 const DEFAULT_CONFIG = {
   title: "Contents",
   headingLevels: [2, 3, 4],
+  indentation: true,
+  textAlignment: "left",
+  markerFormat: "none",
   minHeadings: 3,
-  desktopMode: "fixedRight",
-  wrapperSelector: "",
-  topOffset: 80,
   smoothScroll: true,
 };
+
+const HEADING_LEVEL_OPTIONS = [1, 2, 3, 4, 5, 6] as const;
+const TEXT_ALIGNMENT_OPTIONS = [
+  { label: "Left", value: "left" },
+  { label: "Center", value: "center" },
+  { label: "Right", value: "right" },
+] as const;
+const MARKER_FORMAT_OPTIONS = [
+  { label: "None", value: "none" },
+  { label: "Bullet", value: "bullet" },
+  { label: "Numeric", value: "numeric" },
+] as const;
+
+const FORM_STYLES = `
+  .toc-field {
+    display: grid;
+    gap: 0;
+  }
+
+  .toc-field-details {
+    display: flex;
+    gap: .25rem;
+    font-size: .75rem;
+    line-height: 1rem;
+    color: #616161;
+  }
+
+  .toc-inline-choices {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    overflow-x: auto;
+  }
+`;
 
 const PREVIEW_STYLES = `
   .toc-settings-preview {
@@ -48,15 +82,6 @@ const PREVIEW_STYLES = `
     overflow: hidden;
   }
 
-  .toc-preview-desktop .shopify-toc-float {
-    position: static;
-    top: auto;
-    right: auto;
-    max-width: 100%;
-    max-height: none;
-    z-index: auto;
-  }
-
   .toc-preview-desktop .shopify-toc {
     max-width: 100%;
   }
@@ -78,10 +103,10 @@ const PREVIEW_STYLES = `
   }
 
   .toc-preview-mobile .shopify-toc__toggle,
-  .toc-preview-mobile .toc-fade,
-  .toc-preview-mobile .shopify-toc-float {
+  .toc-preview-mobile .toc-fade {
     display: none !important;
   }
+
 `;
 
 type TocConfig = typeof DEFAULT_CONFIG;
@@ -96,13 +121,16 @@ type ActionData = {
   userErrors?: Array<{ field?: string[]; message: string }>;
 };
 
+type TocTextAlignment = (typeof TEXT_ALIGNMENT_OPTIONS)[number]["value"];
+type TocMarkerFormat = (typeof MARKER_FORMAT_OPTIONS)[number]["value"];
+
 type TocConfigInput = {
   title: string;
-  headingLevels: string;
+  headingLevels: number[];
+  indentation: boolean;
+  textAlignment: TocTextAlignment;
+  markerFormat: TocMarkerFormat;
   minHeadings: string;
-  desktopMode: string;
-  wrapperSelector: string;
-  topOffset: string;
   smoothScroll: boolean;
 };
 
@@ -214,22 +242,20 @@ export default function Index() {
 
   const [title, setTitle] = useState(config.title);
   const [headingLevels, setHeadingLevels] = useState(
-    config.headingLevels.join(", "),
+    normalizeHeadingLevels(config.headingLevels),
   );
+  const [indentation, setIndentation] = useState(config.indentation);
+  const [textAlignment, setTextAlignment] = useState(config.textAlignment);
+  const [markerFormat, setMarkerFormat] = useState(config.markerFormat);
   const [minHeadings, setMinHeadings] = useState(String(config.minHeadings));
-  const [desktopMode, setDesktopMode] = useState(config.desktopMode);
-  const [wrapperSelector, setWrapperSelector] = useState(
-    config.wrapperSelector,
-  );
-  const [topOffset, setTopOffset] = useState(String(config.topOffset));
   const [smoothScroll, setSmoothScroll] = useState(config.smoothScroll);
   const previewConfig = coerceConfig({
     title,
     headingLevels,
+    indentation,
+    textAlignment,
+    markerFormat,
     minHeadings,
-    desktopMode,
-    wrapperSelector,
-    topOffset,
     smoothScroll,
   });
   const desktopPreview = buildPreviewState(previewConfig);
@@ -241,9 +267,16 @@ export default function Index() {
     }
   }, [actionData?.ok, shopify]);
 
+  useEffect(() => {
+    if (textAlignment === "center" && indentation) {
+      setIndentation(false);
+    }
+  }, [indentation, textAlignment]);
+
   return (
     <s-page heading="Table of contents settings">
       <style>{tocStyles}</style>
+      <style>{FORM_STYLES}</style>
       <style>{PREVIEW_STYLES}</style>
       <s-section heading="Display">
         <Form method="post">
@@ -251,59 +284,99 @@ export default function Index() {
             <s-text-field
               name="title"
               label="Title"
+              details="Shown at the top of the table of contents"
               value={title}
               onInput={(event) => setTitle(event.currentTarget.value)}
               onChange={(event) => setTitle(event.currentTarget.value)}
             ></s-text-field>
-            <s-text-field
-              name="headingLevels"
-              label="Heading levels"
-              details="Comma-separated, e.g. 2,3,4"
-              value={headingLevels}
-              onInput={(event) => setHeadingLevels(event.currentTarget.value)}
-              onChange={(event) => setHeadingLevels(event.currentTarget.value)}
-            ></s-text-field>
+            <div className="toc-field">
+              <s-text>Heading levels</s-text>
+              <div className="toc-inline-choices" role="group" aria-label="Heading levels">
+                {HEADING_LEVEL_OPTIONS.map((level) => (
+                  <s-checkbox
+                    key={level}
+                    name="headingLevels"
+                    value={String(level)}
+                    label={`H${level}`}
+                    checked={headingLevels.includes(level)}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+
+                      setHeadingLevels((current) => {
+                        const next = checked
+                          ? normalizeHeadingLevels([...current, level])
+                          : current.filter((currentLevel) => currentLevel !== level);
+
+                        return next.length ? next : current;
+                      });
+                    }}
+                  ></s-checkbox>
+                ))}
+              </div>
+              <div className="toc-field-details">
+                Choose which article headings should appear in the table of
+                contents.
+              </div>
+            </div>
             <s-text-field
               name="minHeadings"
-              label="Minimum headings"
+              label="Minimum headings to show"
+              details="Hide the table of contents until this many selected headings are found"
               value={minHeadings}
               onInput={(event) => setMinHeadings(event.currentTarget.value)}
               onChange={(event) => setMinHeadings(event.currentTarget.value)}
             ></s-text-field>
-            <s-text-field
-              name="desktopMode"
-              label="Desktop mode"
-              details="Use fixedRight for floating panel"
-              value={desktopMode}
-              onInput={(event) => setDesktopMode(event.currentTarget.value)}
-              onChange={(event) => setDesktopMode(event.currentTarget.value)}
-            ></s-text-field>
-            <s-text-field
-              name="wrapperSelector"
-              label="Wrapper selector"
-              details="CSS selector for your article container"
-              value={wrapperSelector}
-              onInput={(event) => setWrapperSelector(event.currentTarget.value)}
+            <s-select
+              name="textAlignment"
+              label="Text alignment"
+              details="Align the title and links inside the table of contents"
+              value={textAlignment}
               onChange={(event) =>
-                setWrapperSelector(event.currentTarget.value)
+                setTextAlignment(
+                  normalizeTextAlignment(event.currentTarget.value),
+                )
               }
-            ></s-text-field>
-            <s-text-field
-              name="topOffset"
-              label="Top offset"
-              value={topOffset}
-              onInput={(event) => setTopOffset(event.currentTarget.value)}
-              onChange={(event) => setTopOffset(event.currentTarget.value)}
-            ></s-text-field>
-            <label>
-              <input
-                type="checkbox"
-                name="smoothScroll"
-                checked={smoothScroll}
-                onChange={(e) => setSmoothScroll(e.currentTarget.checked)}
-              />{" "}
-              Smooth scroll
-            </label>
+            >
+              {TEXT_ALIGNMENT_OPTIONS.map((option) => (
+                <s-option key={option.value} value={option.value}>
+                  {option.label}
+                </s-option>
+              ))}
+            </s-select>
+            <s-select
+              name="markerFormat"
+              label="Numbering / Bullet Format"
+              details="Choose whether items use no marker, bullets, or numbers"
+              value={markerFormat}
+              onChange={(event) =>
+                setMarkerFormat(
+                  normalizeMarkerFormat(event.currentTarget.value),
+                )
+              }
+            >
+              {MARKER_FORMAT_OPTIONS.map((option) => (
+                <s-option key={option.value} value={option.value}>
+                  {option.label}
+                </s-option>
+              ))}
+            </s-select>
+            <s-checkbox
+              name="indentation"
+              label="Indent nested headings"
+              details="Show lower-level headings as nested items"
+              checked={textAlignment === "center" ? false : indentation}
+              disabled={textAlignment === "center"}
+              onChange={(event) =>
+                setIndentation(event.currentTarget.checked)
+              }
+            ></s-checkbox>
+            <s-checkbox
+              name="smoothScroll"
+              label="Smooth scroll"
+              details="Scroll smoothly to a heading when a TOC link is clicked"
+              checked={smoothScroll}
+              onChange={(event) => setSmoothScroll(event.currentTarget.checked)}
+            ></s-checkbox>
             <s-button type="submit">Save</s-button>
             {actionData?.userErrors?.length ? (
               <s-paragraph>
@@ -337,14 +410,21 @@ export default function Index() {
             <div className="toc-preview-stage toc-preview-desktop">
               <TocPreview
                 preview={desktopPreview}
-                mode={previewConfig.desktopMode}
+                indentation={previewConfig.indentation}
+                textAlignment={previewConfig.textAlignment}
+                markerFormat={previewConfig.markerFormat}
               />
             </div>
           </div>
           <div className="toc-preview-pane">
             <p className="toc-preview-label">Mobile</p>
             <div className="toc-preview-stage toc-preview-mobile">
-              <TocPreview preview={mobilePreview} mode="inline" />
+              <TocPreview
+                preview={mobilePreview}
+                indentation={previewConfig.indentation}
+                textAlignment={previewConfig.textAlignment}
+                markerFormat={previewConfig.markerFormat}
+              />
             </div>
           </div>
         </div>
@@ -362,12 +442,24 @@ function parseConfig(value: unknown): TocConfig {
   try {
     const parsed = JSON.parse(value);
     if (!parsed || typeof parsed !== "object") return { ...DEFAULT_CONFIG };
+    const {
+      desktopMode: _desktopMode,
+      wrapperSelector: _wrapperSelector,
+      topOffset: _topOffset,
+      ...rest
+    } = parsed as Record<string, unknown>;
     return {
       ...DEFAULT_CONFIG,
-      ...parsed,
-      headingLevels: Array.isArray(parsed.headingLevels)
-        ? parsed.headingLevels
+      ...rest,
+      headingLevels: Array.isArray(rest.headingLevels)
+        ? normalizeHeadingLevels(rest.headingLevels as number[])
         : DEFAULT_CONFIG.headingLevels,
+      indentation:
+        typeof rest.indentation === "boolean"
+          ? rest.indentation
+          : DEFAULT_CONFIG.indentation,
+      textAlignment: normalizeTextAlignment(rest.textAlignment),
+      markerFormat: normalizeMarkerFormat(rest.markerFormat),
     } as TocConfig;
   } catch {
     return { ...DEFAULT_CONFIG };
@@ -376,25 +468,22 @@ function parseConfig(value: unknown): TocConfig {
 
 function coerceConfig(input: TocConfigInput): TocConfig {
   const title = input.title.trim();
-  const headingLevels = parseHeadingLevelsInput(input.headingLevels);
+  const headingLevels = normalizeHeadingLevels(input.headingLevels);
+  const textAlignment = normalizeTextAlignment(input.textAlignment);
+  const markerFormat = normalizeMarkerFormat(input.markerFormat);
   const minHeadings = parseIntegerInput(input.minHeadings);
-  const desktopMode = input.desktopMode.trim();
-  const wrapperSelector = input.wrapperSelector.trim();
-  const topOffset = parseIntegerInput(input.topOffset);
 
   return {
     title: title || DEFAULT_CONFIG.title,
     headingLevels: headingLevels.length
       ? headingLevels
       : DEFAULT_CONFIG.headingLevels,
+    indentation: textAlignment === "center" ? false : input.indentation,
+    textAlignment,
+    markerFormat,
     minHeadings: Number.isFinite(minHeadings)
       ? minHeadings
       : DEFAULT_CONFIG.minHeadings,
-    desktopMode: desktopMode || DEFAULT_CONFIG.desktopMode,
-    wrapperSelector,
-    topOffset: Number.isFinite(topOffset)
-      ? topOffset
-      : DEFAULT_CONFIG.topOffset,
     smoothScroll: input.smoothScroll,
   };
 }
@@ -402,15 +491,17 @@ function coerceConfig(input: TocConfigInput): TocConfig {
 function coerceConfigFromForm(formData: FormData): TocConfig {
   return coerceConfig({
     title: String(formData.get("title") || DEFAULT_CONFIG.title),
-    headingLevels: String(formData.get("headingLevels") || ""),
+    headingLevels: formData
+      .getAll("headingLevels")
+      .map((value) => parseInt(String(value), 10)),
+    indentation: formData.get("indentation") === "on",
+    textAlignment: normalizeTextAlignment(
+      String(formData.get("textAlignment") || DEFAULT_CONFIG.textAlignment),
+    ),
+    markerFormat: normalizeMarkerFormat(
+      String(formData.get("markerFormat") || DEFAULT_CONFIG.markerFormat),
+    ),
     minHeadings: String(formData.get("minHeadings") || ""),
-    desktopMode: String(
-      formData.get("desktopMode") || DEFAULT_CONFIG.desktopMode,
-    ),
-    wrapperSelector: String(
-      formData.get("wrapperSelector") || DEFAULT_CONFIG.wrapperSelector,
-    ),
-    topOffset: String(formData.get("topOffset") || ""),
     smoothScroll: formData.get("smoothScroll") === "on",
   });
 }
@@ -431,56 +522,80 @@ function buildActivateDeepLink(
   return `https://${myshopifyDomain}/admin/themes/current/editor?${params.toString()}`;
 }
 
-function parseHeadingLevelsInput(value: string): number[] {
-  return value
-    .split(",")
-    .map((item) => parseInt(item.trim(), 10))
-    .filter((item) => Number.isFinite(item) && item >= 1 && item <= 6);
-}
-
 function parseIntegerInput(value: string): number {
   return parseInt(value, 10);
 }
 
+function normalizeTextAlignment(value: unknown): TocTextAlignment {
+  return TEXT_ALIGNMENT_OPTIONS.some((option) => option.value === value)
+    ? (value as TocTextAlignment)
+    : DEFAULT_CONFIG.textAlignment;
+}
+
+function normalizeMarkerFormat(value: unknown): TocMarkerFormat {
+  return MARKER_FORMAT_OPTIONS.some((option) => option.value === value)
+    ? (value as TocMarkerFormat)
+    : DEFAULT_CONFIG.markerFormat;
+}
+
+function normalizeHeadingLevels(levels: number[]): number[] {
+  return [...new Set(levels)]
+    .filter((level) =>
+      HEADING_LEVEL_OPTIONS.includes(level as 1 | 2 | 3 | 4 | 5 | 6),
+    )
+    .sort((left, right) => left - right);
+}
+
 function TocPreview({
   preview,
-  mode,
+  indentation,
+  textAlignment,
+  markerFormat,
 }: {
   preview: ReturnType<typeof buildPreviewState>;
-  mode: string;
+  indentation: boolean;
+  textAlignment: TocTextAlignment;
+  markerFormat: TocMarkerFormat;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!preview.needsToggle) {
+      setExpanded(false);
+    }
+  }, [preview.needsToggle]);
+
   if (!preview.showToc) return null;
 
   const nav = (
     <nav
-      className={`shopify-toc${preview.needsToggle ? "" : " shopify-toc--expanded"}`}
+      className={`shopify-toc shopify-toc--align-${textAlignment} shopify-toc--markers-${markerFormat}${!indentation ? " shopify-toc--flat" : ""}${!preview.needsToggle || expanded ? " shopify-toc--expanded" : ""}`}
       aria-label="Table of contents preview"
       onClick={(event) => event.preventDefault()}
     >
       <div className="shopify-toc__title">{preview.title}</div>
       {preview.needsToggle ? (
-        <div className="toc-fade toc-fade--top" hidden>
+        <div className="toc-fade toc-fade--top" hidden={!expanded}>
           <span className="toc-fade__shim"></span>
         </div>
       ) : null}
       <PreviewTocList items={preview.items} activeId={preview.activeId} />
       {preview.needsToggle ? (
-        <div className="toc-fade toc-fade--bottom" aria-hidden="true">
+        <div className="toc-fade toc-fade--bottom" aria-hidden="true" hidden={expanded}>
           <span className="toc-fade__shim"></span>
         </div>
       ) : null}
       {preview.needsToggle ? (
-        <button type="button" className="shopify-toc__toggle">
-          Show more
+        <button
+          type="button"
+          className="shopify-toc__toggle"
+          onClick={() => setExpanded((current) => !current)}
+        >
+          {expanded ? "Show less" : "Show more"}
         </button>
       ) : null}
     </nav>
   );
-
-  if (mode === "fixedRight") {
-    return <div className="shopify-toc-float">{nav}</div>;
-  }
-
   return nav;
 }
 
@@ -513,7 +628,7 @@ function PreviewTocListItem({
         href={`#${item.id}`}
         className={item.id === activeId ? "is-current" : undefined}
       >
-        {item.title}
+        <span className="shopify-toc__link-label">{item.title}</span>
       </a>
       {item.children.length ? (
         <ul className="shopify-toc__sublist">
@@ -559,18 +674,15 @@ function buildPreviewHeadings(levels: number[]): PreviewHeading[] {
     "Theme compatibility",
     "Support",
   ];
-  const depthPattern = [0, 1, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 0];
 
   return titles.map((title, index) => {
-    const depth = Math.min(
-      depthPattern[index] ?? 0,
-      Math.max(normalizedLevels.length - 1, 0),
-    );
+    const depth = index % normalizedLevels.length;
+    const level = normalizedLevels[depth];
 
     return {
       id: `preview-${index}`,
-      title,
-      level: normalizedLevels[depth],
+      title: `H${level} ${title}`,
+      level,
     };
   });
 }

@@ -1,4 +1,5 @@
 export default function AdditionalPage() {
+  console.log('AdditionalPage');
   return (
     <s-page heading="Additional page">
       <s-section heading="Multiple pages">
@@ -14,6 +15,12 @@ export default function AdditionalPage() {
           .
         </s-paragraph>
         <s-paragraph>
+          <s-text-field
+              name="title"
+              label="Title"
+              onInput={(event) => console.log(event.currentTarget.value)}
+              onChange={(event) => console.log(event.currentTarget.value)}
+            ></s-text-field>
           To create your own page and have it show up in the app navigation, add
           a page inside <code>app/routes</code>, and a link to it in the{" "}
           <code>&lt;ui-nav-menu&gt;</code> component found in{" "}

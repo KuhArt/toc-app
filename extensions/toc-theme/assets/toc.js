@@ -1,4 +1,6 @@
 (() => {
+  const DEFAULT_TOP_OFFSET = 80;
+
   // 1) Read config from Liquid-injected JSON
   const el = document.getElementById("toc-config");
   const cfg = el ? JSON.parse(el.textContent || "{}") : {};
@@ -8,9 +10,7 @@
   const headingLevels = cfg.headingLevels?.length ? cfg.headingLevels : [2, 3, 4];
   const minHeadings = typeof cfg.minHeadings === "number" ? cfg.minHeadings : 3;
 
-  // 2) Find wrapper (merchant can set wrapperSelector in dashboard)
   const selectors = [
-    cfg.wrapperSelector,
     ".article-template__content",
     "article .rte",
     ".article__content",
@@ -35,12 +35,17 @@
   headings.forEach((h, i) => {
     if (!h.id) h.id = `toc-${i}-${slugify(h.textContent)}`;
     // helps sticky headers not cover anchors
-    h.style.scrollMarginTop = `${(cfg.topOffset ?? 80) + 12}px`;
+    h.style.scrollMarginTop = `${DEFAULT_TOP_OFFSET + 12}px`;
   });
 
   // 5) Build TOC markup
   const toc = document.createElement("nav");
   toc.className = "shopify-toc";
+  if (cfg.indentation === false) {
+    toc.classList.add("shopify-toc--flat");
+  }
+  toc.classList.add(`shopify-toc--align-${normalizeTextAlignment(cfg.textAlignment)}`);
+  toc.classList.add(`shopify-toc--markers-${normalizeMarkerFormat(cfg.markerFormat)}`);
   const title = document.createElement("div");
   title.className = "shopify-toc__title";
   title.textContent = cfg.title || "Contents";
@@ -81,27 +86,8 @@
   toggle.textContent = "Show more";
   toc.appendChild(toggle);
 
-  // 6) Placement:
-  // - Desktop: floating right
-  // - Mobile: inline before first heading (usually after title)
   const mq = window.matchMedia("(min-width: 990px)");
-  let floatHost = null;
-
-  const mount = () => {
-    toc.remove();
-
-    if (mq.matches && (cfg.desktopMode || "fixedRight") === "fixedRight") {
-      floatHost = floatHost || document.createElement("div");
-      floatHost.className = "shopify-toc-float";
-      if (!floatHost.isConnected) document.body.appendChild(floatHost);
-      floatHost.appendChild(toc);
-    } else {
-      wrapper.insertBefore(toc, headings[0]);
-    }
-  };
-
-  mount();
-  mq.addEventListener?.("change", mount);
+  wrapper.insertBefore(toc, headings[0]);
 
   requestAnimationFrame(() => {
     const listMaxHeight = Number.parseFloat(getComputedStyle(list).maxHeight) || 0;
@@ -157,7 +143,7 @@
   });
 
   const refreshCurrentLink = () => {
-    const scrollY = window.scrollY + (cfg.topOffset ?? 80) + 24;
+    const scrollY = window.scrollY + DEFAULT_TOP_OFFSET + 24;
     let currentId = headings[0]?.id;
 
     for (const h of headings) {
@@ -208,6 +194,14 @@
     return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   }
 
+  function normalizeTextAlignment(value) {
+    return ["left", "center", "right"].includes(value) ? value : "left";
+  }
+
+  function normalizeMarkerFormat(value) {
+    return ["none", "bullet", "numeric"].includes(value) ? value : "none";
+  }
+
   function keepCurrentLinkVisible(link) {
     if (!link || list.scrollHeight <= list.clientHeight) return;
     const containerRect = list.getBoundingClientRect();
@@ -253,8 +247,11 @@
 
       const li = document.createElement("li");
       const a = document.createElement("a");
+      const label = document.createElement("span");
+      label.className = "shopify-toc__link-label";
       a.href = `#${h.id}`;
-      a.textContent = (h.textContent || "").trim();
+      label.textContent = (h.textContent || "").trim();
+      a.appendChild(label);
       li.appendChild(a);
       stack[stack.length - 1].appendChild(li);
       prevItem = li;
