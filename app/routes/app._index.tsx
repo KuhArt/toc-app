@@ -1,23 +1,161 @@
-import { useEffect, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Form, useActionData, useLoaderData } from "react-router";
-import { useAppBridge } from "@shopify/app-bridge-react";
+import {
+  Form,
+  useActionData,
+  useLoaderData,
+  useNavigation,
+} from "react-router";
+import { SaveBar, useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import tocStyles from "../styles/toc-preview.css?raw";
 import { authenticate } from "../shopify.server";
 
-const DEFAULT_CONFIG = {
+type TocTextAlignment = "left" | "center" | "right";
+type TocMarkerFormat = "none" | "bullet" | "numeric";
+type TocDesktopPosition =
+  | "float-right"
+  | "float-left"
+  | "before-first-heading"
+  | "after-first-heading"
+  | "css-selector";
+type TocMobilePosition =
+  | "before-first-heading"
+  | "after-first-heading"
+  | "css-selector";
+type TocBorderConfig = {
+  color: string;
+  width: number;
+  radius: number;
+  paddingTop: number;
+  paddingBottom: number;
+  paddingLeft: number;
+  paddingRight: number;
+};
+
+type TocDeviceConfig = TocBorderConfig & {
+  position: TocDesktopPosition | TocMobilePosition;
+  positionSelector: string;
+  background: string;
+  maxWidth: number;
+  smoothScroll: boolean;
+  scrollOffset: number;
+  headingsFontSize: number;
+  headingsFontColor: string;
+  headingsFontWeight: number;
+  titleFontSize: number;
+  titleFontColor: string;
+  titleFontWeight: number;
+  showButton: boolean;
+  showButtonHeight: number;
+  showMoreButtonText: string;
+  showLessButtonText: string;
+  showButtonFontSize: number;
+  showButtonFontColor: string;
+  showButtonFontWeight: number;
+  showButtonBorderColor: string;
+  showButtonBorderWidth: number;
+  showButtonBorderRadius: number;
+};
+type TocConfig = {
+  title: string;
+  headingLevels: number[];
+  indentation: boolean;
+  textAlignment: TocTextAlignment;
+  markerFormat: TocMarkerFormat;
+  minHeadings: number;
+  mobileBreakpoint: number;
+  excludedBlogs: string;
+  desktop: TocDeviceConfig;
+  mobile: TocDeviceConfig;
+};
+
+const DEFAULT_MOBILE_BREAKPOINT = 768;
+
+const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
+  position: "float-right",
+  positionSelector: "",
+  color: "#0000001f",
+  width: 1,
+  radius: 12,
+  paddingTop: 16,
+  paddingBottom: 16,
+  paddingLeft: 16,
+  paddingRight: 16,
+  background: "#ffffff",
+  maxWidth: 0,
+  smoothScroll: true,
+  scrollOffset: 80,
+  headingsFontSize: 14,
+  headingsFontColor: "#575757",
+  headingsFontWeight: 400,
+  titleFontSize: 14,
+  titleFontColor: "#575757",
+  titleFontWeight: 600,
+  showButton: true,
+  showButtonHeight: 300,
+  showMoreButtonText: "Show more",
+  showLessButtonText: "Show less",
+  showButtonFontSize: 13,
+  showButtonFontColor: "#575757",
+  showButtonFontWeight: 600,
+  showButtonBorderColor: "#575757",
+  showButtonBorderWidth: 0,
+  showButtonBorderRadius: 0,
+};
+const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
+  position: "before-first-heading",
+  positionSelector: "",
+  color: "#0000001f",
+  width: 0,
+  radius: 12,
+  paddingTop: 0,
+  paddingBottom: 0,
+  paddingLeft: 0,
+  paddingRight: 0,
+  background: "#00000000",
+  maxWidth: 0,
+  smoothScroll: true,
+  scrollOffset: 80,
+  headingsFontSize: 14,
+  headingsFontColor: "#575757",
+  headingsFontWeight: 400,
+  titleFontSize: 14,
+  titleFontColor: "#575757",
+  titleFontWeight: 600,
+  showButton: false,
+  showButtonHeight: 300,
+  showMoreButtonText: "Show more",
+  showLessButtonText: "Show less",
+  showButtonFontSize: 13,
+  showButtonFontColor: "#575757",
+  showButtonFontWeight: 600,
+  showButtonBorderColor: "#575757",
+  showButtonBorderWidth: 0,
+  showButtonBorderRadius: 0,
+};
+
+const DEFAULT_CONFIG: TocConfig = {
   title: "Contents",
   headingLevels: [2, 3, 4],
   indentation: true,
   textAlignment: "left",
   markerFormat: "none",
   minHeadings: 3,
-  smoothScroll: true,
+  mobileBreakpoint: DEFAULT_MOBILE_BREAKPOINT,
+  excludedBlogs: "",
+  desktop: DEFAULT_DESKTOP_CONFIG,
+  mobile: DEFAULT_MOBILE_CONFIG,
 };
 
 const HEADING_LEVEL_OPTIONS = [1, 2, 3, 4, 5, 6] as const;
@@ -31,8 +169,122 @@ const MARKER_FORMAT_OPTIONS = [
   { label: "Bullet", value: "bullet" },
   { label: "Numeric", value: "numeric" },
 ] as const;
-
+const FONT_WEIGHT_OPTIONS = [
+  { label: "Thin", value: "100" },
+  { label: "Extra light", value: "200" },
+  { label: "Light", value: "300" },
+  { label: "Regular", value: "400" },
+  { label: "Medium", value: "500" },
+  { label: "Semibold", value: "600" },
+  { label: "Bold", value: "700" },
+  { label: "Extra bold", value: "800" },
+  { label: "Black", value: "900" },
+] as const;
+const DESKTOP_POSITION_OPTIONS = [
+  { label: "Float right", value: "float-right" },
+  { label: "Float left", value: "float-left" },
+  { label: "Before first heading", value: "before-first-heading" },
+  { label: "After first heading", value: "after-first-heading" },
+  { label: "CSS selector", value: "css-selector" },
+] as const;
+const MOBILE_POSITION_OPTIONS = [
+  { label: "Before first heading", value: "before-first-heading" },
+  { label: "After first heading", value: "after-first-heading" },
+  { label: "CSS selector", value: "css-selector" },
+] as const;
+const APP_EMBED_HANDLE = "toc-embed";
+const FORM_ID = "toc-settings-form";
+const SAVE_BAR_ID = "toc-settings-save-bar";
+const EDITOR_TABS = [
+  { id: "general", label: "General", icon: "settings" },
+  { id: "desktop", label: "Desktop", icon: "desktop" },
+  { id: "mobile", label: "Mobile", icon: "mobile" },
+] as const;
 const FORM_STYLES = `
+  .toc-tab-group {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .toc-main-layout {
+    display: grid;
+    gap: 16px;
+    align-items: start;
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 360px);
+    margin-bottom: 16px;
+  }
+
+  .toc-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .toc-embed-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .toc-segmented-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    border-radius: 12px;
+    background: var(--p-color-bg-surface, #ffffff);
+    border: 1px solid var(--p-color-border-secondary, rgba(0, 0, 0, 0.08));
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .toc-segmented-item {
+    display: flex;
+  }
+
+  .toc-segmented-button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--p-color-text, #303030);
+    border-radius: 8px;
+    min-height: 32px;
+    padding: 0 12px 0 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    white-space: nowrap;
+    font: inherit;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+  }
+
+  .toc-segmented-button:hover {
+    background: var(--p-color-bg-surface-hover, rgba(0, 0, 0, 0.04));
+  }
+
+  .toc-segmented-button:focus-visible {
+    outline: 2px solid var(--p-color-border-focus, #005bd3);
+    outline-offset: 2px;
+  }
+
+  .toc-segmented-button[aria-current="true"] {
+    background: var(--p-color-bg-surface, #ffffff);
+    box-shadow: inset 0 0 0 1px var(--p-color-border, rgba(0, 0, 0, 0.1));
+  }
+
+  .toc-segmented-button s-icon {
+    flex: 0 0 auto;
+  }
+
   .toc-field {
     display: grid;
     gap: 0;
@@ -52,9 +304,60 @@ const FORM_STYLES = `
     gap: 12px;
     overflow-x: auto;
   }
+
+  .toc-compact-fields {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .toc-compact-fields-two {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .toc-compact-fields-four {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .toc-main-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .toc-compact-fields-two {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .toc-compact-fields {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .toc-compact-fields-four {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
 `;
 
 const PREVIEW_STYLES = `
+  .toc-preview-column {
+    min-width: 0;
+  }
+
+  .toc-preview-column--sticky {
+    position: sticky;
+    top: 16px;
+    align-self: start;
+  }
+
   .toc-settings-preview {
     display: grid;
     gap: 16px;
@@ -82,7 +385,31 @@ const PREVIEW_STYLES = `
     overflow: hidden;
   }
 
-  .toc-preview-desktop .shopify-toc {
+  .toc-preview-desktop {
+    position: relative;
+    min-height: 420px;
+  }
+
+  .toc-preview-float {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: min(320px, 100%);
+    max-width: 100%;
+  }
+
+  .toc-preview-float--left {
+    left: 0;
+    right: auto;
+  }
+
+  .toc-preview-float .shopify-toc {
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .toc-preview-flow {
+    width: min(320px, 100%);
     max-width: 100%;
   }
 
@@ -90,26 +417,12 @@ const PREVIEW_STYLES = `
     max-width: 320px;
   }
 
-  .toc-preview-mobile .shopify-toc {
-    border: 0;
-    background: transparent;
-    max-height: none;
+  @media (max-width: 900px) {
+    .toc-preview-column--sticky {
+      position: static;
+    }
   }
-
-  .toc-preview-mobile .shopify-toc__list,
-  .toc-preview-mobile .shopify-toc--expanded .shopify-toc__list {
-    max-height: none;
-    overflow: visible;
-  }
-
-  .toc-preview-mobile .shopify-toc__toggle,
-  .toc-preview-mobile .toc-fade {
-    display: none !important;
-  }
-
 `;
-
-type TocConfig = typeof DEFAULT_CONFIG;
 
 type LoaderData = {
   config: TocConfig;
@@ -121,8 +434,7 @@ type ActionData = {
   userErrors?: Array<{ field?: string[]; message: string }>;
 };
 
-type TocTextAlignment = (typeof TEXT_ALIGNMENT_OPTIONS)[number]["value"];
-type TocMarkerFormat = (typeof MARKER_FORMAT_OPTIONS)[number]["value"];
+type EditorTab = (typeof EDITOR_TABS)[number]["id"];
 
 type TocConfigInput = {
   title: string;
@@ -131,7 +443,42 @@ type TocConfigInput = {
   textAlignment: TocTextAlignment;
   markerFormat: TocMarkerFormat;
   minHeadings: string;
+  mobileBreakpoint: string;
+  excludedBlogs: string;
+  desktop: TocDeviceConfigInput;
+  mobile: TocDeviceConfigInput;
+};
+
+type TocDeviceConfigInput = {
+  position: string;
+  positionSelector: string;
+  color: string;
+  width: string;
+  radius: string;
+  paddingTop: string;
+  paddingBottom: string;
+  paddingLeft: string;
+  paddingRight: string;
+  background: string;
+  maxWidth: string;
   smoothScroll: boolean;
+  scrollOffset: string;
+  headingsFontSize: string;
+  headingsFontColor: string;
+  headingsFontWeight: string;
+  titleFontSize: string;
+  titleFontColor: string;
+  titleFontWeight: string;
+  showButton: boolean;
+  showButtonHeight: string;
+  showMoreButtonText: string;
+  showLessButtonText: string;
+  showButtonFontSize: string;
+  showButtonFontColor: string;
+  showButtonFontWeight: string;
+  showButtonBorderColor: string;
+  showButtonBorderWidth: string;
+  showButtonBorderRadius: string;
 };
 
 type PreviewHeading = {
@@ -144,6 +491,18 @@ type PreviewTocItem = {
   id: string;
   title: string;
   children: PreviewTocItem[];
+};
+
+type AppEmbedStatus = "checking" | "active" | "inactive" | "unavailable";
+type ThemeExtensionActivationRecord = {
+  handle?: string;
+  status?: string;
+  activations?: Array<{ target?: string; themeId?: string | number }>;
+};
+type AppBridgeExtensionRecord = {
+  handle?: string;
+  type?: string;
+  activations?: Array<{ target?: string } | ThemeExtensionActivationRecord>;
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -174,7 +533,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return {
     config: parseConfig(metafieldValue),
-    deepLink: buildActivateDeepLink(myshopifyDomain, apiKey, "toc-embed"),
+    deepLink: buildActivateDeepLink(myshopifyDomain, apiKey, APP_EMBED_HANDLE),
   } satisfies LoaderData;
 };
 
@@ -238,8 +597,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function Index() {
   const { config, deepLink } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
   const shopify = useAppBridge();
 
+  const [savedConfig, setSavedConfig] = useState(config);
+  const [activeTab, setActiveTab] = useState<EditorTab>("general");
   const [title, setTitle] = useState(config.title);
   const [headingLevels, setHeadingLevels] = useState(
     normalizeHeadingLevels(config.headingLevels),
@@ -248,18 +610,327 @@ export default function Index() {
   const [textAlignment, setTextAlignment] = useState(config.textAlignment);
   const [markerFormat, setMarkerFormat] = useState(config.markerFormat);
   const [minHeadings, setMinHeadings] = useState(String(config.minHeadings));
-  const [smoothScroll, setSmoothScroll] = useState(config.smoothScroll);
-  const previewConfig = coerceConfig({
+  const [mobileBreakpoint, setMobileBreakpoint] = useState(
+    String(config.mobileBreakpoint),
+  );
+  const [excludedBlogs, setExcludedBlogs] = useState(config.excludedBlogs);
+  const [desktopPosition, setDesktopPosition] = useState(
+    config.desktop.position,
+  );
+  const [desktopPositionSelector, setDesktopPositionSelector] = useState(
+    config.desktop.positionSelector,
+  );
+  const [desktopBorderColor, setDesktopBorderColor] = useState(
+    config.desktop.color,
+  );
+  const [desktopBorderWidth, setDesktopBorderWidth] = useState(
+    String(config.desktop.width),
+  );
+  const [desktopBorderRadius, setDesktopBorderRadius] = useState(
+    String(config.desktop.radius),
+  );
+  const [desktopPaddingTop, setDesktopPaddingTop] = useState(
+    String(config.desktop.paddingTop),
+  );
+  const [desktopPaddingBottom, setDesktopPaddingBottom] = useState(
+    String(config.desktop.paddingBottom),
+  );
+  const [desktopPaddingLeft, setDesktopPaddingLeft] = useState(
+    String(config.desktop.paddingLeft),
+  );
+  const [desktopPaddingRight, setDesktopPaddingRight] = useState(
+    String(config.desktop.paddingRight),
+  );
+  const [desktopBackground, setDesktopBackground] = useState(
+    config.desktop.background,
+  );
+  const [desktopMaxWidth, setDesktopMaxWidth] = useState(
+    String(config.desktop.maxWidth),
+  );
+  const [desktopSmoothScroll, setDesktopSmoothScroll] = useState(
+    config.desktop.smoothScroll,
+  );
+  const [desktopScrollOffset, setDesktopScrollOffset] = useState(
+    String(config.desktop.scrollOffset),
+  );
+  const [desktopHeadingsFontSize, setDesktopHeadingsFontSize] = useState(
+    String(config.desktop.headingsFontSize),
+  );
+  const [desktopHeadingsFontColor, setDesktopHeadingsFontColor] = useState(
+    config.desktop.headingsFontColor,
+  );
+  const [desktopHeadingsFontWeight, setDesktopHeadingsFontWeight] = useState(
+    String(config.desktop.headingsFontWeight),
+  );
+  const [desktopTitleFontSize, setDesktopTitleFontSize] = useState(
+    String(config.desktop.titleFontSize),
+  );
+  const [desktopTitleFontColor, setDesktopTitleFontColor] = useState(
+    config.desktop.titleFontColor,
+  );
+  const [desktopTitleFontWeight, setDesktopTitleFontWeight] = useState(
+    String(config.desktop.titleFontWeight),
+  );
+  const [desktopShowButton, setDesktopShowButton] = useState(
+    config.desktop.showButton,
+  );
+  const [desktopShowButtonHeight, setDesktopShowButtonHeight] = useState(
+    String(config.desktop.showButtonHeight),
+  );
+  const [desktopShowMoreButtonText, setDesktopShowMoreButtonText] = useState(
+    config.desktop.showMoreButtonText,
+  );
+  const [desktopShowLessButtonText, setDesktopShowLessButtonText] = useState(
+    config.desktop.showLessButtonText,
+  );
+  const [desktopShowButtonFontSize, setDesktopShowButtonFontSize] = useState(
+    String(config.desktop.showButtonFontSize),
+  );
+  const [desktopShowButtonFontColor, setDesktopShowButtonFontColor] = useState(
+    config.desktop.showButtonFontColor,
+  );
+  const [desktopShowButtonFontWeight, setDesktopShowButtonFontWeight] =
+    useState(String(config.desktop.showButtonFontWeight));
+  const [desktopShowButtonBorderColor, setDesktopShowButtonBorderColor] =
+    useState(config.desktop.showButtonBorderColor);
+  const [desktopShowButtonBorderWidth, setDesktopShowButtonBorderWidth] =
+    useState(String(config.desktop.showButtonBorderWidth));
+  const [desktopShowButtonBorderRadius, setDesktopShowButtonBorderRadius] =
+    useState(String(config.desktop.showButtonBorderRadius));
+  const [mobilePosition, setMobilePosition] = useState(config.mobile.position);
+  const [mobilePositionSelector, setMobilePositionSelector] = useState(
+    config.mobile.positionSelector,
+  );
+  const [mobileBorderColor, setMobileBorderColor] = useState(
+    config.mobile.color,
+  );
+  const [mobileBorderWidth, setMobileBorderWidth] = useState(
+    String(config.mobile.width),
+  );
+  const [mobileBorderRadius, setMobileBorderRadius] = useState(
+    String(config.mobile.radius),
+  );
+  const [mobilePaddingTop, setMobilePaddingTop] = useState(
+    String(config.mobile.paddingTop),
+  );
+  const [mobilePaddingBottom, setMobilePaddingBottom] = useState(
+    String(config.mobile.paddingBottom),
+  );
+  const [mobilePaddingLeft, setMobilePaddingLeft] = useState(
+    String(config.mobile.paddingLeft),
+  );
+  const [mobilePaddingRight, setMobilePaddingRight] = useState(
+    String(config.mobile.paddingRight),
+  );
+  const [mobileBackground, setMobileBackground] = useState(
+    config.mobile.background,
+  );
+  const [mobileMaxWidth, setMobileMaxWidth] = useState(
+    String(config.mobile.maxWidth),
+  );
+  const [mobileSmoothScroll, setMobileSmoothScroll] = useState(
+    config.mobile.smoothScroll,
+  );
+  const [mobileScrollOffset, setMobileScrollOffset] = useState(
+    String(config.mobile.scrollOffset),
+  );
+  const [mobileHeadingsFontSize, setMobileHeadingsFontSize] = useState(
+    String(config.mobile.headingsFontSize),
+  );
+  const [mobileHeadingsFontColor, setMobileHeadingsFontColor] = useState(
+    config.mobile.headingsFontColor,
+  );
+  const [mobileHeadingsFontWeight, setMobileHeadingsFontWeight] = useState(
+    String(config.mobile.headingsFontWeight),
+  );
+  const [mobileTitleFontSize, setMobileTitleFontSize] = useState(
+    String(config.mobile.titleFontSize),
+  );
+  const [mobileTitleFontColor, setMobileTitleFontColor] = useState(
+    config.mobile.titleFontColor,
+  );
+  const [mobileTitleFontWeight, setMobileTitleFontWeight] = useState(
+    String(config.mobile.titleFontWeight),
+  );
+  const [mobileShowButton, setMobileShowButton] = useState(
+    config.mobile.showButton,
+  );
+  const [mobileShowButtonHeight, setMobileShowButtonHeight] = useState(
+    String(config.mobile.showButtonHeight),
+  );
+  const [mobileShowMoreButtonText, setMobileShowMoreButtonText] = useState(
+    config.mobile.showMoreButtonText,
+  );
+  const [mobileShowLessButtonText, setMobileShowLessButtonText] = useState(
+    config.mobile.showLessButtonText,
+  );
+  const [mobileShowButtonFontSize, setMobileShowButtonFontSize] = useState(
+    String(config.mobile.showButtonFontSize),
+  );
+  const [mobileShowButtonFontColor, setMobileShowButtonFontColor] = useState(
+    config.mobile.showButtonFontColor,
+  );
+  const [mobileShowButtonFontWeight, setMobileShowButtonFontWeight] = useState(
+    String(config.mobile.showButtonFontWeight),
+  );
+  const [mobileShowButtonBorderColor, setMobileShowButtonBorderColor] =
+    useState(config.mobile.showButtonBorderColor);
+  const [mobileShowButtonBorderWidth, setMobileShowButtonBorderWidth] =
+    useState(String(config.mobile.showButtonBorderWidth));
+  const [mobileShowButtonBorderRadius, setMobileShowButtonBorderRadius] =
+    useState(String(config.mobile.showButtonBorderRadius));
+  const [appEmbedStatus, setAppEmbedStatus] =
+    useState<AppEmbedStatus>("checking");
+  const isShowMoreEnabled =
+    activeTab === "desktop" ? desktopShowButton : mobileShowButton;
+  const currentConfig = coerceConfig({
     title,
     headingLevels,
     indentation,
     textAlignment,
     markerFormat,
     minHeadings,
-    smoothScroll,
+    mobileBreakpoint,
+    excludedBlogs,
+    desktop: {
+      position: desktopPosition,
+      positionSelector: desktopPositionSelector,
+      color: desktopBorderColor,
+      width: desktopBorderWidth,
+      radius: desktopBorderRadius,
+      paddingTop: desktopPaddingTop,
+      paddingBottom: desktopPaddingBottom,
+      paddingLeft: desktopPaddingLeft,
+      paddingRight: desktopPaddingRight,
+      background: desktopBackground,
+      maxWidth: desktopMaxWidth,
+      smoothScroll: desktopSmoothScroll,
+      scrollOffset: desktopScrollOffset,
+      headingsFontSize: desktopHeadingsFontSize,
+      headingsFontColor: desktopHeadingsFontColor,
+      headingsFontWeight: desktopHeadingsFontWeight,
+      titleFontSize: desktopTitleFontSize,
+      titleFontColor: desktopTitleFontColor,
+      titleFontWeight: desktopTitleFontWeight,
+      showButton: desktopShowButton,
+      showButtonHeight: desktopShowButtonHeight,
+      showMoreButtonText: desktopShowMoreButtonText,
+      showLessButtonText: desktopShowLessButtonText,
+      showButtonFontSize: desktopShowButtonFontSize,
+      showButtonFontColor: desktopShowButtonFontColor,
+      showButtonFontWeight: desktopShowButtonFontWeight,
+      showButtonBorderColor: desktopShowButtonBorderColor,
+      showButtonBorderWidth: desktopShowButtonBorderWidth,
+      showButtonBorderRadius: desktopShowButtonBorderRadius,
+    },
+    mobile: {
+      position: mobilePosition,
+      positionSelector: mobilePositionSelector,
+      color: mobileBorderColor,
+      width: mobileBorderWidth,
+      radius: mobileBorderRadius,
+      paddingTop: mobilePaddingTop,
+      paddingBottom: mobilePaddingBottom,
+      paddingLeft: mobilePaddingLeft,
+      paddingRight: mobilePaddingRight,
+      background: mobileBackground,
+      maxWidth: mobileMaxWidth,
+      smoothScroll: mobileSmoothScroll,
+      scrollOffset: mobileScrollOffset,
+      headingsFontSize: mobileHeadingsFontSize,
+      headingsFontColor: mobileHeadingsFontColor,
+      headingsFontWeight: mobileHeadingsFontWeight,
+      titleFontSize: mobileTitleFontSize,
+      titleFontColor: mobileTitleFontColor,
+      titleFontWeight: mobileTitleFontWeight,
+      showButton: mobileShowButton,
+      showButtonHeight: mobileShowButtonHeight,
+      showMoreButtonText: mobileShowMoreButtonText,
+      showLessButtonText: mobileShowLessButtonText,
+      showButtonFontSize: mobileShowButtonFontSize,
+      showButtonFontColor: mobileShowButtonFontColor,
+      showButtonFontWeight: mobileShowButtonFontWeight,
+      showButtonBorderColor: mobileShowButtonBorderColor,
+      showButtonBorderWidth: mobileShowButtonBorderWidth,
+      showButtonBorderRadius: mobileShowButtonBorderRadius,
+    },
   });
-  const desktopPreview = buildPreviewState(previewConfig);
-  const mobilePreview = buildPreviewState(previewConfig);
+  const desktopPreview = buildPreviewState(currentConfig);
+  const mobilePreview = buildPreviewState(currentConfig);
+  const isDirty = !configsEqual(savedConfig, currentConfig);
+  const isSaving = navigation.state === "submitting";
+
+  useEffect(() => {
+    setSavedConfig(config);
+    applyConfigToForm(config, {
+      setTitle,
+      setHeadingLevels,
+      setIndentation,
+      setTextAlignment,
+      setMarkerFormat,
+      setMinHeadings,
+      setMobileBreakpoint,
+      setExcludedBlogs,
+      setDesktopPosition,
+      setDesktopPositionSelector,
+      setDesktopBorderColor,
+      setDesktopBorderWidth,
+      setDesktopBorderRadius,
+      setDesktopPaddingTop,
+      setDesktopPaddingBottom,
+      setDesktopPaddingLeft,
+      setDesktopPaddingRight,
+      setDesktopBackground,
+      setDesktopMaxWidth,
+      setDesktopSmoothScroll,
+      setDesktopScrollOffset,
+      setDesktopHeadingsFontSize,
+      setDesktopHeadingsFontColor,
+      setDesktopHeadingsFontWeight,
+      setDesktopTitleFontSize,
+      setDesktopTitleFontColor,
+      setDesktopTitleFontWeight,
+      setDesktopShowButton,
+      setDesktopShowButtonHeight,
+      setDesktopShowMoreButtonText,
+      setDesktopShowLessButtonText,
+      setDesktopShowButtonFontSize,
+      setDesktopShowButtonFontColor,
+      setDesktopShowButtonFontWeight,
+      setDesktopShowButtonBorderColor,
+      setDesktopShowButtonBorderWidth,
+      setDesktopShowButtonBorderRadius,
+      setMobilePosition,
+      setMobilePositionSelector,
+      setMobileBorderColor,
+      setMobileBorderWidth,
+      setMobileBorderRadius,
+      setMobilePaddingTop,
+      setMobilePaddingBottom,
+      setMobilePaddingLeft,
+      setMobilePaddingRight,
+      setMobileBackground,
+      setMobileMaxWidth,
+      setMobileSmoothScroll,
+      setMobileScrollOffset,
+      setMobileHeadingsFontSize,
+      setMobileHeadingsFontColor,
+      setMobileHeadingsFontWeight,
+      setMobileTitleFontSize,
+      setMobileTitleFontColor,
+      setMobileTitleFontWeight,
+      setMobileShowButton,
+      setMobileShowButtonHeight,
+      setMobileShowMoreButtonText,
+      setMobileShowLessButtonText,
+      setMobileShowButtonFontSize,
+      setMobileShowButtonFontColor,
+      setMobileShowButtonFontWeight,
+      setMobileShowButtonBorderColor,
+      setMobileShowButtonBorderWidth,
+      setMobileShowButtonBorderRadius,
+    });
+  }, [config]);
 
   useEffect(() => {
     if (actionData?.ok) {
@@ -273,111 +944,1268 @@ export default function Index() {
     }
   }, [indentation, textAlignment]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshAppEmbedStatus = async (showLoadingState = false) => {
+      if (showLoadingState) {
+        setAppEmbedStatus("checking");
+      }
+
+      try {
+        const extensions = await shopify.app.extensions();
+
+        if (cancelled) return;
+
+        const appEmbed = getAppEmbedRecord(
+          extensions as unknown as AppBridgeExtensionRecord[],
+          APP_EMBED_HANDLE,
+        );
+
+        setAppEmbedStatus(appEmbed ?? "unavailable");
+      } catch {
+        if (!cancelled) {
+          setAppEmbedStatus("unavailable");
+        }
+      }
+    };
+
+    const handleWindowFocus = () => {
+      void refreshAppEmbedStatus();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshAppEmbedStatus();
+      }
+    };
+
+    void refreshAppEmbedStatus(true);
+
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("pageshow", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("pageshow", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [shopify]);
+
   return (
     <s-page heading="Table of contents settings">
       <style>{tocStyles}</style>
       <style>{FORM_STYLES}</style>
       <style>{PREVIEW_STYLES}</style>
-      <s-section heading="Display">
-        <Form method="post">
+      <SaveBar id={SAVE_BAR_ID} open={isDirty}>
+        <button form={FORM_ID} type="reset" disabled={isSaving}>
+          Discard
+        </button>
+        <button
+          form={FORM_ID}
+          type="submit"
+          disabled={!isDirty || isSaving}
+          {...{ variant: "primary" }}
+        >
+          Save
+        </button>
+      </SaveBar>
+      <div className="toc-tab-group">
+        <div className="toc-top-row">
+          <ul className="toc-segmented-control" aria-label="Settings view">
+            {EDITOR_TABS.map((tab) => (
+              <li key={tab.id} className="toc-segmented-item">
+                <button
+                  type="button"
+                  className="toc-segmented-button"
+                  aria-current={activeTab === tab.id ? "true" : "false"}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <s-icon type={tab.icon}></s-icon>
+                  <span>{tab.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="toc-embed-actions">
+            <s-badge
+              tone={getAppEmbedBadgeTone(appEmbedStatus)}
+              icon={getAppEmbedBadgeIcon(appEmbedStatus)}
+            >
+              {formatAppEmbedStatus(appEmbedStatus)}
+            </s-badge>
+            {deepLink ? (
+              <s-button
+                href={deepLink}
+                target="_blank"
+                variant={getAppEmbedButtonVariant(appEmbedStatus)}
+                tone={getAppEmbedButtonTone(appEmbedStatus)}
+              >
+                {getAppEmbedButtonLabel(appEmbedStatus)}
+              </s-button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <div className="toc-main-layout">
+        <Form
+          id={FORM_ID}
+          method="post"
+          onReset={(event) => {
+            event.preventDefault();
+            applyConfigToForm(savedConfig, {
+              setTitle,
+              setHeadingLevels,
+              setIndentation,
+              setTextAlignment,
+              setMarkerFormat,
+              setMinHeadings,
+              setMobileBreakpoint,
+              setExcludedBlogs,
+              setDesktopPosition,
+              setDesktopPositionSelector,
+              setDesktopBorderColor,
+              setDesktopBorderWidth,
+              setDesktopBorderRadius,
+              setDesktopPaddingTop,
+              setDesktopPaddingBottom,
+              setDesktopPaddingLeft,
+              setDesktopPaddingRight,
+              setDesktopBackground,
+              setDesktopMaxWidth,
+              setDesktopSmoothScroll,
+              setDesktopScrollOffset,
+              setDesktopHeadingsFontSize,
+              setDesktopHeadingsFontColor,
+              setDesktopHeadingsFontWeight,
+              setDesktopTitleFontSize,
+              setDesktopTitleFontColor,
+              setDesktopTitleFontWeight,
+              setDesktopShowButton,
+              setDesktopShowButtonHeight,
+              setDesktopShowMoreButtonText,
+              setDesktopShowLessButtonText,
+              setDesktopShowButtonFontSize,
+              setDesktopShowButtonFontColor,
+              setDesktopShowButtonFontWeight,
+              setDesktopShowButtonBorderColor,
+              setDesktopShowButtonBorderWidth,
+              setDesktopShowButtonBorderRadius,
+              setMobilePosition,
+              setMobilePositionSelector,
+              setMobileBorderColor,
+              setMobileBorderWidth,
+              setMobileBorderRadius,
+              setMobilePaddingTop,
+              setMobilePaddingBottom,
+              setMobilePaddingLeft,
+              setMobilePaddingRight,
+              setMobileBackground,
+              setMobileMaxWidth,
+              setMobileSmoothScroll,
+              setMobileScrollOffset,
+              setMobileHeadingsFontSize,
+              setMobileHeadingsFontColor,
+              setMobileHeadingsFontWeight,
+              setMobileTitleFontSize,
+              setMobileTitleFontColor,
+              setMobileTitleFontWeight,
+              setMobileShowButton,
+              setMobileShowButtonHeight,
+              setMobileShowMoreButtonText,
+              setMobileShowLessButtonText,
+              setMobileShowButtonFontSize,
+              setMobileShowButtonFontColor,
+              setMobileShowButtonFontWeight,
+              setMobileShowButtonBorderColor,
+              setMobileShowButtonBorderWidth,
+              setMobileShowButtonBorderRadius,
+            });
+          }}
+        >
           <s-stack direction="block" gap="base">
-            <s-text-field
-              name="title"
-              label="Title"
-              details="Shown at the top of the table of contents"
-              value={title}
-              onInput={(event) => setTitle(event.currentTarget.value)}
-              onChange={(event) => setTitle(event.currentTarget.value)}
-            ></s-text-field>
-            <div className="toc-field">
-              <s-text>Heading levels</s-text>
-              <div className="toc-inline-choices" role="group" aria-label="Heading levels">
-                {HEADING_LEVEL_OPTIONS.map((level) => (
+            {activeTab !== "general" ? (
+              <HiddenGeneralFields config={currentConfig} />
+            ) : null}
+            {activeTab !== "desktop" ? (
+              <HiddenDeviceFields
+                prefix="desktop"
+                config={currentConfig.desktop}
+              />
+            ) : null}
+            {activeTab !== "mobile" ? (
+              <HiddenDeviceFields
+                prefix="mobile"
+                config={currentConfig.mobile}
+              />
+            ) : null}
+            {activeTab === "general" ? (
+              <s-section heading="General">
+                <>
+                  <s-text-field
+                    name="title"
+                    label="Title"
+                    details="Shown at the top of the table of contents"
+                    value={title}
+                    onInput={(event) => setTitle(event.currentTarget.value)}
+                    onChange={(event) => setTitle(event.currentTarget.value)}
+                  ></s-text-field>
+                  <div className="toc-field">
+                    <s-text>Heading levels</s-text>
+                    <div
+                      className="toc-inline-choices"
+                      role="group"
+                      aria-label="Heading levels"
+                    >
+                      {HEADING_LEVEL_OPTIONS.map((level) => (
+                        <s-checkbox
+                          key={level}
+                          name="headingLevels"
+                          value={String(level)}
+                          label={`H${level}`}
+                          checked={headingLevels.includes(level)}
+                          onChange={(event) => {
+                            const checked = event.currentTarget.checked;
+
+                            setHeadingLevels((current) => {
+                              const next = checked
+                                ? normalizeHeadingLevels([...current, level])
+                                : current.filter(
+                                    (currentLevel) => currentLevel !== level,
+                                  );
+
+                              return next.length ? next : current;
+                            });
+                          }}
+                        ></s-checkbox>
+                      ))}
+                    </div>
+                    <div className="toc-field-details">
+                      Choose which article headings should appear in the table
+                      of contents.
+                    </div>
+                  </div>
+                  <s-text-field
+                    name="minHeadings"
+                    label="Minimum headings to show"
+                    details="Hide the table of contents until this many selected headings are found"
+                    value={minHeadings}
+                    onInput={(event) =>
+                      setMinHeadings(event.currentTarget.value)
+                    }
+                    onChange={(event) =>
+                      setMinHeadings(event.currentTarget.value)
+                    }
+                  ></s-text-field>
+                  <s-number-field
+                    name="mobileBreakpoint"
+                    label="Mobile breakpoint"
+                    details="Use mobile styles at this width and below"
+                    min={0}
+                    step={1}
+                    suffix="px"
+                    value={mobileBreakpoint}
+                    onInput={(event) =>
+                      setMobileBreakpoint(event.currentTarget.value)
+                    }
+                    onChange={(event) =>
+                      setMobileBreakpoint(event.currentTarget.value)
+                    }
+                  ></s-number-field>
+                  <s-text-field
+                    name="excludedBlogs"
+                    label="Blog posts to exclude"
+                    details="Comma-separated article handles or IDs where the table of contents should stay hidden"
+                    value={excludedBlogs}
+                    onInput={(event) =>
+                      setExcludedBlogs(event.currentTarget.value)
+                    }
+                    onChange={(event) =>
+                      setExcludedBlogs(event.currentTarget.value)
+                    }
+                  ></s-text-field>
+                  <s-divider></s-divider>
+                  <s-select
+                    name="textAlignment"
+                    label="Text alignment"
+                    details="Align the title and links inside the table of contents"
+                    value={textAlignment}
+                    onChange={(event) =>
+                      setTextAlignment(
+                        normalizeTextAlignment(event.currentTarget.value),
+                      )
+                    }
+                  >
+                    {TEXT_ALIGNMENT_OPTIONS.map((option) => (
+                      <s-option key={option.value} value={option.value}>
+                        {option.label}
+                      </s-option>
+                    ))}
+                  </s-select>
+                  <s-select
+                    name="markerFormat"
+                    label="Numbering / Bullet Format"
+                    details="Choose whether items use no marker, bullets, or numbers"
+                    value={markerFormat}
+                    onChange={(event) =>
+                      setMarkerFormat(
+                        normalizeMarkerFormat(event.currentTarget.value),
+                      )
+                    }
+                  >
+                    {MARKER_FORMAT_OPTIONS.map((option) => (
+                      <s-option key={option.value} value={option.value}>
+                        {option.label}
+                      </s-option>
+                    ))}
+                  </s-select>
                   <s-checkbox
-                    key={level}
-                    name="headingLevels"
-                    value={String(level)}
-                    label={`H${level}`}
-                    checked={headingLevels.includes(level)}
-                    onChange={(event) => {
-                      const checked = event.currentTarget.checked;
-
-                      setHeadingLevels((current) => {
-                        const next = checked
-                          ? normalizeHeadingLevels([...current, level])
-                          : current.filter((currentLevel) => currentLevel !== level);
-
-                        return next.length ? next : current;
-                      });
-                    }}
+                    name="indentation"
+                    label="Indent nested headings"
+                    details="Show lower-level headings as nested items"
+                    checked={textAlignment === "center" ? false : indentation}
+                    disabled={textAlignment === "center"}
+                    onChange={(event) =>
+                      setIndentation(event.currentTarget.checked)
+                    }
                   ></s-checkbox>
-                ))}
-              </div>
-              <div className="toc-field-details">
-                Choose which article headings should appear in the table of
-                contents.
-              </div>
-            </div>
-            <s-text-field
-              name="minHeadings"
-              label="Minimum headings to show"
-              details="Hide the table of contents until this many selected headings are found"
-              value={minHeadings}
-              onInput={(event) => setMinHeadings(event.currentTarget.value)}
-              onChange={(event) => setMinHeadings(event.currentTarget.value)}
-            ></s-text-field>
-            <s-select
-              name="textAlignment"
-              label="Text alignment"
-              details="Align the title and links inside the table of contents"
-              value={textAlignment}
-              onChange={(event) =>
-                setTextAlignment(
-                  normalizeTextAlignment(event.currentTarget.value),
-                )
-              }
-            >
-              {TEXT_ALIGNMENT_OPTIONS.map((option) => (
-                <s-option key={option.value} value={option.value}>
-                  {option.label}
-                </s-option>
-              ))}
-            </s-select>
-            <s-select
-              name="markerFormat"
-              label="Numbering / Bullet Format"
-              details="Choose whether items use no marker, bullets, or numbers"
-              value={markerFormat}
-              onChange={(event) =>
-                setMarkerFormat(
-                  normalizeMarkerFormat(event.currentTarget.value),
-                )
-              }
-            >
-              {MARKER_FORMAT_OPTIONS.map((option) => (
-                <s-option key={option.value} value={option.value}>
-                  {option.label}
-                </s-option>
-              ))}
-            </s-select>
-            <s-checkbox
-              name="indentation"
-              label="Indent nested headings"
-              details="Show lower-level headings as nested items"
-              checked={textAlignment === "center" ? false : indentation}
-              disabled={textAlignment === "center"}
-              onChange={(event) =>
-                setIndentation(event.currentTarget.checked)
-              }
-            ></s-checkbox>
-            <s-checkbox
-              name="smoothScroll"
-              label="Smooth scroll"
-              details="Scroll smoothly to a heading when a TOC link is clicked"
-              checked={smoothScroll}
-              onChange={(event) => setSmoothScroll(event.currentTarget.checked)}
-            ></s-checkbox>
-            <s-button type="submit">Save</s-button>
+                </>
+              </s-section>
+            ) : (
+              <>
+                <s-section heading="General">
+                  <s-stack direction="block" gap="base">
+                    <s-select
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopPosition"
+                          : "mobilePosition"
+                      }
+                      label="Position"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopPosition
+                          : mobilePosition
+                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+
+                        if (activeTab === "desktop") {
+                          setDesktopPosition(normalizeDesktopPosition(value));
+                        } else {
+                          setMobilePosition(normalizeMobilePosition(value));
+                        }
+                      }}
+                    >
+                      {(activeTab === "desktop"
+                        ? DESKTOP_POSITION_OPTIONS
+                        : MOBILE_POSITION_OPTIONS
+                      ).map((option) => (
+                        <s-option key={option.value} value={option.value}>
+                          {option.label}
+                        </s-option>
+                      ))}
+                    </s-select>
+                    {(
+                      activeTab === "desktop"
+                        ? desktopPosition === "css-selector"
+                        : mobilePosition === "css-selector"
+                    ) ? (
+                      <s-text-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopPositionSelector"
+                            : "mobilePositionSelector"
+                        }
+                        label="CSS selector"
+                        details={
+                          activeTab === "desktop"
+                            ? "Appends the TOC inside the first matching element. Falls back to float right when no match is found."
+                            : "Appends the TOC inside the first matching element. Falls back to before first heading when no match is found."
+                        }
+                        value={
+                          activeTab === "desktop"
+                            ? desktopPositionSelector
+                            : mobilePositionSelector
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+
+                          if (activeTab === "desktop") {
+                            setDesktopPositionSelector(value);
+                          } else {
+                            setMobilePositionSelector(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+
+                          if (activeTab === "desktop") {
+                            setDesktopPositionSelector(value);
+                          } else {
+                            setMobilePositionSelector(value);
+                          }
+                        }}
+                      ></s-text-field>
+                    ) : null}
+                    <s-color-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopBackground"
+                          : "mobileBackground"
+                      }
+                      label="Background"
+                      alpha
+                      value={
+                        activeTab === "desktop"
+                          ? desktopBackground
+                          : mobileBackground
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopBackground(value);
+                        } else {
+                          setMobileBackground(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopBackground(value);
+                        } else {
+                          setMobileBackground(value);
+                        }
+                      }}
+                    ></s-color-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopMaxWidth"
+                          : "mobileMaxWidth"
+                      }
+                      label="Max width"
+                      details="Set to 0 for no max width"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopMaxWidth
+                          : mobileMaxWidth
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopMaxWidth(value);
+                        } else {
+                          setMobileMaxWidth(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopMaxWidth(value);
+                        } else {
+                          setMobileMaxWidth(value);
+                        }
+                      }}
+                    ></s-number-field>
+                  </s-stack>
+                </s-section>
+                <s-section heading="Title">
+                  <div className="toc-compact-fields">
+                    <s-color-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopTitleFontColor"
+                          : "mobileTitleFontColor"
+                      }
+                      label="Color"
+                      alpha
+                      value={
+                        activeTab === "desktop"
+                          ? desktopTitleFontColor
+                          : mobileTitleFontColor
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopTitleFontColor(value);
+                        } else {
+                          setMobileTitleFontColor(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopTitleFontColor(value);
+                        } else {
+                          setMobileTitleFontColor(value);
+                        }
+                      }}
+                    ></s-color-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopTitleFontSize"
+                          : "mobileTitleFontSize"
+                      }
+                      label="Font size"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopTitleFontSize
+                          : mobileTitleFontSize
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopTitleFontSize(value);
+                        } else {
+                          setMobileTitleFontSize(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopTitleFontSize(value);
+                        } else {
+                          setMobileTitleFontSize(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-select
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopTitleFontWeight"
+                          : "mobileTitleFontWeight"
+                      }
+                      label="Font weight"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopTitleFontWeight
+                          : mobileTitleFontWeight
+                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopTitleFontWeight(value);
+                        } else {
+                          setMobileTitleFontWeight(value);
+                        }
+                      }}
+                    >
+                      {FONT_WEIGHT_OPTIONS.map((option) => (
+                        <s-option key={option.value} value={option.value}>
+                          {option.label}
+                        </s-option>
+                      ))}
+                    </s-select>
+                  </div>
+                </s-section>
+                <s-section heading="Headings">
+                  <div className="toc-compact-fields">
+                    <s-color-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopHeadingsFontColor"
+                          : "mobileHeadingsFontColor"
+                      }
+                      label="Color"
+                      alpha
+                      value={
+                        activeTab === "desktop"
+                          ? desktopHeadingsFontColor
+                          : mobileHeadingsFontColor
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopHeadingsFontColor(value);
+                        } else {
+                          setMobileHeadingsFontColor(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopHeadingsFontColor(value);
+                        } else {
+                          setMobileHeadingsFontColor(value);
+                        }
+                      }}
+                    ></s-color-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopHeadingsFontSize"
+                          : "mobileHeadingsFontSize"
+                      }
+                      label="Font size"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopHeadingsFontSize
+                          : mobileHeadingsFontSize
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopHeadingsFontSize(value);
+                        } else {
+                          setMobileHeadingsFontSize(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopHeadingsFontSize(value);
+                        } else {
+                          setMobileHeadingsFontSize(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-select
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopHeadingsFontWeight"
+                          : "mobileHeadingsFontWeight"
+                      }
+                      label="Font weight"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopHeadingsFontWeight
+                          : mobileHeadingsFontWeight
+                      }
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopHeadingsFontWeight(value);
+                        } else {
+                          setMobileHeadingsFontWeight(value);
+                        }
+                      }}
+                    >
+                      {FONT_WEIGHT_OPTIONS.map((option) => (
+                        <s-option key={option.value} value={option.value}>
+                          {option.label}
+                        </s-option>
+                      ))}
+                    </s-select>
+                  </div>
+                </s-section>
+                <s-section heading="Border">
+                  <div className="toc-compact-fields">
+                    <s-color-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopBorderColor"
+                          : "mobileBorderColor"
+                      }
+                      label="Color"
+                      alpha
+                      value={
+                        activeTab === "desktop"
+                          ? desktopBorderColor
+                          : mobileBorderColor
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopBorderColor(value);
+                        } else {
+                          setMobileBorderColor(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopBorderColor(value);
+                        } else {
+                          setMobileBorderColor(value);
+                        }
+                      }}
+                    ></s-color-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopBorderWidth"
+                          : "mobileBorderWidth"
+                      }
+                      label="Width"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopBorderWidth
+                          : mobileBorderWidth
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopBorderWidth(value);
+                        } else {
+                          setMobileBorderWidth(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopBorderWidth(value);
+                        } else {
+                          setMobileBorderWidth(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopBorderRadius"
+                          : "mobileBorderRadius"
+                      }
+                      label="Radius"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopBorderRadius
+                          : mobileBorderRadius
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopBorderRadius(value);
+                        } else {
+                          setMobileBorderRadius(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopBorderRadius(value);
+                        } else {
+                          setMobileBorderRadius(value);
+                        }
+                      }}
+                    ></s-number-field>
+                  </div>
+                </s-section>
+                <s-section heading="Padding">
+                  <div className="toc-compact-fields-four">
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopPaddingTop"
+                          : "mobilePaddingTop"
+                      }
+                      label="Top"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopPaddingTop
+                          : mobilePaddingTop
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopPaddingTop(value);
+                        } else {
+                          setMobilePaddingTop(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopPaddingTop(value);
+                        } else {
+                          setMobilePaddingTop(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopPaddingBottom"
+                          : "mobilePaddingBottom"
+                      }
+                      label="Bottom"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopPaddingBottom
+                          : mobilePaddingBottom
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopPaddingBottom(value);
+                        } else {
+                          setMobilePaddingBottom(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopPaddingBottom(value);
+                        } else {
+                          setMobilePaddingBottom(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopPaddingLeft"
+                          : "mobilePaddingLeft"
+                      }
+                      label="Left"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopPaddingLeft
+                          : mobilePaddingLeft
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopPaddingLeft(value);
+                        } else {
+                          setMobilePaddingLeft(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopPaddingLeft(value);
+                        } else {
+                          setMobilePaddingLeft(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopPaddingRight"
+                          : "mobilePaddingRight"
+                      }
+                      label="Right"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopPaddingRight
+                          : mobilePaddingRight
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopPaddingRight(value);
+                        } else {
+                          setMobilePaddingRight(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopPaddingRight(value);
+                        } else {
+                          setMobilePaddingRight(value);
+                        }
+                      }}
+                    ></s-number-field>
+                  </div>
+                </s-section>
+                <s-section heading="Scroll">
+                  <s-stack direction="block" gap="base">
+                    <s-checkbox
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopSmoothScroll"
+                          : "mobileSmoothScroll"
+                      }
+                      label="Smooth scroll"
+                      details="Scroll smoothly to a heading when a TOC link is clicked"
+                      checked={
+                        activeTab === "desktop"
+                          ? desktopSmoothScroll
+                          : mobileSmoothScroll
+                      }
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        if (activeTab === "desktop") {
+                          setDesktopSmoothScroll(checked);
+                        } else {
+                          setMobileSmoothScroll(checked);
+                        }
+                      }}
+                    ></s-checkbox>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopScrollOffset"
+                          : "mobileScrollOffset"
+                      }
+                      label="Offset"
+                      details="Top offset in pixels"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopScrollOffset
+                          : mobileScrollOffset
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopScrollOffset(value);
+                        } else {
+                          setMobileScrollOffset(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopScrollOffset(value);
+                        } else {
+                          setMobileScrollOffset(value);
+                        }
+                      }}
+                    ></s-number-field>
+                  </s-stack>
+                </s-section>
+                <s-section heading="Show more button">
+                  <s-stack direction="block" gap="base">
+                    <s-checkbox
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopShowButton"
+                          : "mobileShowButton"
+                      }
+                      label="Enable show more"
+                      checked={
+                        activeTab === "desktop"
+                          ? desktopShowButton
+                          : mobileShowButton
+                      }
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        if (activeTab === "desktop") {
+                          setDesktopShowButton(checked);
+                        } else {
+                          setMobileShowButton(checked);
+                        }
+                      }}
+                    ></s-checkbox>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopShowButtonHeight"
+                          : "mobileShowButtonHeight"
+                      }
+                      label="Collapsed height"
+                      details="Collapsed content height before the button is shown"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      disabled={!isShowMoreEnabled}
+                      value={
+                        activeTab === "desktop"
+                          ? desktopShowButtonHeight
+                          : mobileShowButtonHeight
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopShowButtonHeight(value);
+                        } else {
+                          setMobileShowButtonHeight(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopShowButtonHeight(value);
+                        } else {
+                          setMobileShowButtonHeight(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <div className="toc-compact-fields-two">
+                      <s-text-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowMoreButtonText"
+                            : "mobileShowMoreButtonText"
+                        }
+                        label="Show more text"
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowMoreButtonText
+                            : mobileShowMoreButtonText
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowMoreButtonText(value);
+                          } else {
+                            setMobileShowMoreButtonText(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowMoreButtonText(value);
+                          } else {
+                            setMobileShowMoreButtonText(value);
+                          }
+                        }}
+                      ></s-text-field>
+                      <s-text-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowLessButtonText"
+                            : "mobileShowLessButtonText"
+                        }
+                        label="Show less text"
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowLessButtonText
+                            : mobileShowLessButtonText
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowLessButtonText(value);
+                          } else {
+                            setMobileShowLessButtonText(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowLessButtonText(value);
+                          } else {
+                            setMobileShowLessButtonText(value);
+                          }
+                        }}
+                      ></s-text-field>
+                    </div>
+                    <div className="toc-compact-fields">
+                      <s-color-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowButtonFontColor"
+                            : "mobileShowButtonFontColor"
+                        }
+                        label="Font color"
+                        alpha
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowButtonFontColor
+                            : mobileShowButtonFontColor
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonFontColor(value);
+                          } else {
+                            setMobileShowButtonFontColor(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonFontColor(value);
+                          } else {
+                            setMobileShowButtonFontColor(value);
+                          }
+                        }}
+                      ></s-color-field>
+                      <s-number-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowButtonFontSize"
+                            : "mobileShowButtonFontSize"
+                        }
+                        label="Font size"
+                        min={0}
+                        step={1}
+                        suffix="px"
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowButtonFontSize
+                            : mobileShowButtonFontSize
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonFontSize(value);
+                          } else {
+                            setMobileShowButtonFontSize(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonFontSize(value);
+                          } else {
+                            setMobileShowButtonFontSize(value);
+                          }
+                        }}
+                      ></s-number-field>
+                      <s-select
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowButtonFontWeight"
+                            : "mobileShowButtonFontWeight"
+                        }
+                        label="Font weight"
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowButtonFontWeight
+                            : mobileShowButtonFontWeight
+                        }
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonFontWeight(value);
+                          } else {
+                            setMobileShowButtonFontWeight(value);
+                          }
+                        }}
+                      >
+                        {FONT_WEIGHT_OPTIONS.map((option) => (
+                          <s-option key={option.value} value={option.value}>
+                            {option.label}
+                          </s-option>
+                        ))}
+                      </s-select>
+                    </div>
+                    <div className="toc-compact-fields">
+                      <s-color-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowButtonBorderColor"
+                            : "mobileShowButtonBorderColor"
+                        }
+                        label="Border color"
+                        alpha
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowButtonBorderColor
+                            : mobileShowButtonBorderColor
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonBorderColor(value);
+                          } else {
+                            setMobileShowButtonBorderColor(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonBorderColor(value);
+                          } else {
+                            setMobileShowButtonBorderColor(value);
+                          }
+                        }}
+                      ></s-color-field>
+                      <s-number-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowButtonBorderWidth"
+                            : "mobileShowButtonBorderWidth"
+                        }
+                        label="Border width"
+                        min={0}
+                        step={1}
+                        suffix="px"
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowButtonBorderWidth
+                            : mobileShowButtonBorderWidth
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonBorderWidth(value);
+                          } else {
+                            setMobileShowButtonBorderWidth(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonBorderWidth(value);
+                          } else {
+                            setMobileShowButtonBorderWidth(value);
+                          }
+                        }}
+                      ></s-number-field>
+                      <s-number-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowButtonBorderRadius"
+                            : "mobileShowButtonBorderRadius"
+                        }
+                        label="Border radius"
+                        min={0}
+                        step={1}
+                        suffix="px"
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowButtonBorderRadius
+                            : mobileShowButtonBorderRadius
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonBorderRadius(value);
+                          } else {
+                            setMobileShowButtonBorderRadius(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonBorderRadius(value);
+                          } else {
+                            setMobileShowButtonBorderRadius(value);
+                          }
+                        }}
+                      ></s-number-field>
+                    </div>
+                  </s-stack>
+                </s-section>
+              </>
+            )}
             {actionData?.userErrors?.length ? (
               <s-paragraph>
                 {actionData.userErrors
@@ -387,48 +2215,49 @@ export default function Index() {
             ) : null}
           </s-stack>
         </Form>
-      </s-section>
-      <s-section heading="Activate app embed">
-        <s-paragraph>
-          App embeds are disabled by default. Activate the embed for blog
-          articles in the theme editor.
-        </s-paragraph>
-        {deepLink ? (
-          <s-button href={deepLink} target="_blank">
-            Activate now
-          </s-button>
-        ) : (
-          <s-paragraph>
-            Could not build the activate link. Please try again later.
-          </s-paragraph>
-        )}
-      </s-section>
-      <s-section slot="aside" heading="Preview">
-        <div className="toc-settings-preview">
-          <div className="toc-preview-pane">
-            <p className="toc-preview-label">Desktop</p>
-            <div className="toc-preview-stage toc-preview-desktop">
-              <TocPreview
-                preview={desktopPreview}
-                indentation={previewConfig.indentation}
-                textAlignment={previewConfig.textAlignment}
-                markerFormat={previewConfig.markerFormat}
-              />
+        <div
+          className={`toc-preview-column${activeTab === "general" ? "" : " toc-preview-column--sticky"}`}
+        >
+          <s-section heading="Preview">
+            <div className="toc-settings-preview">
+              {(activeTab === "general" || activeTab === "desktop") && (
+                <div className="toc-preview-pane">
+                  {activeTab === "general" ? (
+                    <p className="toc-preview-label">Desktop</p>
+                  ) : null}
+                  <div className="toc-preview-stage toc-preview-desktop">
+                    <TocPreview
+                      preview={desktopPreview}
+                      indentation={currentConfig.indentation}
+                      textAlignment={currentConfig.textAlignment}
+                      markerFormat={currentConfig.markerFormat}
+                      device={currentConfig.desktop}
+                      previewDevice="desktop"
+                    />
+                  </div>
+                </div>
+              )}
+              {(activeTab === "general" || activeTab === "mobile") && (
+                <div className="toc-preview-pane">
+                  {activeTab === "general" ? (
+                    <p className="toc-preview-label">Mobile</p>
+                  ) : null}
+                  <div className="toc-preview-stage toc-preview-mobile">
+                    <TocPreview
+                      preview={mobilePreview}
+                      indentation={currentConfig.indentation}
+                      textAlignment={currentConfig.textAlignment}
+                      markerFormat={currentConfig.markerFormat}
+                      device={currentConfig.mobile}
+                      previewDevice="mobile"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-          <div className="toc-preview-pane">
-            <p className="toc-preview-label">Mobile</p>
-            <div className="toc-preview-stage toc-preview-mobile">
-              <TocPreview
-                preview={mobilePreview}
-                indentation={previewConfig.indentation}
-                textAlignment={previewConfig.textAlignment}
-                markerFormat={previewConfig.markerFormat}
-              />
-            </div>
-          </div>
+          </s-section>
         </div>
-      </s-section>
+      </div>
     </s-page>
   );
 }
@@ -438,16 +2267,45 @@ export const headers: HeadersFunction = (headersArgs) => {
 };
 
 function parseConfig(value: unknown): TocConfig {
-  if (typeof value !== "string" || !value.trim()) return { ...DEFAULT_CONFIG };
+  if (typeof value !== "string" || !value.trim()) {
+    return { ...DEFAULT_CONFIG } as TocConfig;
+  }
   try {
     const parsed = JSON.parse(value);
-    if (!parsed || typeof parsed !== "object") return { ...DEFAULT_CONFIG };
+    if (!parsed || typeof parsed !== "object") {
+      return { ...DEFAULT_CONFIG } as TocConfig;
+    }
     const {
       desktopMode: _desktopMode,
+      smoothScroll: legacySmoothScroll,
       wrapperSelector: _wrapperSelector,
-      topOffset: _topOffset,
+      topOffset: legacyTopOffset,
       ...rest
     } = parsed as Record<string, unknown>;
+
+    const defaultDesktop = {
+      ...DEFAULT_CONFIG.desktop,
+      smoothScroll:
+        typeof legacySmoothScroll === "boolean"
+          ? legacySmoothScroll
+          : DEFAULT_CONFIG.desktop.smoothScroll,
+      scrollOffset:
+        typeof legacyTopOffset === "number" && Number.isFinite(legacyTopOffset)
+          ? Math.max(0, legacyTopOffset)
+          : DEFAULT_CONFIG.desktop.scrollOffset,
+    };
+    const defaultMobile = {
+      ...DEFAULT_CONFIG.mobile,
+      smoothScroll:
+        typeof legacySmoothScroll === "boolean"
+          ? legacySmoothScroll
+          : DEFAULT_CONFIG.mobile.smoothScroll,
+      scrollOffset:
+        typeof legacyTopOffset === "number" && Number.isFinite(legacyTopOffset)
+          ? Math.max(0, legacyTopOffset)
+          : DEFAULT_CONFIG.mobile.scrollOffset,
+    };
+
     return {
       ...DEFAULT_CONFIG,
       ...rest,
@@ -460,10 +2318,556 @@ function parseConfig(value: unknown): TocConfig {
           : DEFAULT_CONFIG.indentation,
       textAlignment: normalizeTextAlignment(rest.textAlignment),
       markerFormat: normalizeMarkerFormat(rest.markerFormat),
+      mobileBreakpoint:
+        typeof rest.mobileBreakpoint === "number" &&
+        Number.isFinite(rest.mobileBreakpoint)
+          ? Math.max(0, rest.mobileBreakpoint)
+          : DEFAULT_CONFIG.mobileBreakpoint,
+      excludedBlogs:
+        typeof rest.excludedBlogs === "string"
+          ? normalizeExcludedBlogsInput(rest.excludedBlogs)
+          : DEFAULT_CONFIG.excludedBlogs,
+      desktop: normalizeDeviceConfig(rest.desktop, defaultDesktop, "desktop"),
+      mobile: normalizeDeviceConfig(rest.mobile, defaultMobile, "mobile"),
     } as TocConfig;
   } catch {
-    return { ...DEFAULT_CONFIG };
+    return { ...DEFAULT_CONFIG } as TocConfig;
   }
+}
+
+function applyConfigToForm(
+  config: TocConfig,
+  controls: {
+    setTitle: (value: string) => void;
+    setHeadingLevels: (value: number[]) => void;
+    setIndentation: (value: boolean) => void;
+    setTextAlignment: (value: TocTextAlignment) => void;
+    setMarkerFormat: (value: TocMarkerFormat) => void;
+    setMinHeadings: (value: string) => void;
+    setMobileBreakpoint: (value: string) => void;
+    setExcludedBlogs: (value: string) => void;
+    setDesktopPosition: (value: TocDesktopPosition) => void;
+    setDesktopPositionSelector: (value: string) => void;
+    setDesktopBorderColor: (value: string) => void;
+    setDesktopBorderWidth: (value: string) => void;
+    setDesktopBorderRadius: (value: string) => void;
+    setDesktopPaddingTop: (value: string) => void;
+    setDesktopPaddingBottom: (value: string) => void;
+    setDesktopPaddingLeft: (value: string) => void;
+    setDesktopPaddingRight: (value: string) => void;
+    setDesktopBackground: (value: string) => void;
+    setDesktopMaxWidth: (value: string) => void;
+    setDesktopSmoothScroll: (value: boolean) => void;
+    setDesktopScrollOffset: (value: string) => void;
+    setDesktopHeadingsFontSize: (value: string) => void;
+    setDesktopHeadingsFontColor: (value: string) => void;
+    setDesktopHeadingsFontWeight: (value: string) => void;
+    setDesktopTitleFontSize: (value: string) => void;
+    setDesktopTitleFontColor: (value: string) => void;
+    setDesktopTitleFontWeight: (value: string) => void;
+    setDesktopShowButton: (value: boolean) => void;
+    setDesktopShowButtonHeight: (value: string) => void;
+    setDesktopShowMoreButtonText: (value: string) => void;
+    setDesktopShowLessButtonText: (value: string) => void;
+    setDesktopShowButtonFontSize: (value: string) => void;
+    setDesktopShowButtonFontColor: (value: string) => void;
+    setDesktopShowButtonFontWeight: (value: string) => void;
+    setDesktopShowButtonBorderColor: (value: string) => void;
+    setDesktopShowButtonBorderWidth: (value: string) => void;
+    setDesktopShowButtonBorderRadius: (value: string) => void;
+    setMobilePosition: (value: TocMobilePosition) => void;
+    setMobilePositionSelector: (value: string) => void;
+    setMobileBorderColor: (value: string) => void;
+    setMobileBorderWidth: (value: string) => void;
+    setMobileBorderRadius: (value: string) => void;
+    setMobilePaddingTop: (value: string) => void;
+    setMobilePaddingBottom: (value: string) => void;
+    setMobilePaddingLeft: (value: string) => void;
+    setMobilePaddingRight: (value: string) => void;
+    setMobileBackground: (value: string) => void;
+    setMobileMaxWidth: (value: string) => void;
+    setMobileSmoothScroll: (value: boolean) => void;
+    setMobileScrollOffset: (value: string) => void;
+    setMobileHeadingsFontSize: (value: string) => void;
+    setMobileHeadingsFontColor: (value: string) => void;
+    setMobileHeadingsFontWeight: (value: string) => void;
+    setMobileTitleFontSize: (value: string) => void;
+    setMobileTitleFontColor: (value: string) => void;
+    setMobileTitleFontWeight: (value: string) => void;
+    setMobileShowButton: (value: boolean) => void;
+    setMobileShowButtonHeight: (value: string) => void;
+    setMobileShowMoreButtonText: (value: string) => void;
+    setMobileShowLessButtonText: (value: string) => void;
+    setMobileShowButtonFontSize: (value: string) => void;
+    setMobileShowButtonFontColor: (value: string) => void;
+    setMobileShowButtonFontWeight: (value: string) => void;
+    setMobileShowButtonBorderColor: (value: string) => void;
+    setMobileShowButtonBorderWidth: (value: string) => void;
+    setMobileShowButtonBorderRadius: (value: string) => void;
+  },
+) {
+  controls.setTitle(config.title);
+  controls.setHeadingLevels(normalizeHeadingLevels(config.headingLevels));
+  controls.setIndentation(config.indentation);
+  controls.setTextAlignment(config.textAlignment);
+  controls.setMarkerFormat(config.markerFormat);
+  controls.setMinHeadings(String(config.minHeadings));
+  controls.setMobileBreakpoint(String(config.mobileBreakpoint));
+  controls.setExcludedBlogs(config.excludedBlogs);
+  controls.setDesktopPosition(
+    normalizeDesktopPosition(config.desktop.position),
+  );
+  controls.setDesktopPositionSelector(config.desktop.positionSelector);
+  controls.setDesktopBorderColor(config.desktop.color);
+  controls.setDesktopBorderWidth(String(config.desktop.width));
+  controls.setDesktopBorderRadius(String(config.desktop.radius));
+  controls.setDesktopPaddingTop(String(config.desktop.paddingTop));
+  controls.setDesktopPaddingBottom(String(config.desktop.paddingBottom));
+  controls.setDesktopPaddingLeft(String(config.desktop.paddingLeft));
+  controls.setDesktopPaddingRight(String(config.desktop.paddingRight));
+  controls.setDesktopBackground(config.desktop.background);
+  controls.setDesktopMaxWidth(String(config.desktop.maxWidth));
+  controls.setDesktopSmoothScroll(config.desktop.smoothScroll);
+  controls.setDesktopScrollOffset(String(config.desktop.scrollOffset));
+  controls.setDesktopHeadingsFontSize(String(config.desktop.headingsFontSize));
+  controls.setDesktopHeadingsFontColor(config.desktop.headingsFontColor);
+  controls.setDesktopHeadingsFontWeight(
+    String(config.desktop.headingsFontWeight),
+  );
+  controls.setDesktopTitleFontSize(String(config.desktop.titleFontSize));
+  controls.setDesktopTitleFontColor(config.desktop.titleFontColor);
+  controls.setDesktopTitleFontWeight(String(config.desktop.titleFontWeight));
+  controls.setDesktopShowButton(config.desktop.showButton);
+  controls.setDesktopShowButtonHeight(String(config.desktop.showButtonHeight));
+  controls.setDesktopShowMoreButtonText(config.desktop.showMoreButtonText);
+  controls.setDesktopShowLessButtonText(config.desktop.showLessButtonText);
+  controls.setDesktopShowButtonFontSize(
+    String(config.desktop.showButtonFontSize),
+  );
+  controls.setDesktopShowButtonFontColor(config.desktop.showButtonFontColor);
+  controls.setDesktopShowButtonFontWeight(
+    String(config.desktop.showButtonFontWeight),
+  );
+  controls.setDesktopShowButtonBorderColor(
+    config.desktop.showButtonBorderColor,
+  );
+  controls.setDesktopShowButtonBorderWidth(
+    String(config.desktop.showButtonBorderWidth),
+  );
+  controls.setDesktopShowButtonBorderRadius(
+    String(config.desktop.showButtonBorderRadius),
+  );
+  controls.setMobilePosition(normalizeMobilePosition(config.mobile.position));
+  controls.setMobilePositionSelector(config.mobile.positionSelector);
+  controls.setMobileBorderColor(config.mobile.color);
+  controls.setMobileBorderWidth(String(config.mobile.width));
+  controls.setMobileBorderRadius(String(config.mobile.radius));
+  controls.setMobilePaddingTop(String(config.mobile.paddingTop));
+  controls.setMobilePaddingBottom(String(config.mobile.paddingBottom));
+  controls.setMobilePaddingLeft(String(config.mobile.paddingLeft));
+  controls.setMobilePaddingRight(String(config.mobile.paddingRight));
+  controls.setMobileBackground(config.mobile.background);
+  controls.setMobileMaxWidth(String(config.mobile.maxWidth));
+  controls.setMobileSmoothScroll(config.mobile.smoothScroll);
+  controls.setMobileScrollOffset(String(config.mobile.scrollOffset));
+  controls.setMobileHeadingsFontSize(String(config.mobile.headingsFontSize));
+  controls.setMobileHeadingsFontColor(config.mobile.headingsFontColor);
+  controls.setMobileHeadingsFontWeight(
+    String(config.mobile.headingsFontWeight),
+  );
+  controls.setMobileTitleFontSize(String(config.mobile.titleFontSize));
+  controls.setMobileTitleFontColor(config.mobile.titleFontColor);
+  controls.setMobileTitleFontWeight(String(config.mobile.titleFontWeight));
+  controls.setMobileShowButton(config.mobile.showButton);
+  controls.setMobileShowButtonHeight(String(config.mobile.showButtonHeight));
+  controls.setMobileShowMoreButtonText(config.mobile.showMoreButtonText);
+  controls.setMobileShowLessButtonText(config.mobile.showLessButtonText);
+  controls.setMobileShowButtonFontSize(
+    String(config.mobile.showButtonFontSize),
+  );
+  controls.setMobileShowButtonFontColor(config.mobile.showButtonFontColor);
+  controls.setMobileShowButtonFontWeight(
+    String(config.mobile.showButtonFontWeight),
+  );
+  controls.setMobileShowButtonBorderColor(config.mobile.showButtonBorderColor);
+  controls.setMobileShowButtonBorderWidth(
+    String(config.mobile.showButtonBorderWidth),
+  );
+  controls.setMobileShowButtonBorderRadius(
+    String(config.mobile.showButtonBorderRadius),
+  );
+}
+
+function configsEqual(left: TocConfig, right: TocConfig) {
+  return (
+    left.title === right.title &&
+    left.indentation === right.indentation &&
+    left.textAlignment === right.textAlignment &&
+    left.markerFormat === right.markerFormat &&
+    left.minHeadings === right.minHeadings &&
+    left.mobileBreakpoint === right.mobileBreakpoint &&
+    left.excludedBlogs === right.excludedBlogs &&
+    left.desktop.position === right.desktop.position &&
+    left.desktop.positionSelector === right.desktop.positionSelector &&
+    left.desktop.color === right.desktop.color &&
+    left.desktop.width === right.desktop.width &&
+    left.desktop.radius === right.desktop.radius &&
+    left.desktop.paddingTop === right.desktop.paddingTop &&
+    left.desktop.paddingBottom === right.desktop.paddingBottom &&
+    left.desktop.paddingLeft === right.desktop.paddingLeft &&
+    left.desktop.paddingRight === right.desktop.paddingRight &&
+    left.desktop.background === right.desktop.background &&
+    left.desktop.maxWidth === right.desktop.maxWidth &&
+    left.desktop.smoothScroll === right.desktop.smoothScroll &&
+    left.desktop.scrollOffset === right.desktop.scrollOffset &&
+    left.desktop.headingsFontSize === right.desktop.headingsFontSize &&
+    left.desktop.headingsFontColor === right.desktop.headingsFontColor &&
+    left.desktop.headingsFontWeight === right.desktop.headingsFontWeight &&
+    left.desktop.titleFontSize === right.desktop.titleFontSize &&
+    left.desktop.titleFontColor === right.desktop.titleFontColor &&
+    left.desktop.titleFontWeight === right.desktop.titleFontWeight &&
+    left.desktop.showButton === right.desktop.showButton &&
+    left.desktop.showButtonHeight === right.desktop.showButtonHeight &&
+    left.desktop.showMoreButtonText === right.desktop.showMoreButtonText &&
+    left.desktop.showLessButtonText === right.desktop.showLessButtonText &&
+    left.desktop.showButtonFontSize === right.desktop.showButtonFontSize &&
+    left.desktop.showButtonFontColor === right.desktop.showButtonFontColor &&
+    left.desktop.showButtonFontWeight === right.desktop.showButtonFontWeight &&
+    left.desktop.showButtonBorderColor ===
+      right.desktop.showButtonBorderColor &&
+    left.desktop.showButtonBorderWidth ===
+      right.desktop.showButtonBorderWidth &&
+    left.desktop.showButtonBorderRadius ===
+      right.desktop.showButtonBorderRadius &&
+    left.mobile.position === right.mobile.position &&
+    left.mobile.positionSelector === right.mobile.positionSelector &&
+    left.mobile.color === right.mobile.color &&
+    left.mobile.width === right.mobile.width &&
+    left.mobile.radius === right.mobile.radius &&
+    left.mobile.paddingTop === right.mobile.paddingTop &&
+    left.mobile.paddingBottom === right.mobile.paddingBottom &&
+    left.mobile.paddingLeft === right.mobile.paddingLeft &&
+    left.mobile.paddingRight === right.mobile.paddingRight &&
+    left.mobile.background === right.mobile.background &&
+    left.mobile.maxWidth === right.mobile.maxWidth &&
+    left.mobile.smoothScroll === right.mobile.smoothScroll &&
+    left.mobile.scrollOffset === right.mobile.scrollOffset &&
+    left.mobile.headingsFontSize === right.mobile.headingsFontSize &&
+    left.mobile.headingsFontColor === right.mobile.headingsFontColor &&
+    left.mobile.headingsFontWeight === right.mobile.headingsFontWeight &&
+    left.mobile.titleFontSize === right.mobile.titleFontSize &&
+    left.mobile.titleFontColor === right.mobile.titleFontColor &&
+    left.mobile.titleFontWeight === right.mobile.titleFontWeight &&
+    left.mobile.showButton === right.mobile.showButton &&
+    left.mobile.showButtonHeight === right.mobile.showButtonHeight &&
+    left.mobile.showMoreButtonText === right.mobile.showMoreButtonText &&
+    left.mobile.showLessButtonText === right.mobile.showLessButtonText &&
+    left.mobile.showButtonFontSize === right.mobile.showButtonFontSize &&
+    left.mobile.showButtonFontColor === right.mobile.showButtonFontColor &&
+    left.mobile.showButtonFontWeight === right.mobile.showButtonFontWeight &&
+    left.mobile.showButtonBorderColor === right.mobile.showButtonBorderColor &&
+    left.mobile.showButtonBorderWidth === right.mobile.showButtonBorderWidth &&
+    left.mobile.showButtonBorderRadius ===
+      right.mobile.showButtonBorderRadius &&
+    left.headingLevels.length === right.headingLevels.length &&
+    left.headingLevels.every(
+      (level, index) => level === right.headingLevels[index],
+    )
+  );
+}
+
+function getSettingsHeading(activeTab: EditorTab) {
+  switch (activeTab) {
+    case "desktop":
+      return "Desktop";
+    case "mobile":
+      return "Mobile";
+    default:
+      return "General";
+  }
+}
+
+function formatAppEmbedStatus(status: AppEmbedStatus) {
+  switch (status) {
+    case "active":
+      return "Activated";
+    case "inactive":
+      return "Not activated";
+    case "checking":
+      return "Checking...";
+    default:
+      return "Unavailable";
+  }
+}
+
+function getAppEmbedBadgeTone(status: AppEmbedStatus) {
+  switch (status) {
+    case "active":
+      return "success";
+    case "inactive":
+      return "caution";
+    case "checking":
+      return "info";
+    default:
+      return "warning";
+  }
+}
+
+function getAppEmbedBadgeIcon(status: AppEmbedStatus) {
+  switch (status) {
+    case "active":
+      return "check-circle";
+    case "checking":
+      return "clock";
+    case "inactive":
+      return "alert-triangle";
+    default:
+      return "alert-triangle";
+  }
+}
+
+function getAppEmbedButtonLabel(status: AppEmbedStatus) {
+  switch (status) {
+    case "active":
+      return "Deactivate";
+    case "inactive":
+      return "Activate";
+    case "checking":
+      return "Open theme editor";
+    default:
+      return "Open theme editor";
+  }
+}
+
+function getAppEmbedButtonVariant(status: AppEmbedStatus) {
+  switch (status) {
+    case "active":
+      return "secondary";
+    case "inactive":
+      return "primary";
+    default:
+      return "secondary";
+  }
+}
+
+function getAppEmbedButtonTone(status: AppEmbedStatus) {
+  return status === "active" ? "critical" : "auto";
+}
+
+function getAppEmbedRecord(
+  extensions: AppBridgeExtensionRecord[],
+  appEmbedHandle: string,
+): AppEmbedStatus | null {
+  for (const extension of extensions) {
+    const nestedActivation = extension.activations?.find((activation) => {
+      const record = activation as ThemeExtensionActivationRecord;
+      return record.handle === appEmbedHandle;
+    }) as ThemeExtensionActivationRecord | undefined;
+
+    if (!nestedActivation) {
+      if (extension.handle === appEmbedHandle) {
+        return extension.activations?.length ? "active" : "inactive";
+      }
+
+      continue;
+    }
+
+    if (
+      nestedActivation.status === "active" ||
+      (nestedActivation.activations?.length ?? 0) > 0
+    ) {
+      return "active";
+    }
+
+    if (
+      nestedActivation.status === "available" ||
+      nestedActivation.status === "unavailable"
+    ) {
+      return "inactive";
+    }
+
+    return "inactive";
+  }
+
+  return null;
+}
+
+function HiddenGeneralFields({ config }: { config: TocConfig }) {
+  return (
+    <>
+      <input type="hidden" name="title" value={config.title} />
+      {config.headingLevels.map((level) => (
+        <input
+          key={level}
+          type="hidden"
+          name="headingLevels"
+          value={String(level)}
+        />
+      ))}
+      <input
+        type="hidden"
+        name="minHeadings"
+        value={String(config.minHeadings)}
+      />
+      <input
+        type="hidden"
+        name="mobileBreakpoint"
+        value={String(config.mobileBreakpoint)}
+      />
+      <input type="hidden" name="excludedBlogs" value={config.excludedBlogs} />
+      <input type="hidden" name="textAlignment" value={config.textAlignment} />
+      <input type="hidden" name="markerFormat" value={config.markerFormat} />
+      {config.indentation ? (
+        <input type="hidden" name="indentation" value="on" />
+      ) : null}
+    </>
+  );
+}
+
+function HiddenDeviceFields({
+  prefix,
+  config,
+}: {
+  prefix: "desktop" | "mobile";
+  config: TocDeviceConfig;
+}) {
+  return (
+    <>
+      <input type="hidden" name={`${prefix}Position`} value={config.position} />
+      <input
+        type="hidden"
+        name={`${prefix}PositionSelector`}
+        value={config.positionSelector}
+      />
+      <input type="hidden" name={`${prefix}BorderColor`} value={config.color} />
+      <input
+        type="hidden"
+        name={`${prefix}BorderWidth`}
+        value={String(config.width)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}BorderRadius`}
+        value={String(config.radius)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}PaddingTop`}
+        value={String(config.paddingTop)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}PaddingBottom`}
+        value={String(config.paddingBottom)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}PaddingLeft`}
+        value={String(config.paddingLeft)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}PaddingRight`}
+        value={String(config.paddingRight)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}Background`}
+        value={config.background}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}MaxWidth`}
+        value={String(config.maxWidth)}
+      />
+      {config.smoothScroll ? (
+        <input type="hidden" name={`${prefix}SmoothScroll`} value="on" />
+      ) : null}
+      <input
+        type="hidden"
+        name={`${prefix}ScrollOffset`}
+        value={String(config.scrollOffset)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}HeadingsFontSize`}
+        value={String(config.headingsFontSize)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}HeadingsFontColor`}
+        value={config.headingsFontColor}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}HeadingsFontWeight`}
+        value={String(config.headingsFontWeight)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}TitleFontSize`}
+        value={String(config.titleFontSize)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}TitleFontColor`}
+        value={config.titleFontColor}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}TitleFontWeight`}
+        value={String(config.titleFontWeight)}
+      />
+      {config.showButton ? (
+        <input type="hidden" name={`${prefix}ShowButton`} value="on" />
+      ) : null}
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonHeight`}
+        value={String(config.showButtonHeight)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowMoreButtonText`}
+        value={config.showMoreButtonText}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowLessButtonText`}
+        value={config.showLessButtonText}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonFontSize`}
+        value={String(config.showButtonFontSize)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonFontColor`}
+        value={config.showButtonFontColor}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonFontWeight`}
+        value={String(config.showButtonFontWeight)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonBorderColor`}
+        value={config.showButtonBorderColor}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonBorderWidth`}
+        value={String(config.showButtonBorderWidth)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonBorderRadius`}
+        value={String(config.showButtonBorderRadius)}
+      />
+    </>
+  );
 }
 
 function coerceConfig(input: TocConfigInput): TocConfig {
@@ -472,6 +2876,8 @@ function coerceConfig(input: TocConfigInput): TocConfig {
   const textAlignment = normalizeTextAlignment(input.textAlignment);
   const markerFormat = normalizeMarkerFormat(input.markerFormat);
   const minHeadings = parseIntegerInput(input.minHeadings);
+  const mobileBreakpoint = parseNonNegativeIntegerInput(input.mobileBreakpoint);
+  const excludedBlogs = normalizeExcludedBlogsInput(input.excludedBlogs);
 
   return {
     title: title || DEFAULT_CONFIG.title,
@@ -484,7 +2890,16 @@ function coerceConfig(input: TocConfigInput): TocConfig {
     minHeadings: Number.isFinite(minHeadings)
       ? minHeadings
       : DEFAULT_CONFIG.minHeadings,
-    smoothScroll: input.smoothScroll,
+    mobileBreakpoint: Number.isFinite(mobileBreakpoint)
+      ? mobileBreakpoint
+      : DEFAULT_CONFIG.mobileBreakpoint,
+    excludedBlogs,
+    desktop: coerceDeviceConfig(
+      input.desktop,
+      DEFAULT_CONFIG.desktop,
+      "desktop",
+    ),
+    mobile: coerceDeviceConfig(input.mobile, DEFAULT_CONFIG.mobile, "mobile"),
   };
 }
 
@@ -502,7 +2917,134 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       String(formData.get("markerFormat") || DEFAULT_CONFIG.markerFormat),
     ),
     minHeadings: String(formData.get("minHeadings") || ""),
-    smoothScroll: formData.get("smoothScroll") === "on",
+    mobileBreakpoint: String(formData.get("mobileBreakpoint") || ""),
+    excludedBlogs: String(formData.get("excludedBlogs") || ""),
+    desktop: {
+      position: String(
+        formData.get("desktopPosition") || DEFAULT_CONFIG.desktop.position,
+      ),
+      positionSelector: String(formData.get("desktopPositionSelector") || ""),
+      color: String(
+        formData.get("desktopBorderColor") || DEFAULT_CONFIG.desktop.color,
+      ),
+      width: String(formData.get("desktopBorderWidth") || ""),
+      radius: String(formData.get("desktopBorderRadius") || ""),
+      paddingTop: String(formData.get("desktopPaddingTop") || ""),
+      paddingBottom: String(formData.get("desktopPaddingBottom") || ""),
+      paddingLeft: String(formData.get("desktopPaddingLeft") || ""),
+      paddingRight: String(formData.get("desktopPaddingRight") || ""),
+      background: String(
+        formData.get("desktopBackground") || DEFAULT_CONFIG.desktop.background,
+      ),
+      maxWidth: String(formData.get("desktopMaxWidth") || ""),
+      smoothScroll: formData.get("desktopSmoothScroll") === "on",
+      scrollOffset: String(formData.get("desktopScrollOffset") || ""),
+      headingsFontSize: String(formData.get("desktopHeadingsFontSize") || ""),
+      headingsFontColor: String(
+        formData.get("desktopHeadingsFontColor") ||
+          DEFAULT_CONFIG.desktop.headingsFontColor,
+      ),
+      headingsFontWeight: String(
+        formData.get("desktopHeadingsFontWeight") || "",
+      ),
+      titleFontSize: String(formData.get("desktopTitleFontSize") || ""),
+      titleFontColor: String(
+        formData.get("desktopTitleFontColor") ||
+          DEFAULT_CONFIG.desktop.titleFontColor,
+      ),
+      titleFontWeight: String(formData.get("desktopTitleFontWeight") || ""),
+      showButton: formData.get("desktopShowButton") === "on",
+      showButtonHeight: String(formData.get("desktopShowButtonHeight") || ""),
+      showMoreButtonText: String(
+        formData.get("desktopShowMoreButtonText") || "",
+      ),
+      showLessButtonText: String(
+        formData.get("desktopShowLessButtonText") || "",
+      ),
+      showButtonFontSize: String(
+        formData.get("desktopShowButtonFontSize") || "",
+      ),
+      showButtonFontColor: String(
+        formData.get("desktopShowButtonFontColor") ||
+          DEFAULT_CONFIG.desktop.showButtonFontColor,
+      ),
+      showButtonFontWeight: String(
+        formData.get("desktopShowButtonFontWeight") || "",
+      ),
+      showButtonBorderColor: String(
+        formData.get("desktopShowButtonBorderColor") ||
+          DEFAULT_CONFIG.desktop.showButtonBorderColor,
+      ),
+      showButtonBorderWidth: String(
+        formData.get("desktopShowButtonBorderWidth") || "",
+      ),
+      showButtonBorderRadius: String(
+        formData.get("desktopShowButtonBorderRadius") || "",
+      ),
+    },
+    mobile: {
+      position: String(
+        formData.get("mobilePosition") || DEFAULT_CONFIG.mobile.position,
+      ),
+      positionSelector: String(formData.get("mobilePositionSelector") || ""),
+      color: String(
+        formData.get("mobileBorderColor") || DEFAULT_CONFIG.mobile.color,
+      ),
+      width: String(formData.get("mobileBorderWidth") || ""),
+      radius: String(formData.get("mobileBorderRadius") || ""),
+      paddingTop: String(formData.get("mobilePaddingTop") || ""),
+      paddingBottom: String(formData.get("mobilePaddingBottom") || ""),
+      paddingLeft: String(formData.get("mobilePaddingLeft") || ""),
+      paddingRight: String(formData.get("mobilePaddingRight") || ""),
+      background: String(
+        formData.get("mobileBackground") || DEFAULT_CONFIG.mobile.background,
+      ),
+      maxWidth: String(formData.get("mobileMaxWidth") || ""),
+      smoothScroll: formData.get("mobileSmoothScroll") === "on",
+      scrollOffset: String(formData.get("mobileScrollOffset") || ""),
+      headingsFontSize: String(formData.get("mobileHeadingsFontSize") || ""),
+      headingsFontColor: String(
+        formData.get("mobileHeadingsFontColor") ||
+          DEFAULT_CONFIG.mobile.headingsFontColor,
+      ),
+      headingsFontWeight: String(
+        formData.get("mobileHeadingsFontWeight") || "",
+      ),
+      titleFontSize: String(formData.get("mobileTitleFontSize") || ""),
+      titleFontColor: String(
+        formData.get("mobileTitleFontColor") ||
+          DEFAULT_CONFIG.mobile.titleFontColor,
+      ),
+      titleFontWeight: String(formData.get("mobileTitleFontWeight") || ""),
+      showButton: formData.get("mobileShowButton") === "on",
+      showButtonHeight: String(formData.get("mobileShowButtonHeight") || ""),
+      showMoreButtonText: String(
+        formData.get("mobileShowMoreButtonText") || "",
+      ),
+      showLessButtonText: String(
+        formData.get("mobileShowLessButtonText") || "",
+      ),
+      showButtonFontSize: String(
+        formData.get("mobileShowButtonFontSize") || "",
+      ),
+      showButtonFontColor: String(
+        formData.get("mobileShowButtonFontColor") ||
+          DEFAULT_CONFIG.mobile.showButtonFontColor,
+      ),
+      showButtonFontWeight: String(
+        formData.get("mobileShowButtonFontWeight") || "",
+      ),
+      showButtonBorderColor: String(
+        formData.get("mobileShowButtonBorderColor") ||
+          DEFAULT_CONFIG.mobile.showButtonBorderColor,
+      ),
+      showButtonBorderWidth: String(
+        formData.get("mobileShowButtonBorderWidth") || "",
+      ),
+      showButtonBorderRadius: String(
+        formData.get("mobileShowButtonBorderRadius") || "",
+      ),
+    },
   });
 }
 
@@ -522,20 +3064,45 @@ function buildActivateDeepLink(
   return `https://${myshopifyDomain}/admin/themes/current/editor?${params.toString()}`;
 }
 
+function normalizeExcludedBlogsInput(value: string): string {
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 function parseIntegerInput(value: string): number {
   return parseInt(value, 10);
+}
+
+function parseNonNegativeIntegerInput(value: string): number {
+  const parsed = parseIntegerInput(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : parsed;
+}
+
+function normalizeDesktopPosition(value: unknown): TocDesktopPosition {
+  return DESKTOP_POSITION_OPTIONS.some((option) => option.value === value)
+    ? (value as TocDesktopPosition)
+    : "float-right";
+}
+
+function normalizeMobilePosition(value: unknown): TocMobilePosition {
+  return MOBILE_POSITION_OPTIONS.some((option) => option.value === value)
+    ? (value as TocMobilePosition)
+    : "before-first-heading";
 }
 
 function normalizeTextAlignment(value: unknown): TocTextAlignment {
   return TEXT_ALIGNMENT_OPTIONS.some((option) => option.value === value)
     ? (value as TocTextAlignment)
-    : DEFAULT_CONFIG.textAlignment;
+    : (DEFAULT_CONFIG.textAlignment as TocTextAlignment);
 }
 
 function normalizeMarkerFormat(value: unknown): TocMarkerFormat {
   return MARKER_FORMAT_OPTIONS.some((option) => option.value === value)
     ? (value as TocMarkerFormat)
-    : DEFAULT_CONFIG.markerFormat;
+    : (DEFAULT_CONFIG.markerFormat as TocMarkerFormat);
 }
 
 function normalizeHeadingLevels(levels: number[]): number[] {
@@ -546,74 +3113,441 @@ function normalizeHeadingLevels(levels: number[]): number[] {
     .sort((left, right) => left - right);
 }
 
+function normalizeDeviceConfig(
+  value: unknown,
+  fallback: TocDeviceConfig,
+  device: "desktop" | "mobile",
+): TocDeviceConfig {
+  if (!value || typeof value !== "object") return { ...fallback };
+
+  const config = value as Partial<TocDeviceConfig>;
+
+  return {
+    position:
+      device === "desktop"
+        ? normalizeDesktopPosition(config.position)
+        : normalizeMobilePosition(config.position),
+    positionSelector:
+      typeof config.positionSelector === "string"
+        ? config.positionSelector.trim()
+        : fallback.positionSelector,
+    color:
+      typeof config.color === "string" && config.color.trim()
+        ? config.color.trim()
+        : fallback.color,
+    width:
+      typeof config.width === "number" && Number.isFinite(config.width)
+        ? Math.max(0, config.width)
+        : fallback.width,
+    radius:
+      typeof config.radius === "number" && Number.isFinite(config.radius)
+        ? Math.max(0, config.radius)
+        : fallback.radius,
+    paddingTop:
+      typeof config.paddingTop === "number" &&
+      Number.isFinite(config.paddingTop)
+        ? Math.max(0, config.paddingTop)
+        : fallback.paddingTop,
+    paddingBottom:
+      typeof config.paddingBottom === "number" &&
+      Number.isFinite(config.paddingBottom)
+        ? Math.max(0, config.paddingBottom)
+        : fallback.paddingBottom,
+    paddingLeft:
+      typeof config.paddingLeft === "number" &&
+      Number.isFinite(config.paddingLeft)
+        ? Math.max(0, config.paddingLeft)
+        : fallback.paddingLeft,
+    paddingRight:
+      typeof config.paddingRight === "number" &&
+      Number.isFinite(config.paddingRight)
+        ? Math.max(0, config.paddingRight)
+        : fallback.paddingRight,
+    background:
+      typeof config.background === "string" && config.background.trim()
+        ? config.background.trim()
+        : fallback.background,
+    maxWidth:
+      typeof config.maxWidth === "number" && Number.isFinite(config.maxWidth)
+        ? Math.max(0, config.maxWidth)
+        : fallback.maxWidth,
+    smoothScroll:
+      typeof config.smoothScroll === "boolean"
+        ? config.smoothScroll
+        : fallback.smoothScroll,
+    scrollOffset:
+      typeof config.scrollOffset === "number" &&
+      Number.isFinite(config.scrollOffset)
+        ? Math.max(0, config.scrollOffset)
+        : fallback.scrollOffset,
+    headingsFontSize:
+      typeof config.headingsFontSize === "number" &&
+      Number.isFinite(config.headingsFontSize)
+        ? Math.max(0, config.headingsFontSize)
+        : fallback.headingsFontSize,
+    headingsFontColor:
+      typeof config.headingsFontColor === "string" &&
+      config.headingsFontColor.trim()
+        ? config.headingsFontColor.trim()
+        : fallback.headingsFontColor,
+    headingsFontWeight:
+      typeof config.headingsFontWeight === "number" &&
+      Number.isFinite(config.headingsFontWeight)
+        ? Math.max(0, config.headingsFontWeight)
+        : fallback.headingsFontWeight,
+    titleFontSize:
+      typeof config.titleFontSize === "number" &&
+      Number.isFinite(config.titleFontSize)
+        ? Math.max(0, config.titleFontSize)
+        : fallback.titleFontSize,
+    titleFontColor:
+      typeof config.titleFontColor === "string" && config.titleFontColor.trim()
+        ? config.titleFontColor.trim()
+        : fallback.titleFontColor,
+    titleFontWeight:
+      typeof config.titleFontWeight === "number" &&
+      Number.isFinite(config.titleFontWeight)
+        ? Math.max(0, config.titleFontWeight)
+        : fallback.titleFontWeight,
+    showButton:
+      typeof config.showButton === "boolean"
+        ? config.showButton
+        : fallback.showButton,
+    showButtonHeight:
+      typeof config.showButtonHeight === "number" &&
+      Number.isFinite(config.showButtonHeight)
+        ? Math.max(0, config.showButtonHeight)
+        : fallback.showButtonHeight,
+    showMoreButtonText:
+      typeof config.showMoreButtonText === "string" &&
+      config.showMoreButtonText.trim()
+        ? config.showMoreButtonText.trim()
+        : fallback.showMoreButtonText,
+    showLessButtonText:
+      typeof config.showLessButtonText === "string" &&
+      config.showLessButtonText.trim()
+        ? config.showLessButtonText.trim()
+        : fallback.showLessButtonText,
+    showButtonFontSize:
+      typeof config.showButtonFontSize === "number" &&
+      Number.isFinite(config.showButtonFontSize)
+        ? Math.max(0, config.showButtonFontSize)
+        : fallback.showButtonFontSize,
+    showButtonFontColor:
+      typeof config.showButtonFontColor === "string" &&
+      config.showButtonFontColor.trim()
+        ? config.showButtonFontColor.trim()
+        : fallback.showButtonFontColor,
+    showButtonFontWeight:
+      typeof config.showButtonFontWeight === "number" &&
+      Number.isFinite(config.showButtonFontWeight)
+        ? Math.max(0, config.showButtonFontWeight)
+        : fallback.showButtonFontWeight,
+    showButtonBorderColor:
+      typeof config.showButtonBorderColor === "string" &&
+      config.showButtonBorderColor.trim()
+        ? config.showButtonBorderColor.trim()
+        : fallback.showButtonBorderColor,
+    showButtonBorderWidth:
+      typeof config.showButtonBorderWidth === "number" &&
+      Number.isFinite(config.showButtonBorderWidth)
+        ? Math.max(0, config.showButtonBorderWidth)
+        : fallback.showButtonBorderWidth,
+    showButtonBorderRadius:
+      typeof config.showButtonBorderRadius === "number" &&
+      Number.isFinite(config.showButtonBorderRadius)
+        ? Math.max(0, config.showButtonBorderRadius)
+        : fallback.showButtonBorderRadius,
+  };
+}
+
+function coerceDeviceConfig(
+  input: TocDeviceConfigInput,
+  fallback: TocDeviceConfig,
+  device: "desktop" | "mobile",
+): TocDeviceConfig {
+  const width = parseNonNegativeIntegerInput(input.width);
+  const radius = parseNonNegativeIntegerInput(input.radius);
+  const paddingTop = parseNonNegativeIntegerInput(input.paddingTop);
+  const paddingBottom = parseNonNegativeIntegerInput(input.paddingBottom);
+  const paddingLeft = parseNonNegativeIntegerInput(input.paddingLeft);
+  const paddingRight = parseNonNegativeIntegerInput(input.paddingRight);
+  const maxWidth = parseNonNegativeIntegerInput(input.maxWidth);
+  const scrollOffset = parseNonNegativeIntegerInput(input.scrollOffset);
+  const headingsFontSize = parseNonNegativeIntegerInput(input.headingsFontSize);
+  const headingsFontWeight = parseNonNegativeIntegerInput(
+    input.headingsFontWeight,
+  );
+  const titleFontSize = parseNonNegativeIntegerInput(input.titleFontSize);
+  const titleFontWeight = parseNonNegativeIntegerInput(input.titleFontWeight);
+  const showButtonHeight = parseNonNegativeIntegerInput(input.showButtonHeight);
+  const showButtonFontSize = parseNonNegativeIntegerInput(
+    input.showButtonFontSize,
+  );
+  const showButtonFontWeight = parseNonNegativeIntegerInput(
+    input.showButtonFontWeight,
+  );
+  const showButtonBorderWidth = parseNonNegativeIntegerInput(
+    input.showButtonBorderWidth,
+  );
+  const showButtonBorderRadius = parseNonNegativeIntegerInput(
+    input.showButtonBorderRadius,
+  );
+
+  return {
+    position:
+      device === "desktop"
+        ? normalizeDesktopPosition(input.position)
+        : normalizeMobilePosition(input.position),
+    positionSelector: input.positionSelector.trim(),
+    color: input.color.trim() || fallback.color,
+    width: Number.isFinite(width) ? width : fallback.width,
+    radius: Number.isFinite(radius) ? radius : fallback.radius,
+    paddingTop: Number.isFinite(paddingTop) ? paddingTop : fallback.paddingTop,
+    paddingBottom: Number.isFinite(paddingBottom)
+      ? paddingBottom
+      : fallback.paddingBottom,
+    paddingLeft: Number.isFinite(paddingLeft)
+      ? paddingLeft
+      : fallback.paddingLeft,
+    paddingRight: Number.isFinite(paddingRight)
+      ? paddingRight
+      : fallback.paddingRight,
+    background: input.background.trim() || fallback.background,
+    maxWidth: Number.isFinite(maxWidth) ? maxWidth : fallback.maxWidth,
+    smoothScroll: input.smoothScroll,
+    scrollOffset: Number.isFinite(scrollOffset)
+      ? scrollOffset
+      : fallback.scrollOffset,
+    headingsFontSize: Number.isFinite(headingsFontSize)
+      ? headingsFontSize
+      : fallback.headingsFontSize,
+    headingsFontColor:
+      input.headingsFontColor.trim() || fallback.headingsFontColor,
+    headingsFontWeight: Number.isFinite(headingsFontWeight)
+      ? headingsFontWeight
+      : fallback.headingsFontWeight,
+    titleFontSize: Number.isFinite(titleFontSize)
+      ? titleFontSize
+      : fallback.titleFontSize,
+    titleFontColor: input.titleFontColor.trim() || fallback.titleFontColor,
+    titleFontWeight: Number.isFinite(titleFontWeight)
+      ? titleFontWeight
+      : fallback.titleFontWeight,
+    showButton: input.showButton,
+    showButtonHeight: Number.isFinite(showButtonHeight)
+      ? showButtonHeight
+      : fallback.showButtonHeight,
+    showMoreButtonText:
+      input.showMoreButtonText.trim() || fallback.showMoreButtonText,
+    showLessButtonText:
+      input.showLessButtonText.trim() || fallback.showLessButtonText,
+    showButtonFontSize: Number.isFinite(showButtonFontSize)
+      ? showButtonFontSize
+      : fallback.showButtonFontSize,
+    showButtonFontColor:
+      input.showButtonFontColor.trim() || fallback.showButtonFontColor,
+    showButtonFontWeight: Number.isFinite(showButtonFontWeight)
+      ? showButtonFontWeight
+      : fallback.showButtonFontWeight,
+    showButtonBorderColor:
+      input.showButtonBorderColor.trim() || fallback.showButtonBorderColor,
+    showButtonBorderWidth: Number.isFinite(showButtonBorderWidth)
+      ? showButtonBorderWidth
+      : fallback.showButtonBorderWidth,
+    showButtonBorderRadius: Number.isFinite(showButtonBorderRadius)
+      ? showButtonBorderRadius
+      : fallback.showButtonBorderRadius,
+  };
+}
+
+function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
+  return {
+    "--toc-background": device.background,
+    "--toc-max-width": device.maxWidth > 0 ? `${device.maxWidth}px` : "none",
+    "--toc-border-color": device.color,
+    "--toc-border-width": `${device.width}px`,
+    "--toc-border-radius": `${device.radius}px`,
+    "--toc-padding-top": `${device.paddingTop}px`,
+    "--toc-padding-bottom": `${device.paddingBottom}px`,
+    "--toc-padding-left": `${device.paddingLeft}px`,
+    "--toc-padding-right": `${device.paddingRight}px`,
+    "--toc-title-font-size": `${device.titleFontSize}px`,
+    "--toc-title-font-color": device.titleFontColor,
+    "--toc-title-font-weight": String(device.titleFontWeight),
+    "--toc-show-button-height": `${device.showButtonHeight}px`,
+    "--toc-show-button-font-size": `${device.showButtonFontSize}px`,
+    "--toc-show-button-font-color": device.showButtonFontColor,
+    "--toc-show-button-font-weight": String(device.showButtonFontWeight),
+    "--toc-show-button-border-color": device.showButtonBorderColor,
+    "--toc-show-button-border-width": `${device.showButtonBorderWidth}px`,
+    "--toc-show-button-border-radius": `${device.showButtonBorderRadius}px`,
+    "--toc-mobile-border-color": device.color,
+    "--toc-mobile-border-width": `${device.width}px`,
+    "--toc-mobile-border-radius": `${device.radius}px`,
+    "--toc-mobile-padding-top": `${device.paddingTop}px`,
+    "--toc-mobile-padding-bottom": `${device.paddingBottom}px`,
+    "--toc-mobile-padding-left": `${device.paddingLeft}px`,
+    "--toc-mobile-padding-right": `${device.paddingRight}px`,
+    "--toc-mobile-background": device.background,
+    "--toc-mobile-max-width":
+      device.maxWidth > 0 ? `${device.maxWidth}px` : "none",
+    "--toc-headings-font-size": `${device.headingsFontSize}px`,
+    "--toc-headings-font-color": device.headingsFontColor,
+    "--toc-headings-font-weight": String(device.headingsFontWeight),
+    "--toc-mobile-title-font-size": `${device.titleFontSize}px`,
+    "--toc-mobile-title-font-color": device.titleFontColor,
+    "--toc-mobile-title-font-weight": String(device.titleFontWeight),
+    "--toc-mobile-headings-font-size": `${device.headingsFontSize}px`,
+    "--toc-mobile-headings-font-color": device.headingsFontColor,
+    "--toc-mobile-headings-font-weight": String(device.headingsFontWeight),
+    "--toc-mobile-show-button-height": `${device.showButtonHeight}px`,
+    "--toc-mobile-show-button-font-size": `${device.showButtonFontSize}px`,
+    "--toc-mobile-show-button-font-color": device.showButtonFontColor,
+    "--toc-mobile-show-button-font-weight": String(device.showButtonFontWeight),
+    "--toc-mobile-show-button-border-color": device.showButtonBorderColor,
+    "--toc-mobile-show-button-border-width": `${device.showButtonBorderWidth}px`,
+    "--toc-mobile-show-button-border-radius": `${device.showButtonBorderRadius}px`,
+  } as CSSProperties;
+}
+
+function getPreviewPlacementClass(
+  previewDevice: "desktop" | "mobile",
+  position: TocDeviceConfig["position"],
+) {
+  if (previewDevice !== "desktop") {
+    return "toc-preview-flow";
+  }
+
+  if (position === "float-left") {
+    return "toc-preview-float toc-preview-float--left";
+  }
+
+  if (position === "float-right") {
+    return "toc-preview-float";
+  }
+
+  return "toc-preview-flow";
+}
+
 function TocPreview({
   preview,
   indentation,
   textAlignment,
   markerFormat,
+  device,
+  previewDevice,
 }: {
   preview: ReturnType<typeof buildPreviewState>;
   indentation: boolean;
   textAlignment: TocTextAlignment;
   markerFormat: TocMarkerFormat;
+  device: TocDeviceConfig;
+  previewDevice: "desktop" | "mobile";
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [needsToggle, setNeedsToggle] = useState(false);
+  const listRef = useRef<HTMLUListElement | null>(null);
 
   useEffect(() => {
-    if (!preview.needsToggle) {
+    if (!needsToggle) {
       setExpanded(false);
     }
-  }, [preview.needsToggle]);
+  }, [needsToggle]);
+
+  useEffect(() => {
+    if (!device.showButton) {
+      setNeedsToggle(false);
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      const list = listRef.current;
+
+      if (!list) {
+        setNeedsToggle(false);
+        return;
+      }
+      const toggleHeight = Math.max(0, device.showButtonHeight);
+
+      setNeedsToggle(list.scrollHeight > toggleHeight + 1);
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [
+    device.showButton,
+    device.showButtonHeight,
+    indentation,
+    markerFormat,
+    preview.items,
+    textAlignment,
+  ]);
 
   if (!preview.showToc) return null;
 
+  const showToggle = device.showButton && needsToggle;
+
   const nav = (
     <nav
-      className={`shopify-toc shopify-toc--align-${textAlignment} shopify-toc--markers-${markerFormat}${!indentation ? " shopify-toc--flat" : ""}${!preview.needsToggle || expanded ? " shopify-toc--expanded" : ""}`}
+      className={`shopify-toc shopify-toc--align-${textAlignment} shopify-toc--markers-${markerFormat}${!indentation ? " shopify-toc--flat" : ""}${showToggle ? " shopify-toc--show-more-active" : ""}${showToggle && expanded ? " shopify-toc--expanded" : ""}`}
       aria-label="Table of contents preview"
+      data-device={previewDevice}
       onClick={(event) => event.preventDefault()}
+      style={getPreviewContainerStyle(device)}
     >
       <div className="shopify-toc__title">{preview.title}</div>
-      {preview.needsToggle ? (
+      {showToggle ? (
         <div className="toc-fade toc-fade--top" hidden={!expanded}>
           <span className="toc-fade__shim"></span>
         </div>
       ) : null}
-      <PreviewTocList items={preview.items} activeId={preview.activeId} />
-      {preview.needsToggle ? (
-        <div className="toc-fade toc-fade--bottom" aria-hidden="true" hidden={expanded}>
+      <PreviewTocList
+        ref={listRef}
+        items={preview.items}
+        activeId={preview.activeId}
+      />
+      {showToggle ? (
+        <div
+          className="toc-fade toc-fade--bottom"
+          aria-hidden="true"
+          hidden={expanded}
+        >
           <span className="toc-fade__shim"></span>
         </div>
       ) : null}
-      {preview.needsToggle ? (
+      {showToggle ? (
         <button
           type="button"
           className="shopify-toc__toggle"
           onClick={() => setExpanded((current) => !current)}
         >
-          {expanded ? "Show less" : "Show more"}
+          {expanded ? device.showLessButtonText : device.showMoreButtonText}
         </button>
       ) : null}
     </nav>
   );
-  return nav;
+  return (
+    <div className={getPreviewPlacementClass(previewDevice, device.position)}>
+      {nav}
+    </div>
+  );
 }
 
-function PreviewTocList({
-  items,
-  activeId,
-}: {
-  items: PreviewTocItem[];
-  activeId: string;
-}) {
+const PreviewTocList = forwardRef<
+  HTMLUListElement,
+  {
+    items: PreviewTocItem[];
+    activeId: string;
+  }
+>(function PreviewTocList({ items, activeId }, ref) {
   return (
-    <ul className="shopify-toc__list">
+    <ul ref={ref} className="shopify-toc__list">
       {items.map((item) => (
         <PreviewTocListItem key={item.id} item={item} activeId={activeId} />
       ))}
     </ul>
   );
-}
+});
 
 function PreviewTocListItem({
   item,
@@ -651,7 +3585,6 @@ function buildPreviewState(config: TocConfig) {
   return {
     activeId: headings[Math.min(4, headings.length - 1)]?.id || "",
     items: buildPreviewTocItems(headings),
-    needsToggle: headings.length > 10,
     showToc: headings.length >= config.minHeadings,
     title: config.title,
   };

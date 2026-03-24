@@ -3,10 +3,36 @@
 {% endcomment %}
 
 {% assign cfg = app.metafields.toc.config.value %}
+{% assign should_render_toc = true %}
+{% assign current_article_handle = article.handle | downcase %}
+{% assign current_article_id = article.id | append: '' %}
+{% assign raw_excluded_blogs = cfg.excludedBlogs | default: '' | split: ',' %}
+{% capture normalized_excluded_blogs_csv %}{% for excluded_blog in raw_excluded_blogs %}{% assign normalized_excluded_blog = excluded_blog | strip | downcase %}{% if normalized_excluded_blog != blank %}{% unless forloop.first %}|{% endunless %}{{ normalized_excluded_blog }}{% endif %}{% endfor %}{% endcapture %}
+{% assign excluded_blogs = normalized_excluded_blogs_csv | split: '|' %}
 
-<script id="toc-config" type="application/json">
-  {{ cfg | json }}
+{% for excluded_blog in excluded_blogs %}
+  {% if excluded_blog != blank %}
+    {% if excluded_blog == current_article_handle or excluded_blog == current_article_id %}
+      {% assign should_render_toc = false %}
+      {% break %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+<script id="toc-debug-context" type="application/json">
+  {
+    "renderEnabled": {{ should_render_toc | json }},
+    "currentArticleHandle": {{ current_article_handle | json }},
+    "currentArticleId": {{ current_article_id | json }},
+    "excludedBlogs": {{ excluded_blogs | json }}
+  }
 </script>
+
+{% if should_render_toc %}
+  <script id="toc-config" type="application/json">
+    {{ cfg | json }}
+  </script>
+{% endif %}
 
 {% schema %}
 {

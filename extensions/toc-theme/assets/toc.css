@@ -1,28 +1,88 @@
 .shopify-toc {
   --spacing: 4px;
-  border: 1px solid rgba(0,0,0,.12);
-  border-radius: 12px;
-  padding: 16px;
-  background: #fff;
-  max-height: 400px;
+  --toc-border-color: #0000001f;
+  --toc-border-width: 1px;
+  --toc-border-radius: 12px;
+  --toc-background: #ffffff;
+  --toc-max-width: none;
+  --toc-padding-top: 16px;
+  --toc-padding-bottom: 16px;
+  --toc-padding-left: 16px;
+  --toc-padding-right: 16px;
+  --toc-title-font-size: 14px;
+  --toc-title-font-color: #575757;
+  --toc-title-font-weight: 600;
+  --toc-headings-font-size: 14px;
+  --toc-headings-font-color: #575757;
+  --toc-headings-font-weight: 400;
+  --toc-show-button-height: 300px;
+  --toc-show-button-font-size: 13px;
+  --toc-show-button-font-color: #575757;
+  --toc-show-button-font-weight: 600;
+  --toc-show-button-border-color: #575757;
+  --toc-show-button-border-width: 0px;
+  --toc-show-button-border-radius: 0px;
+  --toc-mobile-border-color: #0000001f;
+  --toc-mobile-border-width: 0px;
+  --toc-mobile-border-radius: 12px;
+  --toc-mobile-background: #ffffff;
+  --toc-mobile-max-width: none;
+  --toc-mobile-padding-top: 0px;
+  --toc-mobile-padding-bottom: 0px;
+  --toc-mobile-padding-left: 0px;
+  --toc-mobile-padding-right: 0px;
+  --toc-mobile-title-font-size: 14px;
+  --toc-mobile-title-font-color: #575757;
+  --toc-mobile-title-font-weight: 600;
+  --toc-mobile-headings-font-size: 14px;
+  --toc-mobile-headings-font-color: #575757;
+  --toc-mobile-headings-font-weight: 400;
+  --toc-mobile-show-button-height: 300px;
+  --toc-mobile-show-button-font-size: 13px;
+  --toc-mobile-show-button-font-color: #575757;
+  --toc-mobile-show-button-font-weight: 600;
+  --toc-mobile-show-button-border-color: #575757;
+  --toc-mobile-show-button-border-width: 0px;
+  --toc-mobile-show-button-border-radius: 0px;
+  --toc-active-title-font-size: var(--toc-title-font-size);
+  --toc-active-title-font-color: var(--toc-title-font-color);
+  --toc-active-title-font-weight: var(--toc-title-font-weight);
+  --toc-active-headings-font-size: var(--toc-headings-font-size);
+  --toc-active-headings-font-color: var(--toc-headings-font-color);
+  --toc-active-headings-font-weight: var(--toc-headings-font-weight);
+  --toc-active-background: var(--toc-background);
+  --toc-active-max-width: var(--toc-max-width);
+  --toc-active-show-button-height: var(--toc-show-button-height);
+  --toc-active-button-font-size: var(--toc-show-button-font-size);
+  --toc-active-button-font-color: var(--toc-show-button-font-color);
+  --toc-active-button-font-weight: var(--toc-show-button-font-weight);
+  --toc-active-button-border-color: var(--toc-show-button-border-color);
+  --toc-active-button-border-width: var(--toc-show-button-border-width);
+  --toc-active-button-border-radius: var(--toc-show-button-border-radius);
+  border: var(--toc-border-width) solid var(--toc-border-color);
+  border-radius: var(--toc-border-radius);
+  padding-top: var(--toc-padding-top);
+  padding-right: var(--toc-padding-right);
+  padding-bottom: var(--toc-padding-bottom);
+  padding-left: var(--toc-padding-left);
+  background: var(--toc-active-background);
+  max-width: var(--toc-active-max-width);
 }
 
 .shopify-toc__title {
   margin-bottom: 4px;
-  text-transform: uppercase;
   letter-spacing: 0.75px;
-  color: #575757;
-  font-size: 14px;
-  font-weight: 600;
+  color: var(--toc-active-title-font-color);
+  font-size: var(--toc-active-title-font-size);
+  font-weight: var(--toc-active-title-font-weight);
 }
 
 .shopify-toc__list {
   list-style: none;
   margin: 0;
   padding-left: 12px;
-  max-height: calc(400px - 96px);
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  max-height: none;
+  overflow: visible;
 }
 
 .shopify-toc__sublist {
@@ -57,7 +117,7 @@
 .shopify-toc--markers-bullet .shopify-toc__list a::before,
 .shopify-toc--markers-bullet .shopify-toc__sublist a::before {
   content: "• ";
-  color: rgb(87, 87, 87);
+  color: var(--toc-active-headings-font-color);
 }
 
 .shopify-toc--markers-numeric .shopify-toc__list li,
@@ -68,7 +128,7 @@
 .shopify-toc--markers-numeric .shopify-toc__list a::before,
 .shopify-toc--markers-numeric .shopify-toc__sublist a::before {
   content: counters(item, ".") ". ";
-  color: rgb(87, 87, 87);
+  color: var(--toc-active-headings-font-color);
 }
 
 .shopify-toc--flat .shopify-toc__list,
@@ -112,8 +172,9 @@
 
 .shopify-toc__list a {
   display: inline-block;
-  font-size: 14px;
-  color: rgb(87, 87, 87);
+  font-size: var(--toc-active-headings-font-size);
+  color: var(--toc-active-headings-font-color);
+  font-weight: var(--toc-active-headings-font-weight);
   text-decoration: none;
   cursor: pointer;
 }
@@ -126,12 +187,13 @@
   text-decoration-line: underline;
 }
 
-.shopify-toc--expanded {
-  max-height: none;
+.shopify-toc--show-more-active .shopify-toc__list {
+  max-height: var(--toc-active-show-button-height);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.shopify-toc--expanded .shopify-toc__list {
-  max-height: 60vh;
+.shopify-toc--show-more-active.shopify-toc--expanded .shopify-toc__list {
   max-height: calc(100vh - 240px);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
@@ -142,12 +204,15 @@
   margin-top: 8px;
   margin-left: auto;
   margin-right: auto;
-  border: 0;
+  border: var(--toc-active-button-border-width) solid
+    var(--toc-active-button-border-color);
+  border-radius: var(--toc-active-button-border-radius);
   background: transparent;
-  padding: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #575757;
+  padding: calc(var(--toc-active-button-border-width) * 2)
+    calc(var(--toc-active-button-border-width) * 6);
+  font-size: var(--toc-active-button-font-size);
+  font-weight: var(--toc-active-button-font-weight);
+  color: var(--toc-active-button-font-color);
   text-decoration: none;
   cursor: pointer;
 }
@@ -183,14 +248,14 @@
 .toc-fade--top::after {
   content: "";
   inset: calc(var(--spacing) * 0);
-  background: linear-gradient(#fff, #fff0);
+  background: linear-gradient(var(--toc-active-background), transparent);
   position: absolute;
 }
 
 .toc-fade--bottom::after {
   content: "";
   inset: calc(var(--spacing) * 0);
-  background: linear-gradient(#fff0, #fff);
+  background: linear-gradient(transparent, var(--toc-active-background));
   position: absolute;
 }
 
@@ -198,21 +263,49 @@
   display: none;
 }
 
-@media (max-width: 989px) {
-  .shopify-toc {
-    border: 0;
-    background: transparent;
-    max-height: none;
-  }
+.shopify-toc-float {
+  position: fixed;
+  top: 100px;
+  right: 24px;
+  width: 320px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 140px);
+  z-index: 9999;
+}
 
-  .shopify-toc__list,
-  .shopify-toc--expanded .shopify-toc__list {
-    max-height: none;
-    overflow: visible;
-  }
+.shopify-toc-float--left {
+  left: 24px;
+  right: auto;
+}
 
-  .shopify-toc__toggle,
-  .toc-fade {
-    display: none !important;
-  }
+.shopify-toc-float .shopify-toc {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.shopify-toc[data-device="mobile"] {
+  --toc-active-title-font-size: var(--toc-mobile-title-font-size);
+  --toc-active-title-font-color: var(--toc-mobile-title-font-color);
+  --toc-active-title-font-weight: var(--toc-mobile-title-font-weight);
+  --toc-active-headings-font-size: var(--toc-mobile-headings-font-size);
+  --toc-active-headings-font-color: var(--toc-mobile-headings-font-color);
+  --toc-active-headings-font-weight: var(--toc-mobile-headings-font-weight);
+  --toc-active-background: var(--toc-mobile-background);
+  --toc-active-max-width: var(--toc-mobile-max-width);
+  border-color: var(--toc-mobile-border-color);
+  border-width: var(--toc-mobile-border-width);
+  border-radius: var(--toc-mobile-border-radius);
+  padding-top: var(--toc-mobile-padding-top);
+  padding-right: var(--toc-mobile-padding-right);
+  padding-bottom: var(--toc-mobile-padding-bottom);
+  padding-left: var(--toc-mobile-padding-left);
+  --toc-active-show-button-height: var(--toc-mobile-show-button-height);
+  --toc-active-button-font-size: var(--toc-mobile-show-button-font-size);
+  --toc-active-button-font-color: var(--toc-mobile-show-button-font-color);
+  --toc-active-button-font-weight: var(--toc-mobile-show-button-font-weight);
+  --toc-active-button-border-color: var(--toc-mobile-show-button-border-color);
+  --toc-active-button-border-width: var(--toc-mobile-show-button-border-width);
+  --toc-active-button-border-radius: var(
+    --toc-mobile-show-button-border-radius
+  );
 }
