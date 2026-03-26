@@ -16,6 +16,7 @@
     maxWidth: 0,
     smoothScroll: true,
     scrollOffset: DEFAULT_TOP_OFFSET,
+    showTitle: true,
     headingsFontSize: 14,
     headingsFontColor: "#575757",
     headingsFontWeight: 400,
@@ -47,6 +48,7 @@
     maxWidth: 0,
     smoothScroll: true,
     scrollOffset: DEFAULT_TOP_OFFSET,
+    showTitle: true,
     headingsFontSize: 14,
     headingsFontColor: "#575757",
     headingsFontWeight: 400,
@@ -200,6 +202,10 @@
   const title = document.createElement("div");
   title.className = "shopify-toc__title";
   title.textContent = cfg.title || "Contents";
+  const syncTitleVisibility = () => {
+    title.hidden = !getActiveConfig().showTitle;
+  };
+  syncTitleVisibility();
   toc.appendChild(title);
 
   const topFade = document.createElement("div");
@@ -346,6 +352,7 @@
       const activeConfig = getActiveConfig();
       const showToggle = activeConfig.showButton && needsToggle(activeConfig);
 
+      syncTitleVisibility();
       toc.classList.toggle("shopify-toc--show-more-active", showToggle);
 
       if (!showToggle) {
@@ -547,6 +554,10 @@
         Number.isFinite(config.scrollOffset)
           ? Math.max(0, config.scrollOffset)
           : fallback.scrollOffset,
+      showTitle:
+        typeof config.showTitle === "boolean"
+          ? config.showTitle
+          : fallback.showTitle,
       headingsFontSize:
         typeof config.headingsFontSize === "number" &&
         Number.isFinite(config.headingsFontSize)

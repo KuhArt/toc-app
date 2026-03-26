@@ -50,6 +50,7 @@ type TocDeviceConfig = TocBorderConfig & {
   maxWidth: number;
   smoothScroll: boolean;
   scrollOffset: number;
+  showTitle: boolean;
   headingsFontSize: number;
   headingsFontColor: string;
   headingsFontWeight: number;
@@ -96,6 +97,7 @@ const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
   maxWidth: 0,
   smoothScroll: true,
   scrollOffset: 80,
+  showTitle: true,
   headingsFontSize: 14,
   headingsFontColor: "#575757",
   headingsFontWeight: 400,
@@ -127,6 +129,7 @@ const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
   maxWidth: 0,
   smoothScroll: true,
   scrollOffset: 80,
+  showTitle: true,
   headingsFontSize: 14,
   headingsFontColor: "#575757",
   headingsFontWeight: 400,
@@ -481,6 +484,7 @@ type TocDeviceConfigInput = {
   maxWidth: string;
   smoothScroll: boolean;
   scrollOffset: string;
+  showTitle: boolean;
   headingsFontSize: string;
   headingsFontColor: string;
   headingsFontWeight: string;
@@ -671,6 +675,9 @@ export default function Index() {
   const [desktopScrollOffset, setDesktopScrollOffset] = useState(
     String(config.desktop.scrollOffset),
   );
+  const [desktopShowTitle, setDesktopShowTitle] = useState(
+    config.desktop.showTitle,
+  );
   const [desktopHeadingsFontSize, setDesktopHeadingsFontSize] = useState(
     String(config.desktop.headingsFontSize),
   );
@@ -752,6 +759,9 @@ export default function Index() {
   const [mobileScrollOffset, setMobileScrollOffset] = useState(
     String(config.mobile.scrollOffset),
   );
+  const [mobileShowTitle, setMobileShowTitle] = useState(
+    config.mobile.showTitle,
+  );
   const [mobileHeadingsFontSize, setMobileHeadingsFontSize] = useState(
     String(config.mobile.headingsFontSize),
   );
@@ -801,6 +811,8 @@ export default function Index() {
     useState<AppEmbedStatus>("checking");
   const isShowMoreEnabled =
     activeTab === "desktop" ? desktopShowButton : mobileShowButton;
+  const isTitleEnabled =
+    activeTab === "desktop" ? desktopShowTitle : mobileShowTitle;
   const currentConfig = coerceConfig({
     title,
     headingLevels,
@@ -824,6 +836,7 @@ export default function Index() {
       maxWidth: desktopMaxWidth,
       smoothScroll: desktopSmoothScroll,
       scrollOffset: desktopScrollOffset,
+      showTitle: desktopShowTitle,
       headingsFontSize: desktopHeadingsFontSize,
       headingsFontColor: desktopHeadingsFontColor,
       headingsFontWeight: desktopHeadingsFontWeight,
@@ -855,6 +868,7 @@ export default function Index() {
       maxWidth: mobileMaxWidth,
       smoothScroll: mobileSmoothScroll,
       scrollOffset: mobileScrollOffset,
+      showTitle: mobileShowTitle,
       headingsFontSize: mobileHeadingsFontSize,
       headingsFontColor: mobileHeadingsFontColor,
       headingsFontWeight: mobileHeadingsFontWeight,
@@ -902,6 +916,7 @@ export default function Index() {
       setDesktopMaxWidth,
       setDesktopSmoothScroll,
       setDesktopScrollOffset,
+      setDesktopShowTitle,
       setDesktopHeadingsFontSize,
       setDesktopHeadingsFontColor,
       setDesktopHeadingsFontWeight,
@@ -931,6 +946,7 @@ export default function Index() {
       setMobileMaxWidth,
       setMobileSmoothScroll,
       setMobileScrollOffset,
+      setMobileShowTitle,
       setMobileHeadingsFontSize,
       setMobileHeadingsFontColor,
       setMobileHeadingsFontWeight,
@@ -1095,6 +1111,7 @@ export default function Index() {
               setDesktopMaxWidth,
               setDesktopSmoothScroll,
               setDesktopScrollOffset,
+              setDesktopShowTitle,
               setDesktopHeadingsFontSize,
               setDesktopHeadingsFontColor,
               setDesktopHeadingsFontWeight,
@@ -1124,6 +1141,7 @@ export default function Index() {
               setMobileMaxWidth,
               setMobileSmoothScroll,
               setMobileScrollOffset,
+              setMobileShowTitle,
               setMobileHeadingsFontSize,
               setMobileHeadingsFontColor,
               setMobileHeadingsFontWeight,
@@ -1202,8 +1220,8 @@ export default function Index() {
                         ))}
                       </div>
                       <div className="toc-field-details">
-                        Choose which article headings should appear in the
-                        table of contents.
+                        Choose which article headings should appear in the table
+                        of contents.
                       </div>
                     </div>
                     <s-text-field
@@ -1439,97 +1457,123 @@ export default function Index() {
                   </s-stack>
                 </s-section>
                 <s-section heading="Title">
-                  <div className="toc-compact-fields">
-                    <s-color-field
+                  <s-stack direction="block" gap="base">
+                    <s-checkbox
                       name={
                         activeTab === "desktop"
-                          ? "desktopTitleFontColor"
-                          : "mobileTitleFontColor"
+                          ? "desktopShowTitle"
+                          : "mobileShowTitle"
                       }
-                      label="Color"
-                      alpha
-                      value={
+                      label="Show title"
+                      checked={
                         activeTab === "desktop"
-                          ? desktopTitleFontColor
-                          : mobileTitleFontColor
-                      }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopTitleFontColor(value);
-                        } else {
-                          setMobileTitleFontColor(value);
-                        }
-                      }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopTitleFontColor(value);
-                        } else {
-                          setMobileTitleFontColor(value);
-                        }
-                      }}
-                    ></s-color-field>
-                    <s-number-field
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopTitleFontSize"
-                          : "mobileTitleFontSize"
-                      }
-                      label="Font size"
-                      min={0}
-                      step={1}
-                      suffix="px"
-                      value={
-                        activeTab === "desktop"
-                          ? desktopTitleFontSize
-                          : mobileTitleFontSize
-                      }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopTitleFontSize(value);
-                        } else {
-                          setMobileTitleFontSize(value);
-                        }
-                      }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopTitleFontSize(value);
-                        } else {
-                          setMobileTitleFontSize(value);
-                        }
-                      }}
-                    ></s-number-field>
-                    <s-select
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopTitleFontWeight"
-                          : "mobileTitleFontWeight"
-                      }
-                      label="Font weight"
-                      value={
-                        activeTab === "desktop"
-                          ? desktopTitleFontWeight
-                          : mobileTitleFontWeight
+                          ? desktopShowTitle
+                          : mobileShowTitle
                       }
                       onChange={(event) => {
-                        const value = event.currentTarget.value;
+                        const checked = event.currentTarget.checked;
                         if (activeTab === "desktop") {
-                          setDesktopTitleFontWeight(value);
+                          setDesktopShowTitle(checked);
                         } else {
-                          setMobileTitleFontWeight(value);
+                          setMobileShowTitle(checked);
                         }
                       }}
-                    >
-                      {FONT_WEIGHT_OPTIONS.map((option) => (
-                        <s-option key={option.value} value={option.value}>
-                          {option.label}
-                        </s-option>
-                      ))}
-                    </s-select>
-                  </div>
+                    ></s-checkbox>
+                    <div className="toc-compact-fields">
+                      <s-color-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopTitleFontColor"
+                            : "mobileTitleFontColor"
+                        }
+                        label="Color"
+                        alpha
+                        disabled={!isTitleEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopTitleFontColor
+                            : mobileTitleFontColor
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopTitleFontColor(value);
+                          } else {
+                            setMobileTitleFontColor(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopTitleFontColor(value);
+                          } else {
+                            setMobileTitleFontColor(value);
+                          }
+                        }}
+                      ></s-color-field>
+                      <s-number-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopTitleFontSize"
+                            : "mobileTitleFontSize"
+                        }
+                        label="Font size"
+                        min={0}
+                        step={1}
+                        suffix="px"
+                        disabled={!isTitleEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopTitleFontSize
+                            : mobileTitleFontSize
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopTitleFontSize(value);
+                          } else {
+                            setMobileTitleFontSize(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopTitleFontSize(value);
+                          } else {
+                            setMobileTitleFontSize(value);
+                          }
+                        }}
+                      ></s-number-field>
+                      <s-select
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopTitleFontWeight"
+                            : "mobileTitleFontWeight"
+                        }
+                        label="Font weight"
+                        disabled={!isTitleEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopTitleFontWeight
+                            : mobileTitleFontWeight
+                        }
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopTitleFontWeight(value);
+                          } else {
+                            setMobileTitleFontWeight(value);
+                          }
+                        }}
+                      >
+                        {FONT_WEIGHT_OPTIONS.map((option) => (
+                          <s-option key={option.value} value={option.value}>
+                            {option.label}
+                          </s-option>
+                        ))}
+                      </s-select>
+                    </div>
+                  </s-stack>
                 </s-section>
                 <s-section heading="Headings">
                   <div className="toc-compact-fields">
@@ -2391,6 +2435,7 @@ function applyConfigToForm(
     setDesktopMaxWidth: (value: string) => void;
     setDesktopSmoothScroll: (value: boolean) => void;
     setDesktopScrollOffset: (value: string) => void;
+    setDesktopShowTitle: (value: boolean) => void;
     setDesktopHeadingsFontSize: (value: string) => void;
     setDesktopHeadingsFontColor: (value: string) => void;
     setDesktopHeadingsFontWeight: (value: string) => void;
@@ -2420,6 +2465,7 @@ function applyConfigToForm(
     setMobileMaxWidth: (value: string) => void;
     setMobileSmoothScroll: (value: boolean) => void;
     setMobileScrollOffset: (value: string) => void;
+    setMobileShowTitle: (value: boolean) => void;
     setMobileHeadingsFontSize: (value: string) => void;
     setMobileHeadingsFontColor: (value: string) => void;
     setMobileHeadingsFontWeight: (value: string) => void;
@@ -2461,6 +2507,7 @@ function applyConfigToForm(
   controls.setDesktopMaxWidth(String(config.desktop.maxWidth));
   controls.setDesktopSmoothScroll(config.desktop.smoothScroll);
   controls.setDesktopScrollOffset(String(config.desktop.scrollOffset));
+  controls.setDesktopShowTitle(config.desktop.showTitle);
   controls.setDesktopHeadingsFontSize(String(config.desktop.headingsFontSize));
   controls.setDesktopHeadingsFontColor(config.desktop.headingsFontColor);
   controls.setDesktopHeadingsFontWeight(
@@ -2502,6 +2549,7 @@ function applyConfigToForm(
   controls.setMobileMaxWidth(String(config.mobile.maxWidth));
   controls.setMobileSmoothScroll(config.mobile.smoothScroll);
   controls.setMobileScrollOffset(String(config.mobile.scrollOffset));
+  controls.setMobileShowTitle(config.mobile.showTitle);
   controls.setMobileHeadingsFontSize(String(config.mobile.headingsFontSize));
   controls.setMobileHeadingsFontColor(config.mobile.headingsFontColor);
   controls.setMobileHeadingsFontWeight(
@@ -2552,6 +2600,7 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.desktop.maxWidth === right.desktop.maxWidth &&
     left.desktop.smoothScroll === right.desktop.smoothScroll &&
     left.desktop.scrollOffset === right.desktop.scrollOffset &&
+    left.desktop.showTitle === right.desktop.showTitle &&
     left.desktop.headingsFontSize === right.desktop.headingsFontSize &&
     left.desktop.headingsFontColor === right.desktop.headingsFontColor &&
     left.desktop.headingsFontWeight === right.desktop.headingsFontWeight &&
@@ -2584,6 +2633,7 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.mobile.maxWidth === right.mobile.maxWidth &&
     left.mobile.smoothScroll === right.mobile.smoothScroll &&
     left.mobile.scrollOffset === right.mobile.scrollOffset &&
+    left.mobile.showTitle === right.mobile.showTitle &&
     left.mobile.headingsFontSize === right.mobile.headingsFontSize &&
     left.mobile.headingsFontColor === right.mobile.headingsFontColor &&
     left.mobile.headingsFontWeight === right.mobile.headingsFontWeight &&
@@ -2682,7 +2732,7 @@ function getAppEmbedButtonVariant(status: AppEmbedStatus) {
   }
 }
 
-function getAppEmbedButtonTone(status: AppEmbedStatus) {
+function getAppEmbedButtonTone(status: AppEmbedStatus): "auto" {
   return "auto";
 }
 
@@ -2820,6 +2870,9 @@ function HiddenDeviceFields({
         name={`${prefix}ScrollOffset`}
         value={String(config.scrollOffset)}
       />
+      {config.showTitle ? (
+        <input type="hidden" name={`${prefix}ShowTitle`} value="on" />
+      ) : null}
       <input
         type="hidden"
         name={`${prefix}HeadingsFontSize`}
@@ -2971,6 +3024,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       maxWidth: String(formData.get("desktopMaxWidth") || ""),
       smoothScroll: formData.get("desktopSmoothScroll") === "on",
       scrollOffset: String(formData.get("desktopScrollOffset") || ""),
+      showTitle: formData.get("desktopShowTitle") === "on",
       headingsFontSize: String(formData.get("desktopHeadingsFontSize") || ""),
       headingsFontColor: String(
         formData.get("desktopHeadingsFontColor") ||
@@ -3034,6 +3088,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       maxWidth: String(formData.get("mobileMaxWidth") || ""),
       smoothScroll: formData.get("mobileSmoothScroll") === "on",
       scrollOffset: String(formData.get("mobileScrollOffset") || ""),
+      showTitle: formData.get("mobileShowTitle") === "on",
       headingsFontSize: String(formData.get("mobileHeadingsFontSize") || ""),
       headingsFontColor: String(
         formData.get("mobileHeadingsFontColor") ||
@@ -3212,6 +3267,10 @@ function normalizeDeviceConfig(
       Number.isFinite(config.scrollOffset)
         ? Math.max(0, config.scrollOffset)
         : fallback.scrollOffset,
+    showTitle:
+      typeof config.showTitle === "boolean"
+        ? config.showTitle
+        : fallback.showTitle,
     headingsFontSize:
       typeof config.headingsFontSize === "number" &&
       Number.isFinite(config.headingsFontSize)
@@ -3351,6 +3410,7 @@ function coerceDeviceConfig(
     scrollOffset: Number.isFinite(scrollOffset)
       ? scrollOffset
       : fallback.scrollOffset,
+    showTitle: input.showTitle,
     headingsFontSize: Number.isFinite(headingsFontSize)
       ? headingsFontSize
       : fallback.headingsFontSize,
@@ -3527,7 +3587,9 @@ function TocPreview({
       onClick={(event) => event.preventDefault()}
       style={getPreviewContainerStyle(device)}
     >
-      <div className="shopify-toc__title">{preview.title}</div>
+      {device.showTitle ? (
+        <div className="shopify-toc__title">{preview.title}</div>
+      ) : null}
       {showToggle ? (
         <div className="toc-fade toc-fade--top" hidden={!expanded}>
           <span className="toc-fade__shim"></span>
