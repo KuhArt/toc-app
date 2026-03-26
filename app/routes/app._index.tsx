@@ -7,7 +7,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import CodeMirror from "@uiw/react-codemirror";
+import CodeMirror, { type EditorView } from "@uiw/react-codemirror";
 import { css as cssLanguage } from "@codemirror/lang-css";
 import type {
   ActionFunctionArgs,
@@ -366,9 +366,9 @@ const FORM_STYLES = `
 
   .toc-code-field__label {
     color: var(--p-color-text, #303030);
-    font-size: 0.875rem;
-    font-weight: 600;
-    line-height: 1.25rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 16px;
   }
 
   .toc-code-editor {
@@ -420,6 +420,34 @@ const FORM_STYLES = `
 
   .toc-code-editor .cm-focused {
     outline: none;
+  }
+
+  .toc-code-editor .cm-cursorLayer {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .toc-code-editor .cm-cursor,
+  .toc-code-editor .cm-dropCursor {
+    border-left-color: var(--p-color-text, #303030) !important;
+  }
+
+  .toc-code-editor .cm-focused > .cm-scroller > .cm-cursorLayer .cm-cursor {
+    display: block !important;
+  }
+
+  .toc-tab-panel {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .toc-tab-panel--hidden {
+    position: absolute;
+    inline-size: 0;
+    block-size: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .toc-inline-choices {
@@ -1294,9 +1322,11 @@ export default function Index() {
     headings: null,
     border: null,
     padding: null,
+    offset: null,
     scroll: null,
     showButton: null,
   });
+  const customCssEditorViewRef = useRef<EditorView | null>(null);
   const activeSectionNavItems =
     activeTab === "general"
       ? GENERAL_SECTION_NAV_ITEMS
@@ -1637,6 +1667,20 @@ export default function Index() {
   }, [activeTab]);
 
   useEffect(() => {
+    if (activeTab !== "general" || !customCssEditorViewRef.current) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      customCssEditorViewRef.current?.requestMeasure();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [activeTab]);
+
+  useEffect(() => {
     if (actionData?.ok) {
       shopify.toast.show("Settings saved");
     }
@@ -1873,9 +1917,6 @@ export default function Index() {
           }}
         >
           <s-stack direction="block" gap="base">
-            {activeTab !== "general" ? (
-              <HiddenGeneralFields config={currentConfig} />
-            ) : null}
             {activeTab !== "desktop" ? (
               <HiddenDeviceFields
                 prefix="desktop"
@@ -1888,7 +1929,10 @@ export default function Index() {
                 config={currentConfig.mobile}
               />
             ) : null}
-            {activeTab === "general" ? (
+            <div
+              className={`toc-tab-panel${activeTab === "general" ? "" : " toc-tab-panel--hidden"}`}
+              aria-hidden={activeTab === "general" ? undefined : "true"}
+            >
               <>
                 <div
                   ref={(node) => {
@@ -2074,6 +2118,9 @@ export default function Index() {
                               lineNumbers: true,
                             }}
                             onChange={(value) => setCustomCss(value)}
+                            onCreateEditor={(view) => {
+                              customCssEditorViewRef.current = view;
+                            }}
                           />
                         </div>
                       </div>
@@ -2081,7 +2128,8 @@ export default function Index() {
                   </s-section>
                 </div>
               </>
-            ) : (
+            </div>
+            {activeTab !== "general" ? (
               <>
                 {renderDeviceSection("general", "General", (
                   <s-stack direction="block" gap="base">
@@ -3176,7 +3224,7 @@ export default function Index() {
                   </s-stack>
                 ))}
               </>
-            )}
+            ) : null}
             {actionData?.userErrors?.length ? (
               <s-paragraph>
                 {actionData.userErrors
@@ -3689,39 +3737,6 @@ function getAppEmbedRecord(
   }
 
   return null;
-}
-
-function HiddenGeneralFields({ config }: { config: TocConfig }) {
-  return (
-    <>
-      <input type="hidden" name="title" value={config.title} />
-      {config.headingLevels.map((level) => (
-        <input
-          key={level}
-          type="hidden"
-          name="headingLevels"
-          value={String(level)}
-        />
-      ))}
-      <input
-        type="hidden"
-        name="minHeadings"
-        value={String(config.minHeadings)}
-      />
-      <input
-        type="hidden"
-        name="mobileBreakpoint"
-        value={String(config.mobileBreakpoint)}
-      />
-      <input type="hidden" name="excludedBlogs" value={config.excludedBlogs} />
-      <input type="hidden" name="customCss" value={config.customCss} />
-      <input type="hidden" name="textAlignment" value={config.textAlignment} />
-      <input type="hidden" name="markerFormat" value={config.markerFormat} />
-      {config.indentation ? (
-        <input type="hidden" name="indentation" value="on" />
-      ) : null}
-    </>
-  );
 }
 
 function HiddenDeviceFields({
