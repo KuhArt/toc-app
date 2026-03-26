@@ -257,6 +257,27 @@ const FORM_STYLES = `
     flex-wrap: wrap;
   }
 
+  .toc-section-nav {
+    min-width: 0;
+  }
+
+  .toc-section-nav__list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .toc-section-nav__item {
+    flex: 0 0 auto;
+  }
+
+  .toc-editor-section {
+    scroll-margin-top: 20px;
+  }
+
   .toc-segmented-control {
     display: inline-flex;
     align-items: center;
@@ -443,6 +464,7 @@ const FORM_STYLES = `
 
   .toc-device-section {
     position: relative;
+    scroll-margin-top: 20px;
   }
 
   .toc-device-section__chip {
@@ -460,6 +482,12 @@ const FORM_STYLES = `
   }
 
   @media (max-width: 640px) {
+    .toc-section-nav__list {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
     .toc-compact-fields-two {
       grid-template-columns: minmax(0, 1fr);
     }
@@ -560,6 +588,10 @@ type ActionData = {
 
 type EditorTab = (typeof EDITOR_TABS)[number]["id"];
 type DeviceTab = Extract<EditorTab, "desktop" | "mobile">;
+type GeneralSectionKey =
+  | "generalSettings"
+  | "textFormatting"
+  | "advancedSettings";
 type DeviceSectionKey =
   | "general"
   | "title"
@@ -568,6 +600,27 @@ type DeviceSectionKey =
   | "padding"
   | "scroll"
   | "showButton";
+type SectionNavKey = GeneralSectionKey | DeviceSectionKey;
+const GENERAL_SECTION_NAV_ITEMS: Array<{
+  key: GeneralSectionKey;
+  label: string;
+}> = [
+  { key: "generalSettings", label: "General" },
+  { key: "textFormatting", label: "Text Formatting" },
+  { key: "advancedSettings", label: "Advanced settings" },
+];
+const DEVICE_SECTION_NAV_ITEMS: Array<{
+  key: DeviceSectionKey;
+  label: string;
+}> = [
+  { key: "general", label: "General" },
+  { key: "title", label: "Title" },
+  { key: "headings", label: "Headings" },
+  { key: "border", label: "Border" },
+  { key: "padding", label: "Padding" },
+  { key: "scroll", label: "Scroll" },
+  { key: "showButton", label: "Show more button" },
+];
 type DeviceSectionApplyState = Record<
   DeviceTab,
   Partial<Record<DeviceSectionKey, boolean>>
@@ -680,6 +733,7 @@ type DeviceSettingsSectionProps = {
   activeDevice: DeviceTab;
   showApplyAction: boolean;
   isApplied: boolean;
+  sectionRef?: (node: HTMLDivElement | null) => void;
   onApply: () => void;
   onEdit: () => void;
   children: ReactNode;
@@ -772,6 +826,7 @@ function DeviceSettingsSection({
   activeDevice,
   showApplyAction,
   isApplied,
+  sectionRef,
   onApply,
   onEdit,
   children,
@@ -780,6 +835,7 @@ function DeviceSettingsSection({
 
   return (
     <div
+      ref={sectionRef}
       className="toc-device-section"
       onInputCapture={onEdit}
       onChangeCapture={onEdit}
@@ -1178,6 +1234,42 @@ export default function Index() {
   const mobilePreview = buildPreviewState(currentConfig);
   const isDirty = !configsEqual(savedConfig, currentConfig);
   const isSaving = navigation.state === "submitting";
+  const sectionRefs = useRef<Record<SectionNavKey, HTMLDivElement | null>>({
+    generalSettings: null,
+    textFormatting: null,
+    advancedSettings: null,
+    general: null,
+    title: null,
+    headings: null,
+    border: null,
+    padding: null,
+    scroll: null,
+    showButton: null,
+  });
+  const activeSectionNavItems =
+    activeTab === "general"
+      ? GENERAL_SECTION_NAV_ITEMS
+      : activeDevice
+        ? DEVICE_SECTION_NAV_ITEMS
+        : [];
+
+  const scrollToSection = (section: SectionNavKey) => {
+    const sectionElement = sectionRefs.current[section];
+
+    if (!sectionElement) {
+      return;
+    }
+
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    sectionElement.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  };
 
   const clearAppliedSection = (section: DeviceSectionKey) => {
     if (!activeDevice) {
@@ -1381,6 +1473,9 @@ export default function Index() {
         activeDevice={activeDevice}
         showApplyAction={sectionState.showApplyAction}
         isApplied={sectionState.isApplied}
+        sectionRef={(node) => {
+          sectionRefs.current[section] = node;
+        }}
         onApply={() => applySectionToOtherDevice(section)}
         onEdit={() => clearAppliedSection(section)}
       >
@@ -1591,6 +1686,31 @@ export default function Index() {
             ) : null}
           </div>
         </div>
+        {activeSectionNavItems.length ? (
+          <nav
+            className="toc-section-nav"
+            aria-label={
+              activeTab === "general"
+                ? "General section navigation"
+                : activeDevice
+                  ? `${getDeviceLabel(activeDevice)} section navigation`
+                  : "Section navigation"
+            }
+          >
+            <ul className="toc-section-nav__list">
+              {activeSectionNavItems.map((section) => (
+                <li key={section.key} className="toc-section-nav__item">
+                  <s-clickable-chip
+                    accessibilityLabel={`Scroll to ${section.label}`}
+                    onClick={() => scrollToSection(section.key)}
+                  >
+                    {section.label}
+                  </s-clickable-chip>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
       </div>
       <div className="toc-main-layout">
         <Form
@@ -1690,174 +1810,196 @@ export default function Index() {
             ) : null}
             {activeTab === "general" ? (
               <>
-                <s-section heading="General">
-                  <s-stack direction="block" gap="base">
-                    <s-text-field
-                      name="title"
-                      label="Title"
-                      details="Shown at the top of the table of contents"
-                      value={title}
-                      onInput={(event) => setTitle(event.currentTarget.value)}
-                      onChange={(event) => setTitle(event.currentTarget.value)}
-                    ></s-text-field>
-                    <div className="toc-field">
-                      <s-text>Heading levels</s-text>
-                      <div
-                        className="toc-inline-choices"
-                        role="group"
-                        aria-label="Heading levels"
+                <div
+                  ref={(node) => {
+                    sectionRefs.current.generalSettings = node;
+                  }}
+                  className="toc-editor-section"
+                >
+                  <s-section heading="General">
+                    <s-stack direction="block" gap="base">
+                      <s-text-field
+                        name="title"
+                        label="Title"
+                        details="Shown at the top of the table of contents"
+                        value={title}
+                        onInput={(event) => setTitle(event.currentTarget.value)}
+                        onChange={(event) => setTitle(event.currentTarget.value)}
+                      ></s-text-field>
+                      <div className="toc-field">
+                        <s-text>Heading levels</s-text>
+                        <div
+                          className="toc-inline-choices"
+                          role="group"
+                          aria-label="Heading levels"
+                        >
+                          {HEADING_LEVEL_OPTIONS.map((level) => (
+                            <s-checkbox
+                              key={level}
+                              name="headingLevels"
+                              value={String(level)}
+                              label={`H${level}`}
+                              checked={headingLevels.includes(level)}
+                              onChange={(event) => {
+                                const checked = event.currentTarget.checked;
+
+                                setHeadingLevels((current) => {
+                                  const next = checked
+                                    ? normalizeHeadingLevels([...current, level])
+                                    : current.filter(
+                                        (currentLevel) =>
+                                          currentLevel !== level,
+                                      );
+
+                                  return next.length ? next : current;
+                                });
+                              }}
+                            ></s-checkbox>
+                          ))}
+                        </div>
+                        <div className="toc-field-details">
+                          Choose which article headings should appear in the
+                          table of contents.
+                        </div>
+                      </div>
+                      <s-text-field
+                        name="minHeadings"
+                        label="Minimum headings to show"
+                        details="Hide the table of contents until this many selected headings are found"
+                        value={minHeadings}
+                        onInput={(event) =>
+                          setMinHeadings(event.currentTarget.value)
+                        }
+                        onChange={(event) =>
+                          setMinHeadings(event.currentTarget.value)
+                        }
+                      ></s-text-field>
+                      <s-number-field
+                        name="mobileBreakpoint"
+                        label="Mobile breakpoint"
+                        details="Use mobile styles at this width and below"
+                        min={0}
+                        step={1}
+                        suffix="px"
+                        value={mobileBreakpoint}
+                        onInput={(event) =>
+                          setMobileBreakpoint(event.currentTarget.value)
+                        }
+                        onChange={(event) =>
+                          setMobileBreakpoint(event.currentTarget.value)
+                        }
+                      ></s-number-field>
+                      <s-text-field
+                        name="excludedBlogs"
+                        label="Blog posts to exclude"
+                        details="Comma-separated article handles or IDs where the table of contents should stay hidden"
+                        placeholder="news/today-is-the-best-day, 671373295959"
+                        value={excludedBlogs}
+                        onInput={(event) =>
+                          setExcludedBlogs(event.currentTarget.value)
+                        }
+                        onChange={(event) =>
+                          setExcludedBlogs(event.currentTarget.value)
+                        }
+                      ></s-text-field>
+                    </s-stack>
+                  </s-section>
+                </div>
+                <div
+                  ref={(node) => {
+                    sectionRefs.current.textFormatting = node;
+                  }}
+                  className="toc-editor-section"
+                >
+                  <s-section heading="Text Formatting">
+                    <s-stack direction="block" gap="base">
+                      <s-select
+                        name="textAlignment"
+                        label="Text alignment"
+                        details="Align the title and links inside the table of contents"
+                        value={textAlignment}
+                        onChange={(event) =>
+                          setTextAlignment(
+                            normalizeTextAlignment(event.currentTarget.value),
+                          )
+                        }
                       >
-                        {HEADING_LEVEL_OPTIONS.map((level) => (
-                          <s-checkbox
-                            key={level}
-                            name="headingLevels"
-                            value={String(level)}
-                            label={`H${level}`}
-                            checked={headingLevels.includes(level)}
-                            onChange={(event) => {
-                              const checked = event.currentTarget.checked;
-
-                              setHeadingLevels((current) => {
-                                const next = checked
-                                  ? normalizeHeadingLevels([...current, level])
-                                  : current.filter(
-                                      (currentLevel) => currentLevel !== level,
-                                    );
-
-                                return next.length ? next : current;
-                              });
-                            }}
-                          ></s-checkbox>
+                        {TEXT_ALIGNMENT_OPTIONS.map((option) => (
+                          <s-option key={option.value} value={option.value}>
+                            {option.label}
+                          </s-option>
                         ))}
-                      </div>
-                      <div className="toc-field-details">
-                        Choose which article headings should appear in the table
-                        of contents.
-                      </div>
-                    </div>
-                    <s-text-field
-                      name="minHeadings"
-                      label="Minimum headings to show"
-                      details="Hide the table of contents until this many selected headings are found"
-                      value={minHeadings}
-                      onInput={(event) =>
-                        setMinHeadings(event.currentTarget.value)
-                      }
-                      onChange={(event) =>
-                        setMinHeadings(event.currentTarget.value)
-                      }
-                    ></s-text-field>
-                    <s-number-field
-                      name="mobileBreakpoint"
-                      label="Mobile breakpoint"
-                      details="Use mobile styles at this width and below"
-                      min={0}
-                      step={1}
-                      suffix="px"
-                      value={mobileBreakpoint}
-                      onInput={(event) =>
-                        setMobileBreakpoint(event.currentTarget.value)
-                      }
-                      onChange={(event) =>
-                        setMobileBreakpoint(event.currentTarget.value)
-                      }
-                    ></s-number-field>
-                    <s-text-field
-                      name="excludedBlogs"
-                      label="Blog posts to exclude"
-                      details="Comma-separated article handles or IDs where the table of contents should stay hidden"
-                      placeholder="news/today-is-the-best-day, 671373295959"
-                      value={excludedBlogs}
-                      onInput={(event) =>
-                        setExcludedBlogs(event.currentTarget.value)
-                      }
-                      onChange={(event) =>
-                        setExcludedBlogs(event.currentTarget.value)
-                      }
-                    ></s-text-field>
-                  </s-stack>
-                </s-section>
-                <s-section heading="Text Formatting">
-                  <s-stack direction="block" gap="base">
-                    <s-select
-                      name="textAlignment"
-                      label="Text alignment"
-                      details="Align the title and links inside the table of contents"
-                      value={textAlignment}
-                      onChange={(event) =>
-                        setTextAlignment(
-                          normalizeTextAlignment(event.currentTarget.value),
-                        )
-                      }
-                    >
-                      {TEXT_ALIGNMENT_OPTIONS.map((option) => (
-                        <s-option key={option.value} value={option.value}>
-                          {option.label}
-                        </s-option>
-                      ))}
-                    </s-select>
-                    <s-select
-                      name="markerFormat"
-                      label="Numbering / Bullet Format"
-                      details="Choose whether items use no marker, bullets, or numbers"
-                      value={markerFormat}
-                      onChange={(event) =>
-                        setMarkerFormat(
-                          normalizeMarkerFormat(event.currentTarget.value),
-                        )
-                      }
-                    >
-                      {MARKER_FORMAT_OPTIONS.map((option) => (
-                        <s-option key={option.value} value={option.value}>
-                          {option.label}
-                        </s-option>
-                      ))}
-                    </s-select>
-                    <s-checkbox
-                      name="indentation"
-                      label="Indent nested headings"
-                      details="Show lower-level headings as nested items"
-                      checked={textAlignment === "center" ? false : indentation}
-                      disabled={textAlignment === "center"}
-                      onChange={(event) =>
-                        setIndentation(event.currentTarget.checked)
-                      }
-                    ></s-checkbox>
-                  </s-stack>
-                </s-section>
-                <s-section heading="Advanced settings">
-                  <div className="toc-field">
-                    <div className="toc-code-field">
-                      <span className="toc-code-field__label">Custom CSS</span>
-                      <span className="toc-field-details">
-                        Same classes work for desktop and mobile. Use
-                        {" "}
-                        {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN}
-                        {" "}
-                        for mobile-only rules.
-                      </span>
-                      <input
-                        name="customCss"
-                        type="hidden"
-                        value={customCss}
-                      />
-                      <div className="toc-code-editor">
-                        <CodeMirror
+                      </s-select>
+                      <s-select
+                        name="markerFormat"
+                        label="Numbering / Bullet Format"
+                        details="Choose whether items use no marker, bullets, or numbers"
+                        value={markerFormat}
+                        onChange={(event) =>
+                          setMarkerFormat(
+                            normalizeMarkerFormat(event.currentTarget.value),
+                          )
+                        }
+                      >
+                        {MARKER_FORMAT_OPTIONS.map((option) => (
+                          <s-option key={option.value} value={option.value}>
+                            {option.label}
+                          </s-option>
+                        ))}
+                      </s-select>
+                      <s-checkbox
+                        name="indentation"
+                        label="Indent nested headings"
+                        details="Show lower-level headings as nested items"
+                        checked={textAlignment === "center" ? false : indentation}
+                        disabled={textAlignment === "center"}
+                        onChange={(event) =>
+                          setIndentation(event.currentTarget.checked)
+                        }
+                      ></s-checkbox>
+                    </s-stack>
+                  </s-section>
+                </div>
+                <div
+                  ref={(node) => {
+                    sectionRefs.current.advancedSettings = node;
+                  }}
+                  className="toc-editor-section"
+                >
+                  <s-section heading="Advanced settings">
+                    <div className="toc-field">
+                      <div className="toc-code-field">
+                        <span className="toc-code-field__label">Custom CSS</span>
+                        <span className="toc-field-details">
+                          Same classes work for desktop and mobile. Use
+                          {" "}
+                          {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN}
+                          {" "}
+                          for mobile-only rules.
+                        </span>
+                        <input
+                          name="customCss"
+                          type="hidden"
                           value={customCss}
-                          height="320px"
-                          aria-label="Custom CSS"
-                          extensions={CUSTOM_CSS_EDITOR_EXTENSIONS}
-                          basicSetup={{
-                            foldGutter: false,
-                            highlightActiveLine: true,
-                            lineNumbers: true,
-                          }}
-                          onChange={(value) => setCustomCss(value)}
                         />
+                        <div className="toc-code-editor">
+                          <CodeMirror
+                            value={customCss}
+                            height="320px"
+                            aria-label="Custom CSS"
+                            extensions={CUSTOM_CSS_EDITOR_EXTENSIONS}
+                            basicSetup={{
+                              foldGutter: false,
+                              highlightActiveLine: true,
+                              lineNumbers: true,
+                            }}
+                            onChange={(value) => setCustomCss(value)}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </s-section>
+                  </s-section>
+                </div>
               </>
             ) : (
               <>
