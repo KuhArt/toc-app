@@ -2661,7 +2661,7 @@ function getAppEmbedBadgeIcon(status: AppEmbedStatus) {
 function getAppEmbedButtonLabel(status: AppEmbedStatus) {
   switch (status) {
     case "active":
-      return "Deactivate";
+      return "Manage status";
     case "inactive":
       return "Activate";
     case "checking":
@@ -2683,7 +2683,7 @@ function getAppEmbedButtonVariant(status: AppEmbedStatus) {
 }
 
 function getAppEmbedButtonTone(status: AppEmbedStatus) {
-  return status === "active" ? "critical" : "auto";
+  return "auto";
 }
 
 function getAppEmbedRecord(
