@@ -2,6 +2,8 @@
   const DEFAULT_TOP_OFFSET = 80;
   const DEFAULT_MOBILE_BREAKPOINT = 768;
   const DEBUG_PREFIX = "[TOC]";
+  const TOC_HEADING_ID_ATTRIBUTE = "data-shopify-toc-id";
+  const TOC_GENERATED_ID_ATTRIBUTE = "data-shopify-toc-generated-id";
   const DEFAULT_DESKTOP_CONTAINER = {
     position: "float-right",
     positionSelector: "",
@@ -168,6 +170,11 @@
     isDesktopViewport()
       ? DEFAULT_DESKTOP_CONTAINER.position
       : DEFAULT_MOBILE_CONTAINER.position;
+  const getHeadingAnchorId = (heading) =>
+    (heading.getAttribute(TOC_HEADING_ID_ATTRIBUTE) || heading.id || "").trim();
+  const getHeadingByAnchorId = (anchorId) =>
+    headings.find((heading) => getHeadingAnchorId(heading) === anchorId) ||
+    document.getElementById(anchorId);
   const applyHeadingScrollMargins = () => {
     const activeOffset = Math.max(0, getActiveConfig().scrollOffset || 0);
 
@@ -176,9 +183,20 @@
     });
   };
 
-  // 4) Ensure each heading has an id
+  // 4) Ensure each heading has a stable TOC anchor marker.
   headings.forEach((h, i) => {
-    if (!h.id) h.id = `toc-${i}-${slugify(h.textContent)}`;
+    const anchorId =
+      h.id.trim() || `toc-${i}-${slugify(h.textContent || "")}`;
+
+    h.setAttribute(TOC_HEADING_ID_ATTRIBUTE, anchorId);
+
+    if (!h.id) {
+      h.id = anchorId;
+      h.setAttribute(TOC_GENERATED_ID_ATTRIBUTE, "true");
+      return;
+    }
+
+    h.removeAttribute(TOC_GENERATED_ID_ATTRIBUTE);
   });
   applyHeadingScrollMargins();
 
@@ -385,10 +403,10 @@
 
   const refreshCurrentLink = () => {
     const scrollY = window.scrollY + getActiveConfig().scrollOffset + 24;
-    let currentId = headings[0]?.id;
+    let currentId = headings[0] ? getHeadingAnchorId(headings[0]) : "";
 
     for (const h of headings) {
-      if (h.offsetTop <= scrollY) currentId = h.id;
+      if (h.offsetTop <= scrollY) currentId = getHeadingAnchorId(h);
       else break;
     }
 
@@ -396,7 +414,9 @@
       window.innerHeight + window.scrollY >=
       document.documentElement.scrollHeight - 4
     ) {
-      currentId = headings[headings.length - 1]?.id;
+      currentId = headings[headings.length - 1]
+        ? getHeadingAnchorId(headings[headings.length - 1])
+        : "";
     }
 
     const nextLink = linksById.get(currentId || "");
@@ -439,8 +459,8 @@
     const a = e.target.closest("a");
     if (!a) return;
     e.preventDefault();
-    const id = a.getAttribute("href").slice(1);
-    const target = document.getElementById(id);
+    const id = decodeURIComponent((a.getAttribute("href") || "").slice(1));
+    const target = getHeadingByAnchorId(id);
     if (target) {
       const activeConfig = getActiveConfig();
       target.scrollIntoView({
@@ -826,8 +846,9 @@
       const li = document.createElement("li");
       const a = document.createElement("a");
       const label = document.createElement("span");
+      const anchorId = getHeadingAnchorId(h);
       label.className = "shopify-toc__link-label";
-      a.href = `#${h.id}`;
+      a.setAttribute("href", `#${encodeURIComponent(anchorId)}`);
       label.textContent = (h.textContent || "").trim();
       a.appendChild(label);
       li.appendChild(a);
