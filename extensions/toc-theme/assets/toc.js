@@ -16,6 +16,10 @@
     paddingBottom: 16,
     paddingLeft: 16,
     paddingRight: 16,
+    offsetTop: 0,
+    offsetBottom: 0,
+    offsetLeft: 0,
+    offsetRight: 0,
     background: "#ffffff",
     maxWidth: 0,
     smoothScroll: true,
@@ -48,6 +52,10 @@
     paddingBottom: 0,
     paddingLeft: 0,
     paddingRight: 0,
+    offsetTop: 0,
+    offsetBottom: 0,
+    offsetLeft: 0,
+    offsetRight: 0,
     background: "#00000000",
     maxWidth: 0,
     smoothScroll: true,
@@ -316,6 +324,19 @@
     if (target.kind === "float-left" || target.kind === "float-right") {
       floatHost = floatHost || document.createElement("div");
       floatHost.className = `toc-widget-float toc-widget-float--${target.kind.replace("float-", "")}`;
+      floatHost.style.setProperty("--toc-offset-top", `${activeConfig.offsetTop}px`);
+      floatHost.style.setProperty(
+        "--toc-offset-bottom",
+        `${activeConfig.offsetBottom}px`,
+      );
+      floatHost.style.setProperty(
+        "--toc-offset-left",
+        `${activeConfig.offsetLeft}px`,
+      );
+      floatHost.style.setProperty(
+        "--toc-offset-right",
+        `${activeConfig.offsetRight}px`,
+      );
       if (!floatHost.isConnected) {
         document.body.appendChild(floatHost);
       }
@@ -595,6 +616,25 @@
         Number.isFinite(config.paddingRight)
           ? Math.max(0, config.paddingRight)
           : fallback.paddingRight,
+      offsetTop:
+        typeof config.offsetTop === "number" && Number.isFinite(config.offsetTop)
+          ? config.offsetTop
+          : fallback.offsetTop,
+      offsetBottom:
+        typeof config.offsetBottom === "number" &&
+        Number.isFinite(config.offsetBottom)
+          ? config.offsetBottom
+          : fallback.offsetBottom,
+      offsetLeft:
+        typeof config.offsetLeft === "number" &&
+        Number.isFinite(config.offsetLeft)
+          ? config.offsetLeft
+          : fallback.offsetLeft,
+      offsetRight:
+        typeof config.offsetRight === "number" &&
+        Number.isFinite(config.offsetRight)
+          ? config.offsetRight
+          : fallback.offsetRight,
       background:
         typeof config.background === "string" && config.background.trim()
           ? config.background.trim()
@@ -711,6 +751,10 @@
     toc.style.setProperty("--toc-padding-bottom", `${desktop.paddingBottom}px`);
     toc.style.setProperty("--toc-padding-left", `${desktop.paddingLeft}px`);
     toc.style.setProperty("--toc-padding-right", `${desktop.paddingRight}px`);
+    toc.style.setProperty("--toc-offset-top", `${desktop.offsetTop}px`);
+    toc.style.setProperty("--toc-offset-bottom", `${desktop.offsetBottom}px`);
+    toc.style.setProperty("--toc-offset-left", `${desktop.offsetLeft}px`);
+    toc.style.setProperty("--toc-offset-right", `${desktop.offsetRight}px`);
     toc.style.setProperty(
       "--toc-title-font-size",
       `${desktop.titleFontSize}px`,
@@ -780,6 +824,16 @@
     toc.style.setProperty(
       "--toc-mobile-padding-right",
       `${mobile.paddingRight}px`,
+    );
+    toc.style.setProperty("--toc-mobile-offset-top", `${mobile.offsetTop}px`);
+    toc.style.setProperty(
+      "--toc-mobile-offset-bottom",
+      `${mobile.offsetBottom}px`,
+    );
+    toc.style.setProperty("--toc-mobile-offset-left", `${mobile.offsetLeft}px`);
+    toc.style.setProperty(
+      "--toc-mobile-offset-right",
+      `${mobile.offsetRight}px`,
     );
     toc.style.setProperty(
       "--toc-mobile-title-font-size",

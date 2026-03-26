@@ -9,6 +9,10 @@
   --toc-padding-bottom: 16px;
   --toc-padding-left: 16px;
   --toc-padding-right: 16px;
+  --toc-offset-top: 0px;
+  --toc-offset-bottom: 0px;
+  --toc-offset-left: 0px;
+  --toc-offset-right: 0px;
   --toc-title-font-size: 14px;
   --toc-title-font-color: #575757;
   --toc-title-font-weight: 600;
@@ -31,6 +35,10 @@
   --toc-mobile-padding-bottom: 0px;
   --toc-mobile-padding-left: 0px;
   --toc-mobile-padding-right: 0px;
+  --toc-mobile-offset-top: 0px;
+  --toc-mobile-offset-bottom: 0px;
+  --toc-mobile-offset-left: 0px;
+  --toc-mobile-offset-right: 0px;
   --toc-mobile-title-font-size: 14px;
   --toc-mobile-title-font-color: #575757;
   --toc-mobile-title-font-weight: 600;
@@ -52,6 +60,10 @@
   --toc-active-headings-font-weight: var(--toc-headings-font-weight);
   --toc-active-background: var(--toc-background);
   --toc-active-max-width: var(--toc-max-width);
+  --toc-active-offset-top: var(--toc-offset-top);
+  --toc-active-offset-bottom: var(--toc-offset-bottom);
+  --toc-active-offset-left: var(--toc-offset-left);
+  --toc-active-offset-right: var(--toc-offset-right);
   --toc-active-show-button-height: var(--toc-show-button-height);
   --toc-active-button-font-size: var(--toc-show-button-font-size);
   --toc-active-button-font-color: var(--toc-show-button-font-color);
@@ -65,6 +77,10 @@
   padding-right: var(--toc-padding-right);
   padding-bottom: var(--toc-padding-bottom);
   padding-left: var(--toc-padding-left);
+  margin-top: var(--toc-active-offset-top);
+  margin-right: var(--toc-active-offset-right);
+  margin-bottom: var(--toc-active-offset-bottom);
+  margin-left: var(--toc-active-offset-left);
   background: var(--toc-active-background);
   max-width: var(--toc-active-max-width);
 }
@@ -264,12 +280,20 @@
 }
 
 .toc-widget-float {
+  --toc-offset-top: 0px;
+  --toc-offset-bottom: 0px;
+  --toc-offset-left: 0px;
+  --toc-offset-right: 0px;
   position: fixed;
   top: 100px;
   right: 24px;
   width: 320px;
   max-width: calc(100vw - 48px);
   max-height: calc(100vh - 140px);
+  margin-top: var(--toc-offset-top);
+  margin-right: var(--toc-offset-right);
+  margin-bottom: var(--toc-offset-bottom);
+  margin-left: var(--toc-offset-left);
   z-index: 9999;
 }
 
@@ -281,6 +305,7 @@
 .toc-widget-float .toc-widget {
   box-sizing: border-box;
   width: 100%;
+  margin: 0;
 }
 
 .toc-widget[data-device="mobile"] {
@@ -292,6 +317,10 @@
   --toc-active-headings-font-weight: var(--toc-mobile-headings-font-weight);
   --toc-active-background: var(--toc-mobile-background);
   --toc-active-max-width: var(--toc-mobile-max-width);
+  --toc-active-offset-top: var(--toc-mobile-offset-top);
+  --toc-active-offset-bottom: var(--toc-mobile-offset-bottom);
+  --toc-active-offset-left: var(--toc-mobile-offset-left);
+  --toc-active-offset-right: var(--toc-mobile-offset-right);
   border-color: var(--toc-mobile-border-color);
   border-width: var(--toc-mobile-border-width);
   border-radius: var(--toc-mobile-border-radius);

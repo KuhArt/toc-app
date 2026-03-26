@@ -45,6 +45,10 @@ type TocBorderConfig = {
   paddingBottom: number;
   paddingLeft: number;
   paddingRight: number;
+  offsetTop: number;
+  offsetBottom: number;
+  offsetLeft: number;
+  offsetRight: number;
 };
 
 type TocDeviceConfig = TocBorderConfig & {
@@ -116,6 +120,10 @@ const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
   paddingBottom: 16,
   paddingLeft: 16,
   paddingRight: 16,
+  offsetTop: 0,
+  offsetBottom: 0,
+  offsetLeft: 0,
+  offsetRight: 0,
   background: "#ffffff",
   maxWidth: 0,
   smoothScroll: true,
@@ -148,6 +156,10 @@ const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
   paddingBottom: 0,
   paddingLeft: 0,
   paddingRight: 0,
+  offsetTop: 0,
+  offsetBottom: 0,
+  offsetLeft: 0,
+  offsetRight: 0,
   background: "#00000000",
   maxWidth: 0,
   smoothScroll: true,
@@ -598,6 +610,7 @@ type DeviceSectionKey =
   | "headings"
   | "border"
   | "padding"
+  | "offset"
   | "scroll"
   | "showButton";
 type SectionNavKey = GeneralSectionKey | DeviceSectionKey;
@@ -618,6 +631,7 @@ const DEVICE_SECTION_NAV_ITEMS: Array<{
   { key: "headings", label: "Headings" },
   { key: "border", label: "Border" },
   { key: "padding", label: "Padding" },
+  { key: "offset", label: "Offset" },
   { key: "scroll", label: "Scroll" },
   { key: "showButton", label: "Show more button" },
 ];
@@ -650,6 +664,10 @@ type TocDeviceConfigInput = {
   paddingBottom: string;
   paddingLeft: string;
   paddingRight: string;
+  offsetTop: string;
+  offsetBottom: string;
+  offsetLeft: string;
+  offsetRight: string;
   background: string;
   maxWidth: string;
   smoothScroll: boolean;
@@ -707,6 +725,7 @@ const DEVICE_SECTION_FIELDS = {
   ],
   border: ["color", "width", "radius"],
   padding: ["paddingTop", "paddingBottom", "paddingLeft", "paddingRight"],
+  offset: ["offsetTop", "offsetBottom", "offsetLeft", "offsetRight"],
   scroll: ["smoothScroll", "scrollOffset"],
   showButton: [
     "showButton",
@@ -1000,6 +1019,18 @@ export default function Index() {
   const [desktopPaddingRight, setDesktopPaddingRight] = useState(
     String(config.desktop.paddingRight),
   );
+  const [desktopOffsetTop, setDesktopOffsetTop] = useState(
+    String(config.desktop.offsetTop),
+  );
+  const [desktopOffsetBottom, setDesktopOffsetBottom] = useState(
+    String(config.desktop.offsetBottom),
+  );
+  const [desktopOffsetLeft, setDesktopOffsetLeft] = useState(
+    String(config.desktop.offsetLeft),
+  );
+  const [desktopOffsetRight, setDesktopOffsetRight] = useState(
+    String(config.desktop.offsetRight),
+  );
   const [desktopBackground, setDesktopBackground] = useState(
     config.desktop.background,
   );
@@ -1083,6 +1114,18 @@ export default function Index() {
   );
   const [mobilePaddingRight, setMobilePaddingRight] = useState(
     String(config.mobile.paddingRight),
+  );
+  const [mobileOffsetTop, setMobileOffsetTop] = useState(
+    String(config.mobile.offsetTop),
+  );
+  const [mobileOffsetBottom, setMobileOffsetBottom] = useState(
+    String(config.mobile.offsetBottom),
+  );
+  const [mobileOffsetLeft, setMobileOffsetLeft] = useState(
+    String(config.mobile.offsetLeft),
+  );
+  const [mobileOffsetRight, setMobileOffsetRight] = useState(
+    String(config.mobile.offsetRight),
   );
   const [mobileBackground, setMobileBackground] = useState(
     config.mobile.background,
@@ -1175,6 +1218,10 @@ export default function Index() {
       paddingBottom: desktopPaddingBottom,
       paddingLeft: desktopPaddingLeft,
       paddingRight: desktopPaddingRight,
+      offsetTop: desktopOffsetTop,
+      offsetBottom: desktopOffsetBottom,
+      offsetLeft: desktopOffsetLeft,
+      offsetRight: desktopOffsetRight,
       background: desktopBackground,
       maxWidth: desktopMaxWidth,
       smoothScroll: desktopSmoothScroll,
@@ -1207,6 +1254,10 @@ export default function Index() {
       paddingBottom: mobilePaddingBottom,
       paddingLeft: mobilePaddingLeft,
       paddingRight: mobilePaddingRight,
+      offsetTop: mobileOffsetTop,
+      offsetBottom: mobileOffsetBottom,
+      offsetLeft: mobileOffsetLeft,
+      offsetRight: mobileOffsetRight,
       background: mobileBackground,
       maxWidth: mobileMaxWidth,
       smoothScroll: mobileSmoothScroll,
@@ -1399,6 +1450,19 @@ export default function Index() {
           setMobilePaddingRight(String(sourceConfig.paddingRight));
         }
         break;
+      case "offset":
+        if (targetDevice === "desktop") {
+          setDesktopOffsetTop(String(sourceConfig.offsetTop));
+          setDesktopOffsetBottom(String(sourceConfig.offsetBottom));
+          setDesktopOffsetLeft(String(sourceConfig.offsetLeft));
+          setDesktopOffsetRight(String(sourceConfig.offsetRight));
+        } else {
+          setMobileOffsetTop(String(sourceConfig.offsetTop));
+          setMobileOffsetBottom(String(sourceConfig.offsetBottom));
+          setMobileOffsetLeft(String(sourceConfig.offsetLeft));
+          setMobileOffsetRight(String(sourceConfig.offsetRight));
+        }
+        break;
       case "scroll":
         if (targetDevice === "desktop") {
           setDesktopSmoothScroll(sourceConfig.smoothScroll);
@@ -1506,6 +1570,10 @@ export default function Index() {
       setDesktopPaddingBottom,
       setDesktopPaddingLeft,
       setDesktopPaddingRight,
+      setDesktopOffsetTop,
+      setDesktopOffsetBottom,
+      setDesktopOffsetLeft,
+      setDesktopOffsetRight,
       setDesktopBackground,
       setDesktopMaxWidth,
       setDesktopSmoothScroll,
@@ -1536,6 +1604,10 @@ export default function Index() {
       setMobilePaddingBottom,
       setMobilePaddingLeft,
       setMobilePaddingRight,
+      setMobileOffsetTop,
+      setMobileOffsetBottom,
+      setMobileOffsetLeft,
+      setMobileOffsetRight,
       setMobileBackground,
       setMobileMaxWidth,
       setMobileSmoothScroll,
@@ -1737,6 +1809,10 @@ export default function Index() {
               setDesktopPaddingBottom,
               setDesktopPaddingLeft,
               setDesktopPaddingRight,
+              setDesktopOffsetTop,
+              setDesktopOffsetBottom,
+              setDesktopOffsetLeft,
+              setDesktopOffsetRight,
               setDesktopBackground,
               setDesktopMaxWidth,
               setDesktopSmoothScroll,
@@ -1767,6 +1843,10 @@ export default function Index() {
               setMobilePaddingBottom,
               setMobilePaddingLeft,
               setMobilePaddingRight,
+              setMobileOffsetTop,
+              setMobileOffsetBottom,
+              setMobileOffsetLeft,
+              setMobileOffsetRight,
               setMobileBackground,
               setMobileMaxWidth,
               setMobileSmoothScroll,
@@ -2585,6 +2665,134 @@ export default function Index() {
                     ></s-number-field>
                   </div>
                 ))}
+                {renderDeviceSection("offset", "Offset", (
+                  <div className="toc-compact-fields-four">
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopOffsetTop"
+                          : "mobileOffsetTop"
+                      }
+                      label="Top"
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopOffsetTop
+                          : mobileOffsetTop
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopOffsetTop(value);
+                        } else {
+                          setMobileOffsetTop(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopOffsetTop(value);
+                        } else {
+                          setMobileOffsetTop(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopOffsetBottom"
+                          : "mobileOffsetBottom"
+                      }
+                      label="Bottom"
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopOffsetBottom
+                          : mobileOffsetBottom
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopOffsetBottom(value);
+                        } else {
+                          setMobileOffsetBottom(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopOffsetBottom(value);
+                        } else {
+                          setMobileOffsetBottom(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopOffsetLeft"
+                          : "mobileOffsetLeft"
+                      }
+                      label="Left"
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopOffsetLeft
+                          : mobileOffsetLeft
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopOffsetLeft(value);
+                        } else {
+                          setMobileOffsetLeft(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopOffsetLeft(value);
+                        } else {
+                          setMobileOffsetLeft(value);
+                        }
+                      }}
+                    ></s-number-field>
+                    <s-number-field
+                      name={
+                        activeTab === "desktop"
+                          ? "desktopOffsetRight"
+                          : "mobileOffsetRight"
+                      }
+                      label="Right"
+                      step={1}
+                      suffix="px"
+                      value={
+                        activeTab === "desktop"
+                          ? desktopOffsetRight
+                          : mobileOffsetRight
+                      }
+                      onInput={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopOffsetRight(value);
+                        } else {
+                          setMobileOffsetRight(value);
+                        }
+                      }}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        if (activeTab === "desktop") {
+                          setDesktopOffsetRight(value);
+                        } else {
+                          setMobileOffsetRight(value);
+                        }
+                      }}
+                    ></s-number-field>
+                  </div>
+                ))}
                 {renderDeviceSection("scroll", "Scroll", (
                   <s-stack direction="block" gap="base">
                     <s-checkbox
@@ -3125,6 +3333,10 @@ function applyConfigToForm(
     setDesktopPaddingBottom: (value: string) => void;
     setDesktopPaddingLeft: (value: string) => void;
     setDesktopPaddingRight: (value: string) => void;
+    setDesktopOffsetTop: (value: string) => void;
+    setDesktopOffsetBottom: (value: string) => void;
+    setDesktopOffsetLeft: (value: string) => void;
+    setDesktopOffsetRight: (value: string) => void;
     setDesktopBackground: (value: string) => void;
     setDesktopMaxWidth: (value: string) => void;
     setDesktopSmoothScroll: (value: boolean) => void;
@@ -3155,6 +3367,10 @@ function applyConfigToForm(
     setMobilePaddingBottom: (value: string) => void;
     setMobilePaddingLeft: (value: string) => void;
     setMobilePaddingRight: (value: string) => void;
+    setMobileOffsetTop: (value: string) => void;
+    setMobileOffsetBottom: (value: string) => void;
+    setMobileOffsetLeft: (value: string) => void;
+    setMobileOffsetRight: (value: string) => void;
     setMobileBackground: (value: string) => void;
     setMobileMaxWidth: (value: string) => void;
     setMobileSmoothScroll: (value: boolean) => void;
@@ -3198,6 +3414,10 @@ function applyConfigToForm(
   controls.setDesktopPaddingBottom(String(config.desktop.paddingBottom));
   controls.setDesktopPaddingLeft(String(config.desktop.paddingLeft));
   controls.setDesktopPaddingRight(String(config.desktop.paddingRight));
+  controls.setDesktopOffsetTop(String(config.desktop.offsetTop));
+  controls.setDesktopOffsetBottom(String(config.desktop.offsetBottom));
+  controls.setDesktopOffsetLeft(String(config.desktop.offsetLeft));
+  controls.setDesktopOffsetRight(String(config.desktop.offsetRight));
   controls.setDesktopBackground(config.desktop.background);
   controls.setDesktopMaxWidth(String(config.desktop.maxWidth));
   controls.setDesktopSmoothScroll(config.desktop.smoothScroll);
@@ -3240,6 +3460,10 @@ function applyConfigToForm(
   controls.setMobilePaddingBottom(String(config.mobile.paddingBottom));
   controls.setMobilePaddingLeft(String(config.mobile.paddingLeft));
   controls.setMobilePaddingRight(String(config.mobile.paddingRight));
+  controls.setMobileOffsetTop(String(config.mobile.offsetTop));
+  controls.setMobileOffsetBottom(String(config.mobile.offsetBottom));
+  controls.setMobileOffsetLeft(String(config.mobile.offsetLeft));
+  controls.setMobileOffsetRight(String(config.mobile.offsetRight));
   controls.setMobileBackground(config.mobile.background);
   controls.setMobileMaxWidth(String(config.mobile.maxWidth));
   controls.setMobileSmoothScroll(config.mobile.smoothScroll);
@@ -3292,6 +3516,10 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.desktop.paddingBottom === right.desktop.paddingBottom &&
     left.desktop.paddingLeft === right.desktop.paddingLeft &&
     left.desktop.paddingRight === right.desktop.paddingRight &&
+    left.desktop.offsetTop === right.desktop.offsetTop &&
+    left.desktop.offsetBottom === right.desktop.offsetBottom &&
+    left.desktop.offsetLeft === right.desktop.offsetLeft &&
+    left.desktop.offsetRight === right.desktop.offsetRight &&
     left.desktop.background === right.desktop.background &&
     left.desktop.maxWidth === right.desktop.maxWidth &&
     left.desktop.smoothScroll === right.desktop.smoothScroll &&
@@ -3325,6 +3553,10 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.mobile.paddingBottom === right.mobile.paddingBottom &&
     left.mobile.paddingLeft === right.mobile.paddingLeft &&
     left.mobile.paddingRight === right.mobile.paddingRight &&
+    left.mobile.offsetTop === right.mobile.offsetTop &&
+    left.mobile.offsetBottom === right.mobile.offsetBottom &&
+    left.mobile.offsetLeft === right.mobile.offsetLeft &&
+    left.mobile.offsetRight === right.mobile.offsetRight &&
     left.mobile.background === right.mobile.background &&
     left.mobile.maxWidth === right.mobile.maxWidth &&
     left.mobile.smoothScroll === right.mobile.smoothScroll &&
@@ -3540,6 +3772,26 @@ function HiddenDeviceFields({
       />
       <input
         type="hidden"
+        name={`${prefix}OffsetTop`}
+        value={String(config.offsetTop)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}OffsetBottom`}
+        value={String(config.offsetBottom)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}OffsetLeft`}
+        value={String(config.offsetLeft)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}OffsetRight`}
+        value={String(config.offsetRight)}
+      />
+      <input
+        type="hidden"
         name={`${prefix}Background`}
         value={config.background}
       />
@@ -3707,6 +3959,10 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       paddingBottom: String(formData.get("desktopPaddingBottom") || ""),
       paddingLeft: String(formData.get("desktopPaddingLeft") || ""),
       paddingRight: String(formData.get("desktopPaddingRight") || ""),
+      offsetTop: String(formData.get("desktopOffsetTop") || ""),
+      offsetBottom: String(formData.get("desktopOffsetBottom") || ""),
+      offsetLeft: String(formData.get("desktopOffsetLeft") || ""),
+      offsetRight: String(formData.get("desktopOffsetRight") || ""),
       background: String(
         formData.get("desktopBackground") || DEFAULT_CONFIG.desktop.background,
       ),
@@ -3771,6 +4027,10 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       paddingBottom: String(formData.get("mobilePaddingBottom") || ""),
       paddingLeft: String(formData.get("mobilePaddingLeft") || ""),
       paddingRight: String(formData.get("mobilePaddingRight") || ""),
+      offsetTop: String(formData.get("mobileOffsetTop") || ""),
+      offsetBottom: String(formData.get("mobileOffsetBottom") || ""),
+      offsetLeft: String(formData.get("mobileOffsetLeft") || ""),
+      offsetRight: String(formData.get("mobileOffsetRight") || ""),
       background: String(
         formData.get("mobileBackground") || DEFAULT_CONFIG.mobile.background,
       ),
@@ -4073,6 +4333,25 @@ function normalizeDeviceConfig(
       Number.isFinite(config.paddingRight)
         ? Math.max(0, config.paddingRight)
         : fallback.paddingRight,
+    offsetTop:
+      typeof config.offsetTop === "number" && Number.isFinite(config.offsetTop)
+        ? config.offsetTop
+        : fallback.offsetTop,
+    offsetBottom:
+      typeof config.offsetBottom === "number" &&
+      Number.isFinite(config.offsetBottom)
+        ? config.offsetBottom
+        : fallback.offsetBottom,
+    offsetLeft:
+      typeof config.offsetLeft === "number" &&
+      Number.isFinite(config.offsetLeft)
+        ? config.offsetLeft
+        : fallback.offsetLeft,
+    offsetRight:
+      typeof config.offsetRight === "number" &&
+      Number.isFinite(config.offsetRight)
+        ? config.offsetRight
+        : fallback.offsetRight,
     background:
       typeof config.background === "string" && config.background.trim()
         ? config.background.trim()
@@ -4186,6 +4465,10 @@ function coerceDeviceConfig(
   const paddingBottom = parseNonNegativeIntegerInput(input.paddingBottom);
   const paddingLeft = parseNonNegativeIntegerInput(input.paddingLeft);
   const paddingRight = parseNonNegativeIntegerInput(input.paddingRight);
+  const offsetTop = parseIntegerInput(input.offsetTop);
+  const offsetBottom = parseIntegerInput(input.offsetBottom);
+  const offsetLeft = parseIntegerInput(input.offsetLeft);
+  const offsetRight = parseIntegerInput(input.offsetRight);
   const maxWidth = parseNonNegativeIntegerInput(input.maxWidth);
   const scrollOffset = parseNonNegativeIntegerInput(input.scrollOffset);
   const headingsFontSize = parseNonNegativeIntegerInput(input.headingsFontSize);
@@ -4227,6 +4510,14 @@ function coerceDeviceConfig(
     paddingRight: Number.isFinite(paddingRight)
       ? paddingRight
       : fallback.paddingRight,
+    offsetTop: Number.isFinite(offsetTop) ? offsetTop : fallback.offsetTop,
+    offsetBottom: Number.isFinite(offsetBottom)
+      ? offsetBottom
+      : fallback.offsetBottom,
+    offsetLeft: Number.isFinite(offsetLeft) ? offsetLeft : fallback.offsetLeft,
+    offsetRight: Number.isFinite(offsetRight)
+      ? offsetRight
+      : fallback.offsetRight,
     background: input.background.trim() || fallback.background,
     maxWidth: Number.isFinite(maxWidth) ? maxWidth : fallback.maxWidth,
     smoothScroll: input.smoothScroll,
@@ -4276,6 +4567,10 @@ function coerceDeviceConfig(
   };
 }
 
+function clampPreviewOffset(value: number) {
+  return Math.max(-40, Math.min(40, value));
+}
+
 function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
   return {
     "--toc-background": device.background,
@@ -4287,6 +4582,10 @@ function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
     "--toc-padding-bottom": `${device.paddingBottom}px`,
     "--toc-padding-left": `${device.paddingLeft}px`,
     "--toc-padding-right": `${device.paddingRight}px`,
+    "--toc-offset-top": `${clampPreviewOffset(device.offsetTop)}px`,
+    "--toc-offset-bottom": `${clampPreviewOffset(device.offsetBottom)}px`,
+    "--toc-offset-left": `${clampPreviewOffset(device.offsetLeft)}px`,
+    "--toc-offset-right": `${clampPreviewOffset(device.offsetRight)}px`,
     "--toc-title-font-size": `${device.titleFontSize}px`,
     "--toc-title-font-color": device.titleFontColor,
     "--toc-title-font-weight": String(device.titleFontWeight),
@@ -4304,6 +4603,10 @@ function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
     "--toc-mobile-padding-bottom": `${device.paddingBottom}px`,
     "--toc-mobile-padding-left": `${device.paddingLeft}px`,
     "--toc-mobile-padding-right": `${device.paddingRight}px`,
+    "--toc-mobile-offset-top": `${clampPreviewOffset(device.offsetTop)}px`,
+    "--toc-mobile-offset-bottom": `${clampPreviewOffset(device.offsetBottom)}px`,
+    "--toc-mobile-offset-left": `${clampPreviewOffset(device.offsetLeft)}px`,
+    "--toc-mobile-offset-right": `${clampPreviewOffset(device.offsetRight)}px`,
     "--toc-mobile-background": device.background,
     "--toc-mobile-max-width":
       device.maxWidth > 0 ? `${device.maxWidth}px` : "none",
@@ -4343,6 +4646,26 @@ function getPreviewPlacementClass(
   }
 
   return "toc-preview-flow";
+}
+
+function getPreviewPlacementStyle(
+  previewDevice: "desktop" | "mobile",
+  device: TocDeviceConfig,
+): CSSProperties | undefined {
+  if (previewDevice !== "desktop") {
+    return undefined;
+  }
+
+  if (device.position !== "float-left" && device.position !== "float-right") {
+    return undefined;
+  }
+
+  return {
+    marginTop: `${clampPreviewOffset(device.offsetTop)}px`,
+    marginRight: `${clampPreviewOffset(device.offsetRight)}px`,
+    marginBottom: `${clampPreviewOffset(device.offsetBottom)}px`,
+    marginLeft: `${clampPreviewOffset(device.offsetLeft)}px`,
+  };
 }
 
 function TocPreview({
@@ -4483,7 +4806,10 @@ function TocPreview({
     </nav>
   );
   return (
-    <div className={getPreviewPlacementClass(previewDevice, device.position)}>
+    <div
+      className={getPreviewPlacementClass(previewDevice, device.position)}
+      style={getPreviewPlacementStyle(previewDevice, device)}
+    >
       {nav}
     </div>
   );
