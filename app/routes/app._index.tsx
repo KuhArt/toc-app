@@ -1260,6 +1260,7 @@ export default function Index() {
                       name="excludedBlogs"
                       label="Blog posts to exclude"
                       details="Comma-separated article handles or IDs where the table of contents should stay hidden"
+                      placeholder="news/today-is-the-best-day, 671373295959"
                       value={excludedBlogs}
                       onInput={(event) =>
                         setExcludedBlogs(event.currentTarget.value)
