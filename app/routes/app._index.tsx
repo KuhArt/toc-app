@@ -6,6 +6,8 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { css as cssLanguage } from "@codemirror/lang-css";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
@@ -78,11 +80,30 @@ type TocConfig = {
   minHeadings: number;
   mobileBreakpoint: number;
   excludedBlogs: string;
+  customCss: string;
   desktop: TocDeviceConfig;
   mobile: TocDeviceConfig;
 };
 
 const DEFAULT_MOBILE_BREAKPOINT = 768;
+const CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN = "{{mobileBreakpoint}}";
+const CUSTOM_CSS_EDITOR_EXTENSIONS = [cssLanguage()];
+const CUSTOM_CSS_REFERENCE_SELECTORS = [
+  ".toc-widget",
+  ".toc-widget__title",
+  ".toc-widget__list",
+  ".toc-widget__sublist",
+  ".toc-widget__item",
+  ".toc-widget__link",
+  ".toc-widget__link-label",
+  ".toc-widget__toggle",
+  ".toc-widget__fade",
+  ".toc-widget__fade--top",
+  ".toc-widget__fade--bottom",
+  ".toc-widget__fade-shim",
+  ".toc-widget-float",
+  ".toc-widget-float--left",
+] as const;
 
 const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
   position: "float-right",
@@ -158,6 +179,7 @@ const DEFAULT_CONFIG: TocConfig = {
   minHeadings: 3,
   mobileBreakpoint: DEFAULT_MOBILE_BREAKPOINT,
   excludedBlogs: "",
+  customCss: buildDefaultCustomCss(),
   desktop: DEFAULT_DESKTOP_CONFIG,
   mobile: DEFAULT_MOBILE_CONFIG,
 };
@@ -303,6 +325,69 @@ const FORM_STYLES = `
     color: #616161;
   }
 
+  .toc-code-field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .toc-code-field__label {
+    color: var(--p-color-text, #303030);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+  }
+
+  .toc-code-editor {
+    width: 100%;
+    min-height: 320px;
+    border: 1px solid var(--p-color-border-secondary, rgba(0, 0, 0, 0.08));
+    border-radius: 12px;
+    background: var(--p-color-bg-surface, #ffffff);
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .toc-code-editor:focus-within {
+    outline: 2px solid var(--p-color-border-focus, #005bd3);
+    outline-offset: 2px;
+  }
+
+  .toc-code-editor .cm-editor {
+    height: 320px;
+    background: transparent;
+  }
+
+  .toc-code-editor .cm-scroller {
+    height: 100%;
+    overflow: auto;
+    font: 400 12px/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+  }
+
+  .toc-code-editor .cm-content,
+  .toc-code-editor .cm-gutter {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .toc-code-editor .cm-content {
+    padding-left: 2px;
+  }
+
+  .toc-code-editor .cm-gutters {
+    border-right: 1px solid var(--p-color-border-secondary, rgba(0, 0, 0, 0.08));
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  .toc-code-editor .cm-activeLine,
+  .toc-code-editor .cm-activeLineGutter {
+    background: rgba(0, 91, 211, 0.06);
+  }
+
+  .toc-code-editor .cm-focused {
+    outline: none;
+  }
+
   .toc-inline-choices {
     display: flex;
     flex-wrap: nowrap;
@@ -429,7 +514,7 @@ const PREVIEW_STYLES = `
     margin-right: auto;
   }
 
-  .toc-preview-float .shopify-toc {
+  .toc-preview-float .toc-widget {
     box-sizing: border-box;
     width: 100%;
   }
@@ -471,6 +556,7 @@ type TocConfigInput = {
   minHeadings: string;
   mobileBreakpoint: string;
   excludedBlogs: string;
+  customCss: string;
   desktop: TocDeviceConfigInput;
   mobile: TocDeviceConfigInput;
 };
@@ -641,6 +727,7 @@ export default function Index() {
     String(config.mobileBreakpoint),
   );
   const [excludedBlogs, setExcludedBlogs] = useState(config.excludedBlogs);
+  const [customCss, setCustomCss] = useState(config.customCss);
   const [desktopPosition, setDesktopPosition] = useState(
     config.desktop.position,
   );
@@ -827,6 +914,7 @@ export default function Index() {
     minHeadings,
     mobileBreakpoint,
     excludedBlogs,
+    customCss,
     desktop: {
       position: desktopPosition,
       positionSelector: desktopPositionSelector,
@@ -908,6 +996,7 @@ export default function Index() {
       setMinHeadings,
       setMobileBreakpoint,
       setExcludedBlogs,
+      setCustomCss,
       setDesktopPosition,
       setDesktopPositionSelector,
       setDesktopBorderColor,
@@ -1038,6 +1127,12 @@ export default function Index() {
       <style>{tocStyles}</style>
       <style>{FORM_STYLES}</style>
       <style>{PREVIEW_STYLES}</style>
+      <style>
+        {compilePreviewCustomCss(
+          currentConfig.customCss,
+          currentConfig.mobileBreakpoint,
+        )}
+      </style>
       <SaveBar id={SAVE_BAR_ID} open={isDirty}>
         <button form={FORM_ID} type="reset" disabled={isSaving}>
           Discard
@@ -1103,6 +1198,7 @@ export default function Index() {
               setMinHeadings,
               setMobileBreakpoint,
               setExcludedBlogs,
+              setCustomCss,
               setDesktopPosition,
               setDesktopPositionSelector,
               setDesktopBorderColor,
@@ -1318,6 +1414,39 @@ export default function Index() {
                       }
                     ></s-checkbox>
                   </s-stack>
+                </s-section>
+                <s-section heading="Advanced settings">
+                  <div className="toc-field">
+                    <div className="toc-code-field">
+                      <span className="toc-code-field__label">Custom CSS</span>
+                      <span className="toc-field-details">
+                        Same classes work for desktop and mobile. Use
+                        {" "}
+                        {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN}
+                        {" "}
+                        for mobile-only rules.
+                      </span>
+                      <input
+                        name="customCss"
+                        type="hidden"
+                        value={customCss}
+                      />
+                      <div className="toc-code-editor">
+                        <CodeMirror
+                          value={customCss}
+                          height="320px"
+                          aria-label="Custom CSS"
+                          extensions={CUSTOM_CSS_EDITOR_EXTENSIONS}
+                          basicSetup={{
+                            foldGutter: false,
+                            highlightActiveLine: true,
+                            lineNumbers: true,
+                          }}
+                          onChange={(value) => setCustomCss(value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </s-section>
               </>
             ) : (
@@ -2409,6 +2538,10 @@ function parseConfig(value: unknown): TocConfig {
         typeof rest.excludedBlogs === "string"
           ? normalizeExcludedBlogsInput(rest.excludedBlogs)
           : DEFAULT_CONFIG.excludedBlogs,
+      customCss:
+        typeof rest.customCss === "string"
+          ? normalizeCustomCssInput(rest.customCss)
+          : DEFAULT_CONFIG.customCss,
       desktop: normalizeDeviceConfig(rest.desktop, defaultDesktop, "desktop"),
       mobile: normalizeDeviceConfig(rest.mobile, defaultMobile, "mobile"),
     } as TocConfig;
@@ -2428,6 +2561,7 @@ function applyConfigToForm(
     setMinHeadings: (value: string) => void;
     setMobileBreakpoint: (value: string) => void;
     setExcludedBlogs: (value: string) => void;
+    setCustomCss: (value: string) => void;
     setDesktopPosition: (value: TocDesktopPosition) => void;
     setDesktopPositionSelector: (value: string) => void;
     setDesktopBorderColor: (value: string) => void;
@@ -2498,6 +2632,7 @@ function applyConfigToForm(
   controls.setMinHeadings(String(config.minHeadings));
   controls.setMobileBreakpoint(String(config.mobileBreakpoint));
   controls.setExcludedBlogs(config.excludedBlogs);
+  controls.setCustomCss(config.customCss);
   controls.setDesktopPosition(
     normalizeDesktopPosition(config.desktop.position),
   );
@@ -2593,6 +2728,7 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.minHeadings === right.minHeadings &&
     left.mobileBreakpoint === right.mobileBreakpoint &&
     left.excludedBlogs === right.excludedBlogs &&
+    left.customCss === right.customCss &&
     left.desktop.position === right.desktop.position &&
     left.desktop.positionSelector === right.desktop.positionSelector &&
     left.desktop.color === right.desktop.color &&
@@ -2803,6 +2939,7 @@ function HiddenGeneralFields({ config }: { config: TocConfig }) {
         value={String(config.mobileBreakpoint)}
       />
       <input type="hidden" name="excludedBlogs" value={config.excludedBlogs} />
+      <input type="hidden" name="customCss" value={config.customCss} />
       <input type="hidden" name="textAlignment" value={config.textAlignment} />
       <input type="hidden" name="markerFormat" value={config.markerFormat} />
       {config.indentation ? (
@@ -2969,6 +3106,7 @@ function coerceConfig(input: TocConfigInput): TocConfig {
   const minHeadings = parseIntegerInput(input.minHeadings);
   const mobileBreakpoint = parseNonNegativeIntegerInput(input.mobileBreakpoint);
   const excludedBlogs = normalizeExcludedBlogsInput(input.excludedBlogs);
+  const customCss = normalizeCustomCssInput(input.customCss);
 
   return {
     title: title || DEFAULT_CONFIG.title,
@@ -2985,6 +3123,7 @@ function coerceConfig(input: TocConfigInput): TocConfig {
       ? mobileBreakpoint
       : DEFAULT_CONFIG.mobileBreakpoint,
     excludedBlogs,
+    customCss,
     desktop: coerceDeviceConfig(
       input.desktop,
       DEFAULT_CONFIG.desktop,
@@ -3010,6 +3149,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
     minHeadings: String(formData.get("minHeadings") || ""),
     mobileBreakpoint: String(formData.get("mobileBreakpoint") || ""),
     excludedBlogs: String(formData.get("excludedBlogs") || ""),
+    customCss: String(formData.get("customCss") || ""),
     desktop: {
       position: String(
         formData.get("desktopPosition") || DEFAULT_CONFIG.desktop.position,
@@ -3163,6 +3303,140 @@ function normalizeExcludedBlogsInput(value: string): string {
     .map((entry) => entry.trim())
     .filter(Boolean)
     .join(", ");
+}
+
+function normalizeCustomCssInput(value: string): string {
+  return value.replace(/\r\n?/g, "\n");
+}
+
+function compileCustomCss(customCss: string, mobileBreakpoint: number): string {
+  return normalizeCustomCssInput(customCss).replaceAll(
+    CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN,
+    `${mobileBreakpoint}px`,
+  );
+}
+
+function compilePreviewCustomCss(
+  customCss: string,
+  mobileBreakpoint: number,
+): string {
+  const normalizedCss = normalizeCustomCssInput(customCss);
+  const compiledCss = compileCustomCss(normalizedCss, mobileBreakpoint);
+  const previewMobileCss = extractPreviewMobileCss(normalizedCss);
+
+  if (!previewMobileCss.trim()) {
+    return compiledCss;
+  }
+
+  return `${compiledCss}\n${compileCustomCss(previewMobileCss, mobileBreakpoint)}`;
+}
+
+function extractPreviewMobileCss(customCss: string): string {
+  const mediaPattern =
+    /@media\s*\(\s*max-width\s*:\s*\{\{mobileBreakpoint\}\}\s*\)\s*\{/g;
+  const scopedBlocks: string[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = mediaPattern.exec(customCss))) {
+    const blockStart = match.index + match[0].length - 1;
+    const blockEnd = findMatchingBrace(customCss, blockStart);
+
+    if (blockEnd === -1) {
+      continue;
+    }
+
+    const blockContent = customCss.slice(blockStart + 1, blockEnd);
+    const scopedBlock = scopeCssToPreviewMobile(blockContent);
+
+    if (scopedBlock.trim()) {
+      scopedBlocks.push(scopedBlock);
+    }
+
+    mediaPattern.lastIndex = blockEnd + 1;
+  }
+
+  return scopedBlocks.join("\n");
+}
+
+function scopeCssToPreviewMobile(css: string): string {
+  let index = 0;
+  let output = "";
+
+  while (index < css.length) {
+    const nextOpenBrace = css.indexOf("{", index);
+
+    if (nextOpenBrace === -1) {
+      output += css.slice(index);
+      break;
+    }
+
+    const selectorText = css.slice(index, nextOpenBrace);
+    const selectorTrimmed = selectorText.trim();
+    const blockEnd = findMatchingBrace(css, nextOpenBrace);
+
+    if (blockEnd === -1) {
+      output += css.slice(index);
+      break;
+    }
+
+    const declarations = css.slice(nextOpenBrace + 1, blockEnd);
+
+    if (!selectorTrimmed) {
+      index = blockEnd + 1;
+      continue;
+    }
+
+    if (selectorTrimmed.startsWith("@")) {
+      output += `${selectorText}{${scopeCssToPreviewMobile(declarations)}}`;
+      index = blockEnd + 1;
+      continue;
+    }
+
+    output += `${prefixCssSelectors(selectorText, ".toc-preview-mobile")}{${declarations}}`;
+    index = blockEnd + 1;
+  }
+
+  return output;
+}
+
+function prefixCssSelectors(selectorText: string, prefix: string): string {
+  return selectorText
+    .split(",")
+    .map((selector) => {
+      const trimmedSelector = selector.trim();
+
+      if (!trimmedSelector) {
+        return selector;
+      }
+
+      return `${prefix} ${trimmedSelector}`;
+    })
+    .join(", ");
+}
+
+function findMatchingBrace(value: string, openBraceIndex: number): number {
+  let depth = 0;
+
+  for (let index = openBraceIndex; index < value.length; index += 1) {
+    const character = value[index];
+
+    if (character === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (character !== "}") {
+      continue;
+    }
+
+    depth -= 1;
+
+    if (depth === 0) {
+      return index;
+    }
+  }
+
+  return -1;
 }
 
 function parseIntegerInput(value: string): number {
@@ -3622,18 +3896,21 @@ function TocPreview({
 
   const nav = (
     <nav
-      className={`shopify-toc shopify-toc--align-${textAlignment} shopify-toc--markers-${markerFormat}${!indentation ? " shopify-toc--flat" : ""}${showToggle ? " shopify-toc--show-more-active" : ""}${showToggle && expanded ? " shopify-toc--expanded" : ""}`}
+      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}`}
       aria-label="Table of contents preview"
       data-device={previewDevice}
       onClick={(event) => event.preventDefault()}
       style={getPreviewContainerStyle(device)}
     >
       {device.showTitle ? (
-        <div className="shopify-toc__title">{preview.title}</div>
+        <div className="toc-widget__title">{preview.title}</div>
       ) : null}
       {showToggle ? (
-        <div className="toc-fade toc-fade--top" hidden={!showTopFade}>
-          <span className="toc-fade__shim"></span>
+        <div
+          className="toc-widget__fade toc-widget__fade--top"
+          hidden={!showTopFade}
+        >
+          <span className="toc-widget__fade-shim"></span>
         </div>
       ) : null}
       <PreviewTocList
@@ -3643,17 +3920,17 @@ function TocPreview({
       />
       {showToggle ? (
         <div
-          className="toc-fade toc-fade--bottom"
+          className="toc-widget__fade toc-widget__fade--bottom"
           aria-hidden="true"
           hidden={!showBottomFade}
         >
-          <span className="toc-fade__shim"></span>
+          <span className="toc-widget__fade-shim"></span>
         </div>
       ) : null}
       {showToggle ? (
         <button
           type="button"
-          className="shopify-toc__toggle"
+          className="toc-widget__toggle"
           onClick={() => {
             setExpanded((current) => !current);
           }}
@@ -3678,7 +3955,7 @@ const PreviewTocList = forwardRef<
   }
 >(function PreviewTocList({ items, activeId }, ref) {
   return (
-    <ul ref={ref} className="shopify-toc__list">
+    <ul ref={ref} className="toc-widget__list">
       {items.map((item) => (
         <PreviewTocListItem key={item.id} item={item} activeId={activeId} />
       ))}
@@ -3694,15 +3971,15 @@ function PreviewTocListItem({
   activeId: string;
 }) {
   return (
-    <li>
+    <li className="toc-widget__item">
       <a
         href={`#${item.id}`}
-        className={item.id === activeId ? "is-current" : undefined}
+        className={`toc-widget__link${item.id === activeId ? " toc-widget__link--current" : ""}`}
       >
-        <span className="shopify-toc__link-label">{item.title}</span>
+        <span className="toc-widget__link-label">{item.title}</span>
       </a>
       {item.children.length ? (
-        <ul className="shopify-toc__sublist">
+        <ul className="toc-widget__sublist">
           {item.children.map((child) => (
             <PreviewTocListItem
               key={child.id}
@@ -3795,4 +4072,11 @@ function buildPreviewTocItems(headings: PreviewHeading[]): PreviewTocItem[] {
   });
 
   return root;
+}
+
+function buildDefaultCustomCss() {
+  return CUSTOM_CSS_REFERENCE_SELECTORS.map(
+    (selector) =>
+      `${selector} {\n\n}\n\n@media (max-width: ${CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN}) {\n  ${selector} {\n\n  }\n}`,
+  ).join("\n\n");
 }

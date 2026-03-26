@@ -1,6 +1,8 @@
 (() => {
   const DEFAULT_TOP_OFFSET = 80;
   const DEFAULT_MOBILE_BREAKPOINT = 768;
+  const CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN = "{{mobileBreakpoint}}";
+  const CUSTOM_CSS_STYLE_ID = "toc-custom-css";
   const DEBUG_PREFIX = "[TOC]";
   const TOC_HEADING_ID_ATTRIBUTE = "data-shopify-toc-id";
   const TOC_GENERATED_ID_ATTRIBUTE = "data-shopify-toc-generated-id";
@@ -123,6 +125,7 @@
     DEFAULT_MOBILE_CONTAINER,
     "mobile",
   );
+  const customCss = compileCustomCss(cfg.customCss, mobileBreakpoint);
 
   const selectors = [
     ".article-template__content",
@@ -202,23 +205,24 @@
 
   // 5) Build TOC markup
   const toc = document.createElement("nav");
-  toc.className = "shopify-toc";
+  toc.className = "toc-widget";
   if (cfg.indentation === false) {
-    toc.classList.add("shopify-toc--flat");
+    toc.classList.add("toc-widget--flat");
   }
   toc.classList.add(
-    `shopify-toc--align-${normalizeTextAlignment(cfg.textAlignment)}`,
+    `toc-widget--align-${normalizeTextAlignment(cfg.textAlignment)}`,
   );
   toc.classList.add(
-    `shopify-toc--markers-${normalizeMarkerFormat(cfg.markerFormat)}`,
+    `toc-widget--markers-${normalizeMarkerFormat(cfg.markerFormat)}`,
   );
   const syncDeviceState = () => {
     toc.dataset.device = isDesktopViewport() ? "desktop" : "mobile";
   };
   syncDeviceState();
   applyDeviceConfig(toc, desktopConfig, mobileConfig);
+  applyCustomCss(customCss);
   const title = document.createElement("div");
-  title.className = "shopify-toc__title";
+  title.className = "toc-widget__title";
   title.textContent = cfg.title || "Contents";
   const syncTitleVisibility = () => {
     title.hidden = !getActiveConfig().showTitle;
@@ -227,9 +231,9 @@
   toc.appendChild(title);
 
   const topFade = document.createElement("div");
-  topFade.className = "toc-fade toc-fade--top";
+  topFade.className = "toc-widget__fade toc-widget__fade--top";
   const topFadeShim = document.createElement("span");
-  topFadeShim.className = "toc-fade__shim";
+  topFadeShim.className = "toc-widget__fade-shim";
   topFade.setAttribute("aria-hidden", "true");
   topFade.appendChild(topFadeShim);
   topFade.hidden = true;
@@ -239,7 +243,7 @@
   toc.appendChild(list);
 
   const linksById = new Map(
-    Array.from(list.querySelectorAll("a")).map((a) => [
+    Array.from(list.querySelectorAll(".toc-widget__link")).map((a) => [
       decodeURIComponent((a.getAttribute("href") || "").slice(1)),
       a,
     ]),
@@ -247,9 +251,9 @@
   let currentLink = null;
 
   const bottomFade = document.createElement("div");
-  bottomFade.className = "toc-fade toc-fade--bottom";
+  bottomFade.className = "toc-widget__fade toc-widget__fade--bottom";
   const bottomFadeShim = document.createElement("span");
-  bottomFadeShim.className = "toc-fade__shim";
+  bottomFadeShim.className = "toc-widget__fade-shim";
   bottomFade.setAttribute("aria-hidden", "true");
   bottomFade.appendChild(bottomFadeShim);
   bottomFade.hidden = true;
@@ -257,7 +261,7 @@
 
   const toggle = document.createElement("button");
   toggle.type = "button";
-  toggle.className = "shopify-toc__toggle";
+  toggle.className = "toc-widget__toggle";
   toggle.hidden = true;
   toggle.setAttribute("aria-expanded", "false");
   toggle.textContent = desktopConfig.showMoreButtonText;
@@ -311,7 +315,7 @@
 
     if (target.kind === "float-left" || target.kind === "float-right") {
       floatHost = floatHost || document.createElement("div");
-      floatHost.className = `shopify-toc-float shopify-toc-float--${target.kind.replace("float-", "")}`;
+      floatHost.className = `toc-widget-float toc-widget-float--${target.kind.replace("float-", "")}`;
       if (!floatHost.isConnected) {
         document.body.appendChild(floatHost);
       }
@@ -347,7 +351,7 @@
       return list.scrollHeight > toggleHeight + 1;
     };
     const refreshFades = () => {
-      if (!toc.classList.contains("shopify-toc--show-more-active")) {
+      if (!toc.classList.contains("toc-widget--show-more-active")) {
         topFade.hidden = true;
         bottomFade.hidden = true;
         return;
@@ -364,7 +368,7 @@
       bottomFade.hidden = maxScrollTop - list.scrollTop <= 1;
     };
     const syncToggleLabel = (activeConfig) => {
-      const expanded = toc.classList.contains("shopify-toc--expanded");
+      const expanded = toc.classList.contains("toc-widget--expanded");
       toggle.textContent = expanded
         ? activeConfig.showLessButtonText
         : activeConfig.showMoreButtonText;
@@ -375,10 +379,10 @@
       const showToggle = activeConfig.showButton && needsToggle(activeConfig);
 
       syncTitleVisibility();
-      toc.classList.toggle("shopify-toc--show-more-active", showToggle);
+      toc.classList.toggle("toc-widget--show-more-active", showToggle);
 
       if (!showToggle) {
-        toc.classList.remove("shopify-toc--expanded");
+        toc.classList.remove("toc-widget--expanded");
         toggle.hidden = true;
         topFade.hidden = true;
         bottomFade.hidden = true;
@@ -399,7 +403,7 @@
       { passive: true },
     );
     toggle.addEventListener("click", () => {
-      toc.classList.toggle("shopify-toc--expanded");
+      toc.classList.toggle("toc-widget--expanded");
       syncToggleLabel(getActiveConfig());
       refreshFades();
     });
@@ -425,8 +429,8 @@
 
     const nextLink = linksById.get(currentId || "");
     if (!nextLink || nextLink === currentLink) return;
-    currentLink?.classList.remove("is-current");
-    nextLink.classList.add("is-current");
+    currentLink?.classList.remove("toc-widget__link--current");
+    nextLink.classList.add("toc-widget__link--current");
     currentLink = nextLink;
     keepCurrentLinkVisible(nextLink);
   };
@@ -448,7 +452,7 @@
     applyHeadingScrollMargins();
     if (toc.dataset.device !== previousDevice) {
       list.scrollTop = 0;
-      toc.classList.remove("shopify-toc--expanded");
+      toc.classList.remove("toc-widget--expanded");
     }
     applyResponsiveState();
     onScrollOrResize();
@@ -460,7 +464,7 @@
 
   // smooth scroll
   toc.addEventListener("click", (e) => {
-    const a = e.target.closest("a");
+    const a = e.target.closest(".toc-widget__link");
     if (!a) return;
     e.preventDefault();
     const id = decodeURIComponent((a.getAttribute("href") || "").slice(1));
@@ -493,6 +497,36 @@
     return typeof value === "number" && Number.isFinite(value)
       ? Math.max(0, value)
       : fallback;
+  }
+
+  function compileCustomCss(value, mobileBreakpointValue) {
+    if (typeof value !== "string") return "";
+
+    return value.replaceAll(
+      CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN,
+      `${mobileBreakpointValue}px`,
+    );
+  }
+
+  function applyCustomCss(cssText) {
+    const existing = document.getElementById(CUSTOM_CSS_STYLE_ID);
+
+    if (!cssText || !cssText.trim()) {
+      existing?.remove();
+      return;
+    }
+
+    const style =
+      existing ||
+      Object.assign(document.createElement("style"), {
+        id: CUSTOM_CSS_STYLE_ID,
+      });
+
+    style.textContent = cssText;
+
+    if (!style.isConnected) {
+      document.head.appendChild(style);
+    }
   }
 
   function normalizeDesktopPosition(value) {
@@ -819,7 +853,7 @@
 
   function buildNestedList(nodes) {
     const root = document.createElement("ul");
-    root.className = "shopify-toc__list";
+    root.className = "toc-widget__list";
 
     const levels = nodes.map((h) => Number(h.tagName.replace("H", "")));
     const minLevel = Math.min(...levels);
@@ -841,17 +875,19 @@
 
       while (currentDepth < targetDepth && prevItem) {
         const nested = document.createElement("ul");
-        nested.className = "shopify-toc__sublist";
+        nested.className = "toc-widget__sublist";
         prevItem.appendChild(nested);
         stack.push(nested);
         currentDepth += 1;
       }
 
       const li = document.createElement("li");
+      li.className = "toc-widget__item";
       const a = document.createElement("a");
+      a.className = "toc-widget__link";
       const label = document.createElement("span");
       const anchorId = getHeadingAnchorId(h);
-      label.className = "shopify-toc__link-label";
+      label.className = "toc-widget__link-label";
       a.setAttribute("href", `#${encodeURIComponent(anchorId)}`);
       label.textContent = (h.textContent || "").trim();
       a.appendChild(label);
