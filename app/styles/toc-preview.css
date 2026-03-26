@@ -75,6 +75,7 @@
   color: var(--toc-active-title-font-color);
   font-size: var(--toc-active-title-font-size);
   font-weight: var(--toc-active-title-font-weight);
+  line-height: 1.6;
 }
 
 .toc-widget__list {
@@ -172,6 +173,7 @@
   font-size: var(--toc-active-headings-font-size);
   color: var(--toc-active-headings-font-color);
   font-weight: var(--toc-active-headings-font-weight);
+  line-height: 1.6;
   text-decoration: none;
   cursor: pointer;
 }
