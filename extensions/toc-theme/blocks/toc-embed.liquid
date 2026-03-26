@@ -6,15 +6,32 @@
 {% assign should_render_toc = true %}
 {% assign current_article_handle = article.handle | downcase %}
 {% assign current_article_id = article.id | append: '' %}
+{% assign current_article_url = article.url | downcase %}
+{% assign current_article_slug = current_article_url | remove_first: '/blogs/' %}
 {% assign raw_excluded_blogs = cfg.excludedBlogs | default: '' | split: ',' %}
 {% capture normalized_excluded_blogs_csv %}{% for excluded_blog in raw_excluded_blogs %}{% assign normalized_excluded_blog = excluded_blog | strip | downcase %}{% if normalized_excluded_blog != blank %}{% unless forloop.first %}|{% endunless %}{{ normalized_excluded_blog }}{% endif %}{% endfor %}{% endcapture %}
 {% assign excluded_blogs = normalized_excluded_blogs_csv | split: '|' %}
 
 {% for excluded_blog in excluded_blogs %}
   {% if excluded_blog != blank %}
-    {% if excluded_blog == current_article_handle or excluded_blog == current_article_id %}
-      {% assign should_render_toc = false %}
-      {% break %}
+    {% assign excluded_blog_last_char = excluded_blog | slice: -1, 1 %}
+
+    {% if excluded_blog_last_char == '*' %}
+      {% assign excluded_blog_prefix = excluded_blog | split: '*' | first %}
+      {% assign excluded_blog_prefix_size = excluded_blog_prefix | size %}
+      {% assign current_article_handle_prefix = current_article_handle | slice: 0, excluded_blog_prefix_size %}
+      {% assign current_article_slug_prefix = current_article_slug | slice: 0, excluded_blog_prefix_size %}
+      {% assign current_article_url_prefix = current_article_url | slice: 0, excluded_blog_prefix_size %}
+
+      {% if current_article_handle_prefix == excluded_blog_prefix or current_article_slug_prefix == excluded_blog_prefix or current_article_url_prefix == excluded_blog_prefix %}
+        {% assign should_render_toc = false %}
+        {% break %}
+      {% endif %}
+    {% else %}
+      {% if excluded_blog == current_article_handle or excluded_blog == current_article_slug or excluded_blog == current_article_url or excluded_blog == current_article_id %}
+        {% assign should_render_toc = false %}
+        {% break %}
+      {% endif %}
     {% endif %}
   {% endif %}
 {% endfor %}
@@ -23,6 +40,8 @@
   {
     "renderEnabled": {{ should_render_toc | json }},
     "currentArticleHandle": {{ current_article_handle | json }},
+    "currentArticleSlug": {{ current_article_slug | json }},
+    "currentArticleUrl": {{ current_article_url | json }},
     "currentArticleId": {{ current_article_id | json }},
     "excludedBlogs": {{ excluded_blogs | json }}
   }

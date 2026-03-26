@@ -1972,8 +1972,8 @@ export default function Index() {
                       <s-text-field
                         name="excludedBlogs"
                         label="Blog posts to exclude"
-                        details="Comma-separated article handles or IDs where the table of contents should stay hidden"
-                        placeholder="news/today-is-the-best-day, 671373295959"
+                        details="Comma-separated article IDs, exact slugs, or suffix wildcard patterns like news/* where the table of contents should stay hidden"
+                        placeholder="news/*, news/today-is-the-best-day, 671373295959"
                         value={excludedBlogs}
                         onInput={(event) =>
                           setExcludedBlogs(event.currentTarget.value)
