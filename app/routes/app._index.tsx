@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -411,6 +412,10 @@ const PREVIEW_STYLES = `
 
   .toc-preview-stage {
     overflow: hidden;
+  }
+
+  .toc-preview-desktop {
+    overflow: visible;
   }
 
   .toc-preview-float {
@@ -3539,7 +3544,29 @@ function TocPreview({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [needsToggle, setNeedsToggle] = useState(false);
+  const [showTopFade, setShowTopFade] = useState(false);
+  const [showBottomFade, setShowBottomFade] = useState(false);
   const listRef = useRef<HTMLUListElement | null>(null);
+
+  const refreshFades = useCallback(() => {
+    const list = listRef.current;
+
+    if (!list || !device.showButton || !needsToggle) {
+      setShowTopFade(false);
+      setShowBottomFade(false);
+      return;
+    }
+
+    const maxScrollTop = list.scrollHeight - list.clientHeight;
+    if (maxScrollTop <= 1) {
+      setShowTopFade(false);
+      setShowBottomFade(false);
+      return;
+    }
+
+    setShowTopFade(list.scrollTop > 1);
+    setShowBottomFade(maxScrollTop - list.scrollTop > 1);
+  }, [device.showButton, needsToggle]);
 
   useEffect(() => {
     if (!needsToggle) {
@@ -3575,6 +3602,19 @@ function TocPreview({
     textAlignment,
   ]);
 
+  useEffect(() => {
+    const list = listRef.current;
+
+    if (!list) {
+      return;
+    }
+
+    refreshFades();
+    list.addEventListener("scroll", refreshFades, { passive: true });
+
+    return () => list.removeEventListener("scroll", refreshFades);
+  }, [refreshFades]);
+
   if (!preview.showToc) return null;
 
   const showToggle = device.showButton && needsToggle;
@@ -3591,7 +3631,7 @@ function TocPreview({
         <div className="shopify-toc__title">{preview.title}</div>
       ) : null}
       {showToggle ? (
-        <div className="toc-fade toc-fade--top" hidden={!expanded}>
+        <div className="toc-fade toc-fade--top" hidden={!showTopFade}>
           <span className="toc-fade__shim"></span>
         </div>
       ) : null}
@@ -3604,7 +3644,7 @@ function TocPreview({
         <div
           className="toc-fade toc-fade--bottom"
           aria-hidden="true"
-          hidden={expanded}
+          hidden={!showBottomFade}
         >
           <span className="toc-fade__shim"></span>
         </div>
@@ -3613,7 +3653,9 @@ function TocPreview({
         <button
           type="button"
           className="shopify-toc__toggle"
-          onClick={() => setExpanded((current) => !current)}
+          onClick={() => {
+            setExpanded((current) => !current);
+          }}
         >
           {expanded ? device.showLessButtonText : device.showMoreButtonText}
         </button>

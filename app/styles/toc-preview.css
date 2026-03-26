@@ -230,6 +230,7 @@
   height: calc(var(--spacing) * 6);
   display: block;
   position: relative;
+  z-index: 1;
 }
 
 .toc-fade--top {

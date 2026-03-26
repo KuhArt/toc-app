@@ -347,17 +347,21 @@
       return list.scrollHeight > toggleHeight + 1;
     };
     const refreshFades = () => {
-      if (
-        !toc.classList.contains("shopify-toc--show-more-active") ||
-        toc.classList.contains("shopify-toc--expanded")
-      ) {
+      if (!toc.classList.contains("shopify-toc--show-more-active")) {
+        topFade.hidden = true;
+        bottomFade.hidden = true;
+        return;
+      }
+
+      const maxScrollTop = list.scrollHeight - list.clientHeight;
+      if (maxScrollTop <= 1) {
         topFade.hidden = true;
         bottomFade.hidden = true;
         return;
       }
 
       topFade.hidden = list.scrollTop <= 1;
-      bottomFade.hidden = false;
+      bottomFade.hidden = maxScrollTop - list.scrollTop <= 1;
     };
     const syncToggleLabel = (activeConfig) => {
       const expanded = toc.classList.contains("shopify-toc--expanded");
