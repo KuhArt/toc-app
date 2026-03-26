@@ -288,6 +288,7 @@ const FORM_STYLES = `
   .toc-field {
     display: grid;
     gap: 0;
+    margin-block-end: 0;
   }
 
   .toc-field-details {
@@ -324,6 +325,30 @@ const FORM_STYLES = `
     gap: 12px;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: start;
+  }
+
+  .toc-subsection {
+    display: grid;
+    gap: 7px;
+    align-items: start;
+  }
+
+  .toc-subsection:first-of-type {
+    margin-top: 14px;
+  }
+
+  .toc-subsection + .toc-subsection {
+    margin-top: 4px;
+    padding-top: 16px;
+    border-top: 1px solid var(--p-color-border-secondary, rgba(0, 0, 0, 0.08));
+  }
+
+  .toc-subsection-title {
+    margin: 0;
+    color: #616161;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 16px;
   }
 
   @media (max-width: 900px) {
@@ -385,22 +410,15 @@ const PREVIEW_STYLES = `
     overflow: hidden;
   }
 
-  .toc-preview-desktop {
-    position: relative;
-    min-height: 420px;
-  }
-
   .toc-preview-float {
-    position: absolute;
-    top: 0;
-    right: 0;
     width: min(320px, 100%);
     max-width: 100%;
+    margin-left: auto;
   }
 
   .toc-preview-float--left {
-    left: 0;
-    right: auto;
+    margin-left: 0;
+    margin-right: auto;
   }
 
   .toc-preview-float .shopify-toc {
@@ -1142,137 +1160,142 @@ export default function Index() {
               />
             ) : null}
             {activeTab === "general" ? (
-              <s-section heading="General">
-                <>
-                  <s-text-field
-                    name="title"
-                    label="Title"
-                    details="Shown at the top of the table of contents"
-                    value={title}
-                    onInput={(event) => setTitle(event.currentTarget.value)}
-                    onChange={(event) => setTitle(event.currentTarget.value)}
-                  ></s-text-field>
-                  <div className="toc-field">
-                    <s-text>Heading levels</s-text>
-                    <div
-                      className="toc-inline-choices"
-                      role="group"
-                      aria-label="Heading levels"
+              <>
+                <s-section heading="General">
+                  <s-stack direction="block" gap="base">
+                    <s-text-field
+                      name="title"
+                      label="Title"
+                      details="Shown at the top of the table of contents"
+                      value={title}
+                      onInput={(event) => setTitle(event.currentTarget.value)}
+                      onChange={(event) => setTitle(event.currentTarget.value)}
+                    ></s-text-field>
+                    <div className="toc-field">
+                      <s-text>Heading levels</s-text>
+                      <div
+                        className="toc-inline-choices"
+                        role="group"
+                        aria-label="Heading levels"
+                      >
+                        {HEADING_LEVEL_OPTIONS.map((level) => (
+                          <s-checkbox
+                            key={level}
+                            name="headingLevels"
+                            value={String(level)}
+                            label={`H${level}`}
+                            checked={headingLevels.includes(level)}
+                            onChange={(event) => {
+                              const checked = event.currentTarget.checked;
+
+                              setHeadingLevels((current) => {
+                                const next = checked
+                                  ? normalizeHeadingLevels([...current, level])
+                                  : current.filter(
+                                      (currentLevel) => currentLevel !== level,
+                                    );
+
+                                return next.length ? next : current;
+                              });
+                            }}
+                          ></s-checkbox>
+                        ))}
+                      </div>
+                      <div className="toc-field-details">
+                        Choose which article headings should appear in the
+                        table of contents.
+                      </div>
+                    </div>
+                    <s-text-field
+                      name="minHeadings"
+                      label="Minimum headings to show"
+                      details="Hide the table of contents until this many selected headings are found"
+                      value={minHeadings}
+                      onInput={(event) =>
+                        setMinHeadings(event.currentTarget.value)
+                      }
+                      onChange={(event) =>
+                        setMinHeadings(event.currentTarget.value)
+                      }
+                    ></s-text-field>
+                    <s-number-field
+                      name="mobileBreakpoint"
+                      label="Mobile breakpoint"
+                      details="Use mobile styles at this width and below"
+                      min={0}
+                      step={1}
+                      suffix="px"
+                      value={mobileBreakpoint}
+                      onInput={(event) =>
+                        setMobileBreakpoint(event.currentTarget.value)
+                      }
+                      onChange={(event) =>
+                        setMobileBreakpoint(event.currentTarget.value)
+                      }
+                    ></s-number-field>
+                    <s-text-field
+                      name="excludedBlogs"
+                      label="Blog posts to exclude"
+                      details="Comma-separated article handles or IDs where the table of contents should stay hidden"
+                      value={excludedBlogs}
+                      onInput={(event) =>
+                        setExcludedBlogs(event.currentTarget.value)
+                      }
+                      onChange={(event) =>
+                        setExcludedBlogs(event.currentTarget.value)
+                      }
+                    ></s-text-field>
+                  </s-stack>
+                </s-section>
+                <s-section heading="Text Formatting">
+                  <s-stack direction="block" gap="base">
+                    <s-select
+                      name="textAlignment"
+                      label="Text alignment"
+                      details="Align the title and links inside the table of contents"
+                      value={textAlignment}
+                      onChange={(event) =>
+                        setTextAlignment(
+                          normalizeTextAlignment(event.currentTarget.value),
+                        )
+                      }
                     >
-                      {HEADING_LEVEL_OPTIONS.map((level) => (
-                        <s-checkbox
-                          key={level}
-                          name="headingLevels"
-                          value={String(level)}
-                          label={`H${level}`}
-                          checked={headingLevels.includes(level)}
-                          onChange={(event) => {
-                            const checked = event.currentTarget.checked;
-
-                            setHeadingLevels((current) => {
-                              const next = checked
-                                ? normalizeHeadingLevels([...current, level])
-                                : current.filter(
-                                    (currentLevel) => currentLevel !== level,
-                                  );
-
-                              return next.length ? next : current;
-                            });
-                          }}
-                        ></s-checkbox>
+                      {TEXT_ALIGNMENT_OPTIONS.map((option) => (
+                        <s-option key={option.value} value={option.value}>
+                          {option.label}
+                        </s-option>
                       ))}
-                    </div>
-                    <div className="toc-field-details">
-                      Choose which article headings should appear in the table
-                      of contents.
-                    </div>
-                  </div>
-                  <s-text-field
-                    name="minHeadings"
-                    label="Minimum headings to show"
-                    details="Hide the table of contents until this many selected headings are found"
-                    value={minHeadings}
-                    onInput={(event) =>
-                      setMinHeadings(event.currentTarget.value)
-                    }
-                    onChange={(event) =>
-                      setMinHeadings(event.currentTarget.value)
-                    }
-                  ></s-text-field>
-                  <s-number-field
-                    name="mobileBreakpoint"
-                    label="Mobile breakpoint"
-                    details="Use mobile styles at this width and below"
-                    min={0}
-                    step={1}
-                    suffix="px"
-                    value={mobileBreakpoint}
-                    onInput={(event) =>
-                      setMobileBreakpoint(event.currentTarget.value)
-                    }
-                    onChange={(event) =>
-                      setMobileBreakpoint(event.currentTarget.value)
-                    }
-                  ></s-number-field>
-                  <s-text-field
-                    name="excludedBlogs"
-                    label="Blog posts to exclude"
-                    details="Comma-separated article handles or IDs where the table of contents should stay hidden"
-                    value={excludedBlogs}
-                    onInput={(event) =>
-                      setExcludedBlogs(event.currentTarget.value)
-                    }
-                    onChange={(event) =>
-                      setExcludedBlogs(event.currentTarget.value)
-                    }
-                  ></s-text-field>
-                  <s-divider></s-divider>
-                  <s-select
-                    name="textAlignment"
-                    label="Text alignment"
-                    details="Align the title and links inside the table of contents"
-                    value={textAlignment}
-                    onChange={(event) =>
-                      setTextAlignment(
-                        normalizeTextAlignment(event.currentTarget.value),
-                      )
-                    }
-                  >
-                    {TEXT_ALIGNMENT_OPTIONS.map((option) => (
-                      <s-option key={option.value} value={option.value}>
-                        {option.label}
-                      </s-option>
-                    ))}
-                  </s-select>
-                  <s-select
-                    name="markerFormat"
-                    label="Numbering / Bullet Format"
-                    details="Choose whether items use no marker, bullets, or numbers"
-                    value={markerFormat}
-                    onChange={(event) =>
-                      setMarkerFormat(
-                        normalizeMarkerFormat(event.currentTarget.value),
-                      )
-                    }
-                  >
-                    {MARKER_FORMAT_OPTIONS.map((option) => (
-                      <s-option key={option.value} value={option.value}>
-                        {option.label}
-                      </s-option>
-                    ))}
-                  </s-select>
-                  <s-checkbox
-                    name="indentation"
-                    label="Indent nested headings"
-                    details="Show lower-level headings as nested items"
-                    checked={textAlignment === "center" ? false : indentation}
-                    disabled={textAlignment === "center"}
-                    onChange={(event) =>
-                      setIndentation(event.currentTarget.checked)
-                    }
-                  ></s-checkbox>
-                </>
-              </s-section>
+                    </s-select>
+                    <s-select
+                      name="markerFormat"
+                      label="Numbering / Bullet Format"
+                      details="Choose whether items use no marker, bullets, or numbers"
+                      value={markerFormat}
+                      onChange={(event) =>
+                        setMarkerFormat(
+                          normalizeMarkerFormat(event.currentTarget.value),
+                        )
+                      }
+                    >
+                      {MARKER_FORMAT_OPTIONS.map((option) => (
+                        <s-option key={option.value} value={option.value}>
+                          {option.label}
+                        </s-option>
+                      ))}
+                    </s-select>
+                    <s-checkbox
+                      name="indentation"
+                      label="Indent nested headings"
+                      details="Show lower-level headings as nested items"
+                      checked={textAlignment === "center" ? false : indentation}
+                      disabled={textAlignment === "center"}
+                      onChange={(event) =>
+                        setIndentation(event.currentTarget.checked)
+                      }
+                    ></s-checkbox>
+                  </s-stack>
+                </s-section>
+              </>
             ) : (
               <>
                 <s-section heading="General">
@@ -1947,260 +1970,269 @@ export default function Index() {
                         }
                       }}
                     ></s-number-field>
-                    <div className="toc-compact-fields-two">
-                      <s-text-field
-                        name={
-                          activeTab === "desktop"
-                            ? "desktopShowMoreButtonText"
-                            : "mobileShowMoreButtonText"
-                        }
-                        label="Show more text"
-                        disabled={!isShowMoreEnabled}
-                        value={
-                          activeTab === "desktop"
-                            ? desktopShowMoreButtonText
-                            : mobileShowMoreButtonText
-                        }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowMoreButtonText(value);
-                          } else {
-                            setMobileShowMoreButtonText(value);
+                    <div className="toc-subsection">
+                      <p className="toc-subsection-title">Text</p>
+                      <div className="toc-compact-fields-two">
+                        <s-text-field
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowMoreButtonText"
+                              : "mobileShowMoreButtonText"
                           }
-                        }}
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowMoreButtonText(value);
-                          } else {
-                            setMobileShowMoreButtonText(value);
+                          label="Show more"
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowMoreButtonText
+                              : mobileShowMoreButtonText
                           }
-                        }}
-                      ></s-text-field>
-                      <s-text-field
-                        name={
-                          activeTab === "desktop"
-                            ? "desktopShowLessButtonText"
-                            : "mobileShowLessButtonText"
-                        }
-                        label="Show less text"
-                        disabled={!isShowMoreEnabled}
-                        value={
-                          activeTab === "desktop"
-                            ? desktopShowLessButtonText
-                            : mobileShowLessButtonText
-                        }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowLessButtonText(value);
-                          } else {
-                            setMobileShowLessButtonText(value);
+                          onInput={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowMoreButtonText(value);
+                            } else {
+                              setMobileShowMoreButtonText(value);
+                            }
+                          }}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowMoreButtonText(value);
+                            } else {
+                              setMobileShowMoreButtonText(value);
+                            }
+                          }}
+                        ></s-text-field>
+                        <s-text-field
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowLessButtonText"
+                              : "mobileShowLessButtonText"
                           }
-                        }}
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowLessButtonText(value);
-                          } else {
-                            setMobileShowLessButtonText(value);
+                          label="Show less"
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowLessButtonText
+                              : mobileShowLessButtonText
                           }
-                        }}
-                      ></s-text-field>
+                          onInput={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowLessButtonText(value);
+                            } else {
+                              setMobileShowLessButtonText(value);
+                            }
+                          }}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowLessButtonText(value);
+                            } else {
+                              setMobileShowLessButtonText(value);
+                            }
+                          }}
+                        ></s-text-field>
+                      </div>
                     </div>
-                    <div className="toc-compact-fields">
-                      <s-color-field
-                        name={
-                          activeTab === "desktop"
-                            ? "desktopShowButtonFontColor"
-                            : "mobileShowButtonFontColor"
-                        }
-                        label="Font color"
-                        alpha
-                        disabled={!isShowMoreEnabled}
-                        value={
-                          activeTab === "desktop"
-                            ? desktopShowButtonFontColor
-                            : mobileShowButtonFontColor
-                        }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonFontColor(value);
-                          } else {
-                            setMobileShowButtonFontColor(value);
+                    <div className="toc-subsection">
+                      <p className="toc-subsection-title">Font</p>
+                      <div className="toc-compact-fields">
+                        <s-color-field
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonFontColor"
+                              : "mobileShowButtonFontColor"
                           }
-                        }}
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonFontColor(value);
-                          } else {
-                            setMobileShowButtonFontColor(value);
+                          label="Color"
+                          alpha
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonFontColor
+                              : mobileShowButtonFontColor
                           }
-                        }}
-                      ></s-color-field>
-                      <s-number-field
-                        name={
-                          activeTab === "desktop"
-                            ? "desktopShowButtonFontSize"
-                            : "mobileShowButtonFontSize"
-                        }
-                        label="Font size"
-                        min={0}
-                        step={1}
-                        suffix="px"
-                        disabled={!isShowMoreEnabled}
-                        value={
-                          activeTab === "desktop"
-                            ? desktopShowButtonFontSize
-                            : mobileShowButtonFontSize
-                        }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonFontSize(value);
-                          } else {
-                            setMobileShowButtonFontSize(value);
+                          onInput={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonFontColor(value);
+                            } else {
+                              setMobileShowButtonFontColor(value);
+                            }
+                          }}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonFontColor(value);
+                            } else {
+                              setMobileShowButtonFontColor(value);
+                            }
+                          }}
+                        ></s-color-field>
+                        <s-number-field
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonFontSize"
+                              : "mobileShowButtonFontSize"
                           }
-                        }}
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonFontSize(value);
-                          } else {
-                            setMobileShowButtonFontSize(value);
+                          label="Size"
+                          min={0}
+                          step={1}
+                          suffix="px"
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonFontSize
+                              : mobileShowButtonFontSize
                           }
-                        }}
-                      ></s-number-field>
-                      <s-select
-                        name={
-                          activeTab === "desktop"
-                            ? "desktopShowButtonFontWeight"
-                            : "mobileShowButtonFontWeight"
-                        }
-                        label="Font weight"
-                        disabled={!isShowMoreEnabled}
-                        value={
-                          activeTab === "desktop"
-                            ? desktopShowButtonFontWeight
-                            : mobileShowButtonFontWeight
-                        }
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonFontWeight(value);
-                          } else {
-                            setMobileShowButtonFontWeight(value);
+                          onInput={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonFontSize(value);
+                            } else {
+                              setMobileShowButtonFontSize(value);
+                            }
+                          }}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonFontSize(value);
+                            } else {
+                              setMobileShowButtonFontSize(value);
+                            }
+                          }}
+                        ></s-number-field>
+                        <s-select
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonFontWeight"
+                              : "mobileShowButtonFontWeight"
                           }
-                        }}
-                      >
-                        {FONT_WEIGHT_OPTIONS.map((option) => (
-                          <s-option key={option.value} value={option.value}>
-                            {option.label}
-                          </s-option>
-                        ))}
-                      </s-select>
+                          label="Weight"
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonFontWeight
+                              : mobileShowButtonFontWeight
+                          }
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonFontWeight(value);
+                            } else {
+                              setMobileShowButtonFontWeight(value);
+                            }
+                          }}
+                        >
+                          {FONT_WEIGHT_OPTIONS.map((option) => (
+                            <s-option key={option.value} value={option.value}>
+                              {option.label}
+                            </s-option>
+                          ))}
+                        </s-select>
+                      </div>
                     </div>
-                    <div className="toc-compact-fields">
-                      <s-color-field
-                        name={
-                          activeTab === "desktop"
-                            ? "desktopShowButtonBorderColor"
-                            : "mobileShowButtonBorderColor"
-                        }
-                        label="Border color"
-                        alpha
-                        disabled={!isShowMoreEnabled}
-                        value={
-                          activeTab === "desktop"
-                            ? desktopShowButtonBorderColor
-                            : mobileShowButtonBorderColor
-                        }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonBorderColor(value);
-                          } else {
-                            setMobileShowButtonBorderColor(value);
+                    <div className="toc-subsection">
+                      <p className="toc-subsection-title">Border</p>
+                      <div className="toc-compact-fields">
+                        <s-color-field
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonBorderColor"
+                              : "mobileShowButtonBorderColor"
                           }
-                        }}
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonBorderColor(value);
-                          } else {
-                            setMobileShowButtonBorderColor(value);
+                          label="Color"
+                          alpha
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonBorderColor
+                              : mobileShowButtonBorderColor
                           }
-                        }}
-                      ></s-color-field>
-                      <s-number-field
-                        name={
-                          activeTab === "desktop"
-                            ? "desktopShowButtonBorderWidth"
-                            : "mobileShowButtonBorderWidth"
-                        }
-                        label="Border width"
-                        min={0}
-                        step={1}
-                        suffix="px"
-                        disabled={!isShowMoreEnabled}
-                        value={
-                          activeTab === "desktop"
-                            ? desktopShowButtonBorderWidth
-                            : mobileShowButtonBorderWidth
-                        }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonBorderWidth(value);
-                          } else {
-                            setMobileShowButtonBorderWidth(value);
+                          onInput={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonBorderColor(value);
+                            } else {
+                              setMobileShowButtonBorderColor(value);
+                            }
+                          }}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonBorderColor(value);
+                            } else {
+                              setMobileShowButtonBorderColor(value);
+                            }
+                          }}
+                        ></s-color-field>
+                        <s-number-field
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonBorderWidth"
+                              : "mobileShowButtonBorderWidth"
                           }
-                        }}
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonBorderWidth(value);
-                          } else {
-                            setMobileShowButtonBorderWidth(value);
+                          label="Width"
+                          min={0}
+                          step={1}
+                          suffix="px"
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonBorderWidth
+                              : mobileShowButtonBorderWidth
                           }
-                        }}
-                      ></s-number-field>
-                      <s-number-field
-                        name={
-                          activeTab === "desktop"
-                            ? "desktopShowButtonBorderRadius"
-                            : "mobileShowButtonBorderRadius"
-                        }
-                        label="Border radius"
-                        min={0}
-                        step={1}
-                        suffix="px"
-                        disabled={!isShowMoreEnabled}
-                        value={
-                          activeTab === "desktop"
-                            ? desktopShowButtonBorderRadius
-                            : mobileShowButtonBorderRadius
-                        }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonBorderRadius(value);
-                          } else {
-                            setMobileShowButtonBorderRadius(value);
+                          onInput={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonBorderWidth(value);
+                            } else {
+                              setMobileShowButtonBorderWidth(value);
+                            }
+                          }}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonBorderWidth(value);
+                            } else {
+                              setMobileShowButtonBorderWidth(value);
+                            }
+                          }}
+                        ></s-number-field>
+                        <s-number-field
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonBorderRadius"
+                              : "mobileShowButtonBorderRadius"
                           }
-                        }}
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopShowButtonBorderRadius(value);
-                          } else {
-                            setMobileShowButtonBorderRadius(value);
+                          label="Radius"
+                          min={0}
+                          step={1}
+                          suffix="px"
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonBorderRadius
+                              : mobileShowButtonBorderRadius
                           }
-                        }}
-                      ></s-number-field>
+                          onInput={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonBorderRadius(value);
+                            } else {
+                              setMobileShowButtonBorderRadius(value);
+                            }
+                          }}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonBorderRadius(value);
+                            } else {
+                              setMobileShowButtonBorderRadius(value);
+                            }
+                          }}
+                        ></s-number-field>
+                      </div>
                     </div>
                   </s-stack>
                 </s-section>
