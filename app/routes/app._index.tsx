@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { css as cssLanguage } from "@codemirror/lang-css";
@@ -440,6 +441,18 @@ const FORM_STYLES = `
     line-height: 16px;
   }
 
+  .toc-device-section {
+    position: relative;
+  }
+
+  .toc-device-section__chip {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    z-index: 1;
+    max-width: calc(100% - 32px);
+  }
+
   @media (max-width: 900px) {
     .toc-main-layout {
       grid-template-columns: minmax(0, 1fr);
@@ -546,6 +559,19 @@ type ActionData = {
 };
 
 type EditorTab = (typeof EDITOR_TABS)[number]["id"];
+type DeviceTab = Extract<EditorTab, "desktop" | "mobile">;
+type DeviceSectionKey =
+  | "general"
+  | "title"
+  | "headings"
+  | "border"
+  | "padding"
+  | "scroll"
+  | "showButton";
+type DeviceSectionApplyState = Record<
+  DeviceTab,
+  Partial<Record<DeviceSectionKey, boolean>>
+>;
 
 type TocConfigInput = {
   title: string;
@@ -617,6 +643,169 @@ type AppBridgeExtensionRecord = {
   type?: string;
   activations?: Array<{ target?: string } | ThemeExtensionActivationRecord>;
 };
+
+const DEVICE_SECTION_FIELDS = {
+  general: ["position", "positionSelector", "background", "maxWidth"],
+  title: ["showTitle", "titleFontSize", "titleFontColor", "titleFontWeight"],
+  headings: [
+    "headingsFontSize",
+    "headingsFontColor",
+    "headingsFontWeight",
+  ],
+  border: ["color", "width", "radius"],
+  padding: ["paddingTop", "paddingBottom", "paddingLeft", "paddingRight"],
+  scroll: ["smoothScroll", "scrollOffset"],
+  showButton: [
+    "showButton",
+    "showButtonHeight",
+    "showMoreButtonText",
+    "showLessButtonText",
+    "showButtonFontSize",
+    "showButtonFontColor",
+    "showButtonFontWeight",
+    "showButtonBorderColor",
+    "showButtonBorderWidth",
+    "showButtonBorderRadius",
+  ],
+} as const satisfies Record<DeviceSectionKey, readonly (keyof TocDeviceConfig)[]>;
+
+type GeneralSectionApplyPayload = Pick<
+  TocDeviceConfig,
+  "background" | "maxWidth"
+> &
+  Partial<Pick<TocDeviceConfig, "position" | "positionSelector">>;
+
+type DeviceSettingsSectionProps = {
+  heading: string;
+  activeDevice: DeviceTab;
+  showApplyAction: boolean;
+  isApplied: boolean;
+  onApply: () => void;
+  onEdit: () => void;
+  children: ReactNode;
+};
+
+function createEmptyDeviceSectionApplyState(): DeviceSectionApplyState {
+  return { desktop: {}, mobile: {} };
+}
+
+function getOtherDevice(device: DeviceTab): DeviceTab {
+  return device === "desktop" ? "mobile" : "desktop";
+}
+
+function getDeviceLabel(device: DeviceTab): "Desktop" | "Mobile" {
+  return device === "desktop" ? "Desktop" : "Mobile";
+}
+
+function deviceSectionFieldsEqual(
+  left: TocDeviceConfig,
+  right: TocDeviceConfig,
+  section: DeviceSectionKey,
+) {
+  return DEVICE_SECTION_FIELDS[section].every((field) => left[field] === right[field]);
+}
+
+function getGeneralSectionApplyPayload(
+  sourceDevice: DeviceTab,
+  source: TocDeviceConfig,
+): GeneralSectionApplyPayload {
+  if (sourceDevice === "desktop") {
+    if (
+      source.position === "before-first-heading" ||
+      source.position === "after-first-heading"
+    ) {
+      return {
+        background: source.background,
+        maxWidth: source.maxWidth,
+        position: source.position,
+        positionSelector: "",
+      };
+    }
+
+    if (source.position === "css-selector") {
+      return {
+        background: source.background,
+        maxWidth: source.maxWidth,
+        position: source.position,
+        positionSelector: source.positionSelector,
+      };
+    }
+
+    return {
+      background: source.background,
+      maxWidth: source.maxWidth,
+    };
+  }
+
+  return {
+    background: source.background,
+    maxWidth: source.maxWidth,
+    position: source.position,
+    positionSelector:
+      source.position === "css-selector" ? source.positionSelector : "",
+  };
+}
+
+function deviceSectionDiffersForApply(
+  section: DeviceSectionKey,
+  sourceDevice: DeviceTab,
+  source: TocDeviceConfig,
+  target: TocDeviceConfig,
+) {
+  if (section !== "general") {
+    return !deviceSectionFieldsEqual(source, target, section);
+  }
+
+  const payload = getGeneralSectionApplyPayload(sourceDevice, source);
+
+  return (
+    payload.background !== target.background ||
+    payload.maxWidth !== target.maxWidth ||
+    ("position" in payload && payload.position !== target.position) ||
+    ("positionSelector" in payload &&
+      payload.positionSelector !== target.positionSelector)
+  );
+}
+
+function DeviceSettingsSection({
+  heading,
+  activeDevice,
+  showApplyAction,
+  isApplied,
+  onApply,
+  onEdit,
+  children,
+}: DeviceSettingsSectionProps) {
+  const targetLabel = getDeviceLabel(getOtherDevice(activeDevice));
+
+  return (
+    <div
+      className="toc-device-section"
+      onInputCapture={onEdit}
+      onChangeCapture={onEdit}
+    >
+      {isApplied ? (
+        <div className="toc-device-section__chip">
+          <s-badge tone="success" icon="check-circle">
+            Applied
+          </s-badge>
+        </div>
+      ) : null}
+      {!isApplied && showApplyAction ? (
+        <div className="toc-device-section__chip">
+          <s-clickable-chip
+            color="strong"
+            accessibilityLabel={`Apply this section to ${targetLabel}`}
+            onClick={onApply}
+          >
+            Apply to {targetLabel}
+          </s-clickable-chip>
+        </div>
+      ) : null}
+      <s-section heading={heading}>{children}</s-section>
+    </div>
+  );
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -899,8 +1088,13 @@ export default function Index() {
     useState(String(config.mobile.showButtonBorderWidth));
   const [mobileShowButtonBorderRadius, setMobileShowButtonBorderRadius] =
     useState(String(config.mobile.showButtonBorderRadius));
+  const [appliedSections, setAppliedSections] = useState(
+    createEmptyDeviceSectionApplyState(),
+  );
   const [appEmbedStatus, setAppEmbedStatus] =
     useState<AppEmbedStatus>("checking");
+  const activeDevice =
+    activeTab === "desktop" || activeTab === "mobile" ? activeTab : null;
   const isShowMoreEnabled =
     activeTab === "desktop" ? desktopShowButton : mobileShowButton;
   const isTitleEnabled =
@@ -985,8 +1179,219 @@ export default function Index() {
   const isDirty = !configsEqual(savedConfig, currentConfig);
   const isSaving = navigation.state === "submitting";
 
+  const clearAppliedSection = (section: DeviceSectionKey) => {
+    if (!activeDevice) {
+      return;
+    }
+
+    setAppliedSections((current) => {
+      if (!current[activeDevice][section]) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [activeDevice]: {
+          ...current[activeDevice],
+          [section]: false,
+        },
+      };
+    });
+  };
+
+  const getSectionState = (section: DeviceSectionKey) => {
+    if (!activeDevice) {
+      return { isApplied: false, showApplyAction: false };
+    }
+
+    const targetDevice = getOtherDevice(activeDevice);
+    const currentDeviceConfig = currentConfig[activeDevice];
+    const targetDeviceConfig = currentConfig[targetDevice];
+    const savedDeviceConfig = savedConfig[activeDevice];
+    const isApplied = appliedSections[activeDevice][section] === true;
+    const changedSinceSave = !deviceSectionFieldsEqual(
+      currentDeviceConfig,
+      savedDeviceConfig,
+      section,
+    );
+    const differsFromOtherDevice = deviceSectionDiffersForApply(
+      section,
+      activeDevice,
+      currentDeviceConfig,
+      targetDeviceConfig,
+    );
+
+    return {
+      isApplied,
+      showApplyAction: !isApplied && changedSinceSave && differsFromOtherDevice,
+    };
+  };
+
+  const applySectionToOtherDevice = (section: DeviceSectionKey) => {
+    if (!activeDevice) {
+      return;
+    }
+
+    const sourceConfig = currentConfig[activeDevice];
+    const targetDevice = getOtherDevice(activeDevice);
+
+    switch (section) {
+      case "general": {
+        const payload = getGeneralSectionApplyPayload(activeDevice, sourceConfig);
+
+        if (targetDevice === "desktop") {
+          setDesktopBackground(payload.background);
+          setDesktopMaxWidth(String(payload.maxWidth));
+
+          if (payload.position) {
+            setDesktopPosition(normalizeDesktopPosition(payload.position));
+            setDesktopPositionSelector(payload.positionSelector ?? "");
+          }
+        } else {
+          setMobileBackground(payload.background);
+          setMobileMaxWidth(String(payload.maxWidth));
+
+          if (payload.position) {
+            setMobilePosition(normalizeMobilePosition(payload.position));
+            setMobilePositionSelector(payload.positionSelector ?? "");
+          }
+        }
+
+        break;
+      }
+      case "title":
+        if (targetDevice === "desktop") {
+          setDesktopShowTitle(sourceConfig.showTitle);
+          setDesktopTitleFontSize(String(sourceConfig.titleFontSize));
+          setDesktopTitleFontColor(sourceConfig.titleFontColor);
+          setDesktopTitleFontWeight(String(sourceConfig.titleFontWeight));
+        } else {
+          setMobileShowTitle(sourceConfig.showTitle);
+          setMobileTitleFontSize(String(sourceConfig.titleFontSize));
+          setMobileTitleFontColor(sourceConfig.titleFontColor);
+          setMobileTitleFontWeight(String(sourceConfig.titleFontWeight));
+        }
+        break;
+      case "headings":
+        if (targetDevice === "desktop") {
+          setDesktopHeadingsFontSize(String(sourceConfig.headingsFontSize));
+          setDesktopHeadingsFontColor(sourceConfig.headingsFontColor);
+          setDesktopHeadingsFontWeight(String(sourceConfig.headingsFontWeight));
+        } else {
+          setMobileHeadingsFontSize(String(sourceConfig.headingsFontSize));
+          setMobileHeadingsFontColor(sourceConfig.headingsFontColor);
+          setMobileHeadingsFontWeight(String(sourceConfig.headingsFontWeight));
+        }
+        break;
+      case "border":
+        if (targetDevice === "desktop") {
+          setDesktopBorderColor(sourceConfig.color);
+          setDesktopBorderWidth(String(sourceConfig.width));
+          setDesktopBorderRadius(String(sourceConfig.radius));
+        } else {
+          setMobileBorderColor(sourceConfig.color);
+          setMobileBorderWidth(String(sourceConfig.width));
+          setMobileBorderRadius(String(sourceConfig.radius));
+        }
+        break;
+      case "padding":
+        if (targetDevice === "desktop") {
+          setDesktopPaddingTop(String(sourceConfig.paddingTop));
+          setDesktopPaddingBottom(String(sourceConfig.paddingBottom));
+          setDesktopPaddingLeft(String(sourceConfig.paddingLeft));
+          setDesktopPaddingRight(String(sourceConfig.paddingRight));
+        } else {
+          setMobilePaddingTop(String(sourceConfig.paddingTop));
+          setMobilePaddingBottom(String(sourceConfig.paddingBottom));
+          setMobilePaddingLeft(String(sourceConfig.paddingLeft));
+          setMobilePaddingRight(String(sourceConfig.paddingRight));
+        }
+        break;
+      case "scroll":
+        if (targetDevice === "desktop") {
+          setDesktopSmoothScroll(sourceConfig.smoothScroll);
+          setDesktopScrollOffset(String(sourceConfig.scrollOffset));
+        } else {
+          setMobileSmoothScroll(sourceConfig.smoothScroll);
+          setMobileScrollOffset(String(sourceConfig.scrollOffset));
+        }
+        break;
+      case "showButton":
+        if (targetDevice === "desktop") {
+          setDesktopShowButton(sourceConfig.showButton);
+          setDesktopShowButtonHeight(String(sourceConfig.showButtonHeight));
+          setDesktopShowMoreButtonText(sourceConfig.showMoreButtonText);
+          setDesktopShowLessButtonText(sourceConfig.showLessButtonText);
+          setDesktopShowButtonFontSize(String(sourceConfig.showButtonFontSize));
+          setDesktopShowButtonFontColor(sourceConfig.showButtonFontColor);
+          setDesktopShowButtonFontWeight(
+            String(sourceConfig.showButtonFontWeight),
+          );
+          setDesktopShowButtonBorderColor(sourceConfig.showButtonBorderColor);
+          setDesktopShowButtonBorderWidth(
+            String(sourceConfig.showButtonBorderWidth),
+          );
+          setDesktopShowButtonBorderRadius(
+            String(sourceConfig.showButtonBorderRadius),
+          );
+        } else {
+          setMobileShowButton(sourceConfig.showButton);
+          setMobileShowButtonHeight(String(sourceConfig.showButtonHeight));
+          setMobileShowMoreButtonText(sourceConfig.showMoreButtonText);
+          setMobileShowLessButtonText(sourceConfig.showLessButtonText);
+          setMobileShowButtonFontSize(String(sourceConfig.showButtonFontSize));
+          setMobileShowButtonFontColor(sourceConfig.showButtonFontColor);
+          setMobileShowButtonFontWeight(
+            String(sourceConfig.showButtonFontWeight),
+          );
+          setMobileShowButtonBorderColor(sourceConfig.showButtonBorderColor);
+          setMobileShowButtonBorderWidth(
+            String(sourceConfig.showButtonBorderWidth),
+          );
+          setMobileShowButtonBorderRadius(
+            String(sourceConfig.showButtonBorderRadius),
+          );
+        }
+        break;
+    }
+
+    setAppliedSections((current) => ({
+      ...current,
+      [activeDevice]: {
+        ...current[activeDevice],
+        [section]: true,
+      },
+    }));
+  };
+
+  const renderDeviceSection = (
+    section: DeviceSectionKey,
+    heading: string,
+    children: ReactNode,
+  ) => {
+    if (!activeDevice) {
+      return null;
+    }
+
+    const sectionState = getSectionState(section);
+
+    return (
+      <DeviceSettingsSection
+        heading={heading}
+        activeDevice={activeDevice}
+        showApplyAction={sectionState.showApplyAction}
+        isApplied={sectionState.isApplied}
+        onApply={() => applySectionToOtherDevice(section)}
+        onEdit={() => clearAppliedSection(section)}
+      >
+        {children}
+      </DeviceSettingsSection>
+    );
+  };
+
   useEffect(() => {
     setSavedConfig(config);
+    setAppliedSections(createEmptyDeviceSectionApplyState());
     applyConfigToForm(config, {
       setTitle,
       setHeadingLevels,
@@ -1059,6 +1464,10 @@ export default function Index() {
       setMobileShowButtonBorderRadius,
     });
   }, [config]);
+
+  useEffect(() => {
+    setAppliedSections(createEmptyDeviceSectionApplyState());
+  }, [activeTab]);
 
   useEffect(() => {
     if (actionData?.ok) {
@@ -1175,7 +1584,7 @@ export default function Index() {
                 href={deepLink}
                 target="_blank"
                 variant={getAppEmbedButtonVariant(appEmbedStatus)}
-                tone={getAppEmbedButtonTone(appEmbedStatus)}
+                tone={getAppEmbedButtonTone()}
               >
                 {getAppEmbedButtonLabel(appEmbedStatus)}
               </s-button>
@@ -1260,6 +1669,7 @@ export default function Index() {
               setMobileShowButtonBorderWidth,
               setMobileShowButtonBorderRadius,
             });
+            setAppliedSections(createEmptyDeviceSectionApplyState());
           }}
         >
           <s-stack direction="block" gap="base">
@@ -1451,7 +1861,7 @@ export default function Index() {
               </>
             ) : (
               <>
-                <s-section heading="General">
+                {renderDeviceSection("general", "General", (
                   <s-stack direction="block" gap="base">
                     <s-select
                       name={
@@ -1590,8 +2000,8 @@ export default function Index() {
                       }}
                     ></s-number-field>
                   </s-stack>
-                </s-section>
-                <s-section heading="Title">
+                ))}
+                {renderDeviceSection("title", "Title", (
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -1709,8 +2119,8 @@ export default function Index() {
                       </s-select>
                     </div>
                   </s-stack>
-                </s-section>
-                <s-section heading="Headings">
+                ))}
+                {renderDeviceSection("headings", "Headings", (
                   <div className="toc-compact-fields">
                     <s-color-field
                       name={
@@ -1802,8 +2212,8 @@ export default function Index() {
                       ))}
                     </s-select>
                   </div>
-                </s-section>
-                <s-section heading="Border">
+                ))}
+                {renderDeviceSection("border", "Border", (
                   <div className="toc-compact-fields">
                     <s-color-field
                       name={
@@ -1900,8 +2310,8 @@ export default function Index() {
                       }}
                     ></s-number-field>
                   </div>
-                </s-section>
-                <s-section heading="Padding">
+                ))}
+                {renderDeviceSection("padding", "Padding", (
                   <div className="toc-compact-fields-four">
                     <s-number-field
                       name={
@@ -2032,8 +2442,8 @@ export default function Index() {
                       }}
                     ></s-number-field>
                   </div>
-                </s-section>
-                <s-section heading="Scroll">
+                ))}
+                {renderDeviceSection("scroll", "Scroll", (
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -2091,8 +2501,8 @@ export default function Index() {
                       }}
                     ></s-number-field>
                   </s-stack>
-                </s-section>
-                <s-section heading="Show more button">
+                ))}
+                {renderDeviceSection("showButton", "Show more button", (
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -2414,7 +2824,7 @@ export default function Index() {
                       </div>
                     </div>
                   </s-stack>
-                </s-section>
+                ))}
               </>
             )}
             {actionData?.userErrors?.length ? (
@@ -2487,12 +2897,14 @@ function parseConfig(value: unknown): TocConfig {
       return { ...DEFAULT_CONFIG } as TocConfig;
     }
     const {
-      desktopMode: _desktopMode,
+      desktopMode,
       smoothScroll: legacySmoothScroll,
-      wrapperSelector: _wrapperSelector,
+      wrapperSelector,
       topOffset: legacyTopOffset,
       ...rest
     } = parsed as Record<string, unknown>;
+    void desktopMode;
+    void wrapperSelector;
 
     const defaultDesktop = {
       ...DEFAULT_CONFIG.desktop,
@@ -2800,17 +3212,6 @@ function configsEqual(left: TocConfig, right: TocConfig) {
   );
 }
 
-function getSettingsHeading(activeTab: EditorTab) {
-  switch (activeTab) {
-    case "desktop":
-      return "Desktop";
-    case "mobile":
-      return "Mobile";
-    default:
-      return "General";
-  }
-}
-
 function formatAppEmbedStatus(status: AppEmbedStatus) {
   switch (status) {
     case "active":
@@ -2874,7 +3275,7 @@ function getAppEmbedButtonVariant(status: AppEmbedStatus) {
   }
 }
 
-function getAppEmbedButtonTone(status: AppEmbedStatus): "auto" {
+function getAppEmbedButtonTone(): "auto" {
   return "auto";
 }
 
@@ -3899,7 +4300,6 @@ function TocPreview({
       className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}`}
       aria-label="Table of contents preview"
       data-device={previewDevice}
-      onClick={(event) => event.preventDefault()}
       style={getPreviewContainerStyle(device)}
     >
       {device.showTitle ? (
@@ -3975,6 +4375,7 @@ function PreviewTocListItem({
       <a
         href={`#${item.id}`}
         className={`toc-widget__link${item.id === activeId ? " toc-widget__link--current" : ""}`}
+        onClick={(event) => event.preventDefault()}
       >
         <span className="toc-widget__link-label">{item.title}</span>
       </a>
