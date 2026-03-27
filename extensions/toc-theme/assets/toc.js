@@ -8,6 +8,7 @@
   const TOC_GENERATED_ID_ATTRIBUTE = "data-shopify-toc-generated-id";
   const TOC_SNAKE_HEAD_OFFSET = 12;
   const TOC_SNAKE_TOP_OFFSET = 8;
+  const TOC_SNAKE_BENT_VISIBLE_LENGTH = 34;
   const DEFAULT_DESKTOP_CONTAINER = {
     position: "float-right",
     positionSelector: "",
@@ -185,8 +186,15 @@
     isDesktopViewport()
       ? DEFAULT_DESKTOP_CONTAINER.position
       : DEFAULT_MOBILE_CONTAINER.position;
-  const isSnakeActive = () =>
-    isDesktopViewport() && desktopConfig.animationType === "snake";
+  const isPathAnimationActive = () =>
+    isDesktopViewport() &&
+    ["snake", "snake-rect", "snake-rect-bend"].includes(
+      desktopConfig.animationType,
+    );
+  const isSnakeRectAnimation = () =>
+    desktopConfig.animationType === "snake-rect";
+  const isSnakeRectBendAnimation = () =>
+    desktopConfig.animationType === "snake-rect-bend";
   const getHeadingAnchorId = (heading) =>
     (heading.getAttribute(TOC_HEADING_ID_ATTRIBUTE) || heading.id || "").trim();
   const getHeadingByAnchorId = (anchorId) =>
@@ -268,12 +276,22 @@
     ]),
   );
   let currentLink = null;
+  let nextSnakeLink = null;
+  let snakeProgress = 0;
   let snakeFrame = null;
 
   const syncSnakeMode = () => {
-    const enabled = isSnakeActive();
+    const enabled = isPathAnimationActive();
 
     toc.classList.toggle("toc-widget--animation-snake", enabled);
+    toc.classList.toggle(
+      "toc-widget--animation-snake-rect",
+      enabled && isSnakeRectAnimation(),
+    );
+    toc.classList.toggle(
+      "toc-widget--animation-snake-rect-bend",
+      enabled && isSnakeRectBendAnimation(),
+    );
     snakeOverlay.root.hidden = !enabled;
 
     if (!enabled) {
@@ -283,15 +301,22 @@
   const syncSnake = (link) => {
     syncSnakeMode();
 
-    if (!isSnakeActive()) {
+    if (!isPathAnimationActive()) {
       return;
     }
 
     const activeLink =
       link || list.querySelector(".toc-widget__link--current") || null;
+    const transitionLink = isSnakeRectBendAnimation() ? nextSnakeLink : null;
+    const transitionProgress = isSnakeRectBendAnimation() ? snakeProgress : 0;
     updateSnakeOverlay(
       snakeOverlay,
-      measureTocSnakeGeometry(list, activeLink),
+      measureTocSnakeGeometry(
+        list,
+        activeLink,
+        transitionLink,
+        transitionProgress,
+      ),
     );
   };
   const requestSnakeSync = () => {
@@ -413,7 +438,7 @@
     title: cfg.title || "Contents",
   });
 
-  let applyResponsiveState = () => {};
+  let applyResponsiveState = () => { };
   requestAnimationFrame(() => {
     const needsToggle = (activeConfig) => {
       const toggleHeight = Math.max(0, activeConfig.showButtonHeight || 0);
@@ -485,20 +510,47 @@
 
   const refreshCurrentLink = () => {
     const scrollY = window.scrollY + getActiveConfig().scrollOffset + 24;
-    let currentId = headings[0] ? getHeadingAnchorId(headings[0]) : "";
+    let currentIndex = headings.length ? 0 : -1;
 
-    for (const h of headings) {
-      if (h.offsetTop <= scrollY) currentId = getHeadingAnchorId(h);
-      else break;
+    for (let index = 0; index < headings.length; index += 1) {
+      if (headings[index].offsetTop <= scrollY) {
+        currentIndex = index;
+        continue;
+      }
+
+      break;
     }
 
-    if (
+    const isAtBottom =
       window.innerHeight + window.scrollY >=
-      document.documentElement.scrollHeight - 4
+      document.documentElement.scrollHeight - 4;
+
+    if (isAtBottom) {
+      currentIndex = headings.length - 1;
+    }
+
+    const currentId =
+      currentIndex >= 0 ? getHeadingAnchorId(headings[currentIndex]) : "";
+
+    if (
+      isSnakeRectBendAnimation() &&
+      currentIndex >= 0 &&
+      currentIndex < headings.length - 1 &&
+      !isAtBottom
     ) {
-      currentId = headings[headings.length - 1]
-        ? getHeadingAnchorId(headings[headings.length - 1])
-        : "";
+      const currentHeading = headings[currentIndex];
+      const nextHeading = headings[currentIndex + 1];
+      const span = Math.max(nextHeading.offsetTop - currentHeading.offsetTop, 1);
+
+      snakeProgress = Math.min(
+        Math.max((scrollY - currentHeading.offsetTop) / span, 0),
+        1,
+      );
+      nextSnakeLink =
+        linksById.get(getHeadingAnchorId(nextHeading) || "") || null;
+    } else {
+      snakeProgress = 0;
+      nextSnakeLink = null;
     }
 
     const nextLink = linksById.get(currentId || "");
@@ -506,6 +558,8 @@
     if (!nextLink) {
       currentLink?.classList.remove("toc-widget__link--current");
       currentLink = null;
+      nextSnakeLink = null;
+      snakeProgress = 0;
       requestSnakeSync();
       return;
     }
@@ -581,7 +635,9 @@
   }
 
   function normalizeAnimationType(value) {
-    return ["none", "snake"].includes(value) ? value : "none";
+    return ["none", "snake", "snake-rect", "snake-rect-bend"].includes(value)
+      ? value
+      : "none";
   }
 
   function normalizeMobileBreakpoint(value, fallback) {
@@ -668,22 +724,22 @@
           : fallback.radius,
       paddingTop:
         typeof config.paddingTop === "number" &&
-        Number.isFinite(config.paddingTop)
+          Number.isFinite(config.paddingTop)
           ? Math.max(0, config.paddingTop)
           : fallback.paddingTop,
       paddingBottom:
         typeof config.paddingBottom === "number" &&
-        Number.isFinite(config.paddingBottom)
+          Number.isFinite(config.paddingBottom)
           ? Math.max(0, config.paddingBottom)
           : fallback.paddingBottom,
       paddingLeft:
         typeof config.paddingLeft === "number" &&
-        Number.isFinite(config.paddingLeft)
+          Number.isFinite(config.paddingLeft)
           ? Math.max(0, config.paddingLeft)
           : fallback.paddingLeft,
       paddingRight:
         typeof config.paddingRight === "number" &&
-        Number.isFinite(config.paddingRight)
+          Number.isFinite(config.paddingRight)
           ? Math.max(0, config.paddingRight)
           : fallback.paddingRight,
       offsetTop:
@@ -692,17 +748,17 @@
           : fallback.offsetTop,
       offsetBottom:
         typeof config.offsetBottom === "number" &&
-        Number.isFinite(config.offsetBottom)
+          Number.isFinite(config.offsetBottom)
           ? config.offsetBottom
           : fallback.offsetBottom,
       offsetLeft:
         typeof config.offsetLeft === "number" &&
-        Number.isFinite(config.offsetLeft)
+          Number.isFinite(config.offsetLeft)
           ? config.offsetLeft
           : fallback.offsetLeft,
       offsetRight:
         typeof config.offsetRight === "number" &&
-        Number.isFinite(config.offsetRight)
+          Number.isFinite(config.offsetRight)
           ? config.offsetRight
           : fallback.offsetRight,
       background:
@@ -719,7 +775,7 @@
           : fallback.smoothScroll,
       scrollOffset:
         typeof config.scrollOffset === "number" &&
-        Number.isFinite(config.scrollOffset)
+          Number.isFinite(config.scrollOffset)
           ? Math.max(0, config.scrollOffset)
           : fallback.scrollOffset,
       showTitle:
@@ -728,32 +784,32 @@
           : fallback.showTitle,
       headingsFontSize:
         typeof config.headingsFontSize === "number" &&
-        Number.isFinite(config.headingsFontSize)
+          Number.isFinite(config.headingsFontSize)
           ? Math.max(0, config.headingsFontSize)
           : fallback.headingsFontSize,
       headingsFontColor:
         typeof config.headingsFontColor === "string" &&
-        config.headingsFontColor.trim()
+          config.headingsFontColor.trim()
           ? config.headingsFontColor.trim()
           : fallback.headingsFontColor,
       headingsFontWeight:
         typeof config.headingsFontWeight === "number" &&
-        Number.isFinite(config.headingsFontWeight)
+          Number.isFinite(config.headingsFontWeight)
           ? Math.max(0, config.headingsFontWeight)
           : fallback.headingsFontWeight,
       titleFontSize:
         typeof config.titleFontSize === "number" &&
-        Number.isFinite(config.titleFontSize)
+          Number.isFinite(config.titleFontSize)
           ? Math.max(0, config.titleFontSize)
           : fallback.titleFontSize,
       titleFontColor:
         typeof config.titleFontColor === "string" &&
-        config.titleFontColor.trim()
+          config.titleFontColor.trim()
           ? config.titleFontColor.trim()
           : fallback.titleFontColor,
       titleFontWeight:
         typeof config.titleFontWeight === "number" &&
-        Number.isFinite(config.titleFontWeight)
+          Number.isFinite(config.titleFontWeight)
           ? Math.max(0, config.titleFontWeight)
           : fallback.titleFontWeight,
       showButton:
@@ -762,47 +818,47 @@
           : fallback.showButton,
       showButtonHeight:
         typeof config.showButtonHeight === "number" &&
-        Number.isFinite(config.showButtonHeight)
+          Number.isFinite(config.showButtonHeight)
           ? Math.max(0, config.showButtonHeight)
           : fallback.showButtonHeight,
       showMoreButtonText:
         typeof config.showMoreButtonText === "string" &&
-        config.showMoreButtonText.trim()
+          config.showMoreButtonText.trim()
           ? config.showMoreButtonText.trim()
           : fallback.showMoreButtonText,
       showLessButtonText:
         typeof config.showLessButtonText === "string" &&
-        config.showLessButtonText.trim()
+          config.showLessButtonText.trim()
           ? config.showLessButtonText.trim()
           : fallback.showLessButtonText,
       showButtonFontSize:
         typeof config.showButtonFontSize === "number" &&
-        Number.isFinite(config.showButtonFontSize)
+          Number.isFinite(config.showButtonFontSize)
           ? Math.max(0, config.showButtonFontSize)
           : fallback.showButtonFontSize,
       showButtonFontColor:
         typeof config.showButtonFontColor === "string" &&
-        config.showButtonFontColor.trim()
+          config.showButtonFontColor.trim()
           ? config.showButtonFontColor.trim()
           : fallback.showButtonFontColor,
       showButtonFontWeight:
         typeof config.showButtonFontWeight === "number" &&
-        Number.isFinite(config.showButtonFontWeight)
+          Number.isFinite(config.showButtonFontWeight)
           ? Math.max(0, config.showButtonFontWeight)
           : fallback.showButtonFontWeight,
       showButtonBorderColor:
         typeof config.showButtonBorderColor === "string" &&
-        config.showButtonBorderColor.trim()
+          config.showButtonBorderColor.trim()
           ? config.showButtonBorderColor.trim()
           : fallback.showButtonBorderColor,
       showButtonBorderWidth:
         typeof config.showButtonBorderWidth === "number" &&
-        Number.isFinite(config.showButtonBorderWidth)
+          Number.isFinite(config.showButtonBorderWidth)
           ? Math.max(0, config.showButtonBorderWidth)
           : fallback.showButtonBorderWidth,
       showButtonBorderRadius:
         typeof config.showButtonBorderRadius === "number" &&
-        Number.isFinite(config.showButtonBorderRadius)
+          Number.isFinite(config.showButtonBorderRadius)
           ? Math.max(0, config.showButtonBorderRadius)
           : fallback.showButtonBorderRadius,
       animationType: normalizeAnimationType(config.animationType),
@@ -1006,7 +1062,11 @@
       overlay.svg.setAttribute("width", "0");
       overlay.svg.setAttribute("height", "0");
       overlay.path.setAttribute("d", "");
+      overlay.path.style.removeProperty("stroke-dasharray");
+      overlay.path.style.removeProperty("stroke-dashoffset");
       overlay.head.hidden = true;
+      overlay.head.style.removeProperty("--toc-snake-head-rotation");
+      overlay.head.style.removeProperty("--toc-snake-head-bend");
       return;
     }
 
@@ -1014,9 +1074,44 @@
     overlay.svg.setAttribute("width", String(geometry.width));
     overlay.svg.setAttribute("height", String(geometry.height));
     overlay.path.setAttribute("d", geometry.path);
+    if (isSnakeRectBendAnimation()) {
+      overlay.path.style.setProperty(
+        "stroke-dasharray",
+        `${Math.min(TOC_SNAKE_BENT_VISIBLE_LENGTH, geometry.pathLength)} ${Math.max(geometry.pathLength, 1)}`,
+      );
+      overlay.path.style.setProperty(
+        "stroke-dashoffset",
+        `-${Math.max(geometry.pathLength - TOC_SNAKE_BENT_VISIBLE_LENGTH, 0)}`,
+      );
+    } else {
+      overlay.path.style.removeProperty("stroke-dasharray");
+      overlay.path.style.removeProperty("stroke-dashoffset");
+    }
     overlay.head.hidden = false;
     overlay.head.style.left = `${geometry.headX}px`;
     overlay.head.style.top = `${geometry.headY}px`;
+    overlay.head.style.setProperty(
+      "--toc-snake-head-rotation",
+      `${geometry.headAngle}deg`,
+    );
+    overlay.head.style.setProperty(
+      "--toc-snake-head-bend",
+      `${geometry.headBend}deg`,
+    );
+  }
+
+  function normalizeAngleDelta(delta) {
+    let normalized = delta;
+
+    while (normalized > 180) {
+      normalized -= 360;
+    }
+
+    while (normalized < -180) {
+      normalized += 360;
+    }
+
+    return normalized;
   }
 
   function clampSnakeCoordinate(value, limit) {
@@ -1079,7 +1174,86 @@
     }, "");
   }
 
-  function measureTocSnakeGeometry(listElement, activeLink) {
+  function measureSnakePathLength(points) {
+    return points.slice(1).reduce((total, point, index) => {
+      const previousPoint = points[index];
+
+      return (
+        total + Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y)
+      );
+    }, 0);
+  }
+
+  function appendSnakeTransitionPoints(
+    points,
+    currentMetric,
+    nextMetric,
+    progress,
+  ) {
+    const transitionPoints = [
+      { x: currentMetric.laneX, y: currentMetric.centerY },
+      { x: currentMetric.laneX, y: currentMetric.exitY },
+    ];
+    const turnY = (currentMetric.exitY + nextMetric.entryY) / 2;
+
+    transitionPoints.push({ x: currentMetric.laneX, y: turnY });
+
+    if (nextMetric.laneX !== currentMetric.laneX) {
+      transitionPoints.push({ x: nextMetric.laneX, y: turnY });
+    }
+
+    transitionPoints.push(
+      { x: nextMetric.laneX, y: nextMetric.entryY },
+      { x: nextMetric.laneX, y: nextMetric.centerY },
+    );
+
+    const clampedProgress = Math.min(Math.max(progress, 0), 1);
+    if (clampedProgress <= 0) {
+      return;
+    }
+
+    const transitionLength = measureSnakePathLength(transitionPoints);
+    if (transitionLength <= 0) {
+      pushSnakePoint(points, transitionPoints[transitionPoints.length - 1]);
+      return;
+    }
+
+    const targetLength = transitionLength * clampedProgress;
+    let traversed = 0;
+
+    for (let index = 1; index < transitionPoints.length; index += 1) {
+      const previousPoint = transitionPoints[index - 1];
+      const point = transitionPoints[index];
+      const segmentLength = Math.hypot(
+        point.x - previousPoint.x,
+        point.y - previousPoint.y,
+      );
+
+      if (segmentLength <= 0) {
+        continue;
+      }
+
+      if (traversed + segmentLength <= targetLength) {
+        pushSnakePoint(points, point);
+        traversed += segmentLength;
+        continue;
+      }
+
+      const segmentProgress = (targetLength - traversed) / segmentLength;
+      pushSnakePoint(points, {
+        x: previousPoint.x + (point.x - previousPoint.x) * segmentProgress,
+        y: previousPoint.y + (point.y - previousPoint.y) * segmentProgress,
+      });
+      return;
+    }
+  }
+
+  function measureTocSnakeGeometry(
+    listElement,
+    activeLink,
+    nextLink = null,
+    nextProgress = 0,
+  ) {
     if (!(activeLink instanceof HTMLAnchorElement)) {
       return null;
     }
@@ -1098,9 +1272,8 @@
       return null;
     }
 
-    const metrics = links
-      .slice(0, activeIndex + 1)
-      .map((link) => createSnakeLinkMetric(listRect, link));
+    const allMetrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+    const metrics = allMetrics.slice(0, activeIndex + 1);
 
     if (!metrics.length) {
       return null;
@@ -1135,13 +1308,56 @@
       });
     });
 
-    const head = metrics[metrics.length - 1];
+    const nextIndex = nextLink ? links.indexOf(nextLink) : -1;
+    if (nextIndex === activeIndex + 1 && nextIndex < allMetrics.length) {
+      appendSnakeTransitionPoints(
+        points,
+        allMetrics[activeIndex],
+        allMetrics[nextIndex],
+        nextProgress,
+      );
+    }
+
+    const headPoint = points[points.length - 1];
+    const segmentAngles = [];
+    let headAngle = 0;
+    let headBend = 0;
+
+    for (let index = points.length - 1; index > 0; index -= 1) {
+      const currentPoint = points[index];
+      const previousPoint = points[index - 1];
+      const deltaX = currentPoint.x - previousPoint.x;
+      const deltaY = currentPoint.y - previousPoint.y;
+
+      if (deltaX === 0 && deltaY === 0) {
+        continue;
+      }
+
+      segmentAngles.push((Math.atan2(deltaY, deltaX) * 180) / Math.PI);
+    }
+
+    if (segmentAngles.length > 0) {
+      headAngle = segmentAngles[0];
+    }
+
+    if (segmentAngles.length > 1) {
+      headBend = Math.max(
+        -18,
+        Math.min(
+          18,
+          normalizeAngleDelta(segmentAngles[0] - segmentAngles[1]) * 0.22,
+        ),
+      );
+    }
 
     return {
-      headX: head.laneX,
-      headY: head.centerY,
+      headAngle,
+      headBend,
+      headX: headPoint?.x ?? metrics[metrics.length - 1].laneX,
+      headY: headPoint?.y ?? metrics[metrics.length - 1].centerY,
       height: Math.ceil(listRect.height),
       path: buildSnakePath(points),
+      pathLength: measureSnakePathLength(points),
       width: Math.ceil(listRect.width),
     };
   }

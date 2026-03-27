@@ -1,6 +1,9 @@
 .toc-widget {
   --spacing: 4px;
   --toc-snake-size: 10px;
+  --toc-snake-rect-width: 12px;
+  --toc-snake-rect-height: 6px;
+  --toc-snake-bent-rect-height: 9px;
   --toc-snake-line-width: 2px;
   --toc-snake-color: var(--toc-active-headings-font-color);
   --toc-snake-rail-space: 26px;
@@ -157,15 +160,21 @@
   padding-right: 0;
 }
 
-.toc-widget--animation-snake .toc-widget__list {
+.toc-widget--animation-snake .toc-widget__list,
+.toc-widget--animation-snake-rect .toc-widget__list,
+.toc-widget--animation-snake-rect-bend .toc-widget__list {
   padding-left: calc(12px + var(--toc-snake-rail-space));
 }
 
-.toc-widget--animation-snake.toc-widget--flat .toc-widget__list {
+.toc-widget--animation-snake.toc-widget--flat .toc-widget__list,
+.toc-widget--animation-snake-rect.toc-widget--flat .toc-widget__list,
+.toc-widget--animation-snake-rect-bend.toc-widget--flat .toc-widget__list {
   padding-left: var(--toc-snake-rail-space);
 }
 
-.toc-widget--animation-snake .toc-widget__sublist {
+.toc-widget--animation-snake .toc-widget__sublist,
+.toc-widget--animation-snake-rect .toc-widget__sublist,
+.toc-widget--animation-snake-rect-bend .toc-widget__sublist {
   padding-left: calc(12px + 8px);
 }
 
@@ -198,19 +207,39 @@
 }
 
 .toc-widget--animation-snake.toc-widget--align-center .toc-widget__list,
-.toc-widget--animation-snake.toc-widget--align-right .toc-widget__list {
+.toc-widget--animation-snake.toc-widget--align-right .toc-widget__list,
+.toc-widget--animation-snake-rect.toc-widget--align-center .toc-widget__list,
+.toc-widget--animation-snake-rect.toc-widget--align-right .toc-widget__list,
+.toc-widget--animation-snake-rect-bend.toc-widget--align-center
+  .toc-widget__list,
+.toc-widget--animation-snake-rect-bend.toc-widget--align-right
+  .toc-widget__list {
   padding-left: calc(12px + var(--toc-snake-rail-space));
 }
 
 .toc-widget--animation-snake.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
 .toc-widget--animation-snake.toc-widget--align-right.toc-widget--flat
+  .toc-widget__list,
+.toc-widget--animation-snake-rect.toc-widget--align-center.toc-widget--flat
+  .toc-widget__list,
+.toc-widget--animation-snake-rect.toc-widget--align-right.toc-widget--flat
+  .toc-widget__list,
+.toc-widget--animation-snake-rect-bend.toc-widget--align-center.toc-widget--flat
+  .toc-widget__list,
+.toc-widget--animation-snake-rect-bend.toc-widget--align-right.toc-widget--flat
   .toc-widget__list {
   padding-left: var(--toc-snake-rail-space);
 }
 
 .toc-widget--animation-snake.toc-widget--align-center .toc-widget__sublist,
-.toc-widget--animation-snake.toc-widget--align-right .toc-widget__sublist {
+.toc-widget--animation-snake.toc-widget--align-right .toc-widget__sublist,
+.toc-widget--animation-snake-rect.toc-widget--align-center .toc-widget__sublist,
+.toc-widget--animation-snake-rect.toc-widget--align-right .toc-widget__sublist,
+.toc-widget--animation-snake-rect-bend.toc-widget--align-center
+  .toc-widget__sublist,
+.toc-widget--animation-snake-rect-bend.toc-widget--align-right
+  .toc-widget__sublist {
   padding-left: calc(12px + 8px);
 }
 
@@ -267,6 +296,8 @@
 }
 
 .toc-widget__snake-head {
+  --toc-snake-head-rotation: 0deg;
+  --toc-snake-head-bend: 0deg;
   position: absolute;
   width: var(--toc-snake-size);
   height: var(--toc-snake-size);
@@ -275,11 +306,39 @@
   box-shadow:
     0 0 0 2px var(--toc-active-background),
     0 0 0 0 rgb(0 0 0 / 0.08);
-  transform: translate(-50%, -50%);
+  transform:
+    translate(-50%, -50%)
+    rotate(var(--toc-snake-head-rotation))
+    skewY(var(--toc-snake-head-bend));
   transition:
     left 220ms ease,
-    top 220ms ease;
+    top 220ms ease,
+    transform 220ms ease;
   animation: toc-widget-snake-head-pulse 2.8s ease-in-out infinite;
+}
+
+.toc-widget--animation-snake-rect .toc-widget__snake-path {
+  opacity: 0;
+  animation: none;
+}
+
+.toc-widget--animation-snake-rect .toc-widget__snake-head {
+  width: var(--toc-snake-rect-width);
+  height: var(--toc-snake-rect-height);
+  border-radius: 2px;
+  animation: none;
+}
+
+.toc-widget--animation-snake-rect-bend .toc-widget__snake-path {
+  opacity: 1;
+  animation: none;
+  stroke-width: var(--toc-snake-bent-rect-height);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.toc-widget--animation-snake-rect-bend .toc-widget__snake-head {
+  display: none;
 }
 
 .toc-widget--show-more-active .toc-widget__list {
@@ -372,14 +431,22 @@
 @keyframes toc-widget-snake-head-pulse {
   0%,
   100% {
-    transform: translate(-50%, -50%) scale(1);
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--toc-snake-head-rotation))
+      skewY(var(--toc-snake-head-bend))
+      scale(1);
     box-shadow:
       0 0 0 2px var(--toc-active-background),
       0 0 0 0 rgb(0 0 0 / 0.08);
   }
 
   50% {
-    transform: translate(-50%, -50%) scale(1.08);
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--toc-snake-head-rotation))
+      skewY(var(--toc-snake-head-bend))
+      scale(1.08);
     box-shadow:
       0 0 0 2px var(--toc-active-background),
       0 0 0 5px rgb(0 0 0 / 0.04);

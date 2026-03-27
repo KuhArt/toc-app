@@ -27,7 +27,7 @@ import { authenticate } from "../shopify.server";
 
 type TocTextAlignment = "left" | "center" | "right";
 type TocMarkerFormat = "none" | "bullet" | "numeric";
-type TocAnimationType = "none" | "snake";
+type TocAnimationType = "none" | "snake" | "snake-rect" | "snake-rect-bend";
 type TocDesktopPosition =
   | "float-right"
   | "float-left"
@@ -98,6 +98,8 @@ const CUSTOM_CSS_EDITOR_EXTENSIONS = [cssLanguage()];
 const CUSTOM_CSS_REFERENCE_SELECTORS = [
   ".toc-widget",
   ".toc-widget--animation-snake",
+  ".toc-widget--animation-snake-rect",
+  ".toc-widget--animation-snake-rect-bend",
   ".toc-widget__title",
   ".toc-widget__list-shell",
   ".toc-widget__list",
@@ -220,6 +222,8 @@ const MARKER_FORMAT_OPTIONS = [
 const ANIMATION_TYPE_OPTIONS = [
   { label: "None", value: "none" },
   { label: "Snake", value: "snake" },
+  { label: "Snake rectangle", value: "snake-rect" },
+  { label: "Snake bent rectangle", value: "snake-rect-bend" },
 ] as const;
 const FONT_WEIGHT_OPTIONS = [
   { label: "Thin", value: "100" },
@@ -4812,10 +4816,13 @@ function getPreviewPlacementStyle(
 }
 
 type TocSnakeGeometry = {
+  headAngle: number;
+  headBend: number;
   headX: number;
   headY: number;
   height: number;
   path: string;
+  pathLength: number;
   width: number;
 };
 
@@ -4828,12 +4835,38 @@ type TocSnakeLinkMetric = {
 
 const TOC_SNAKE_HEAD_OFFSET = 12;
 const TOC_SNAKE_TOP_OFFSET = 8;
+const TOC_SNAKE_BENT_VISIBLE_LENGTH = 34;
 
-function isDesktopSnakeAnimation(
+function isDesktopPathAnimation(
   previewDevice: "desktop" | "mobile",
   animationType: TocAnimationType,
 ) {
-  return previewDevice === "desktop" && animationType === "snake";
+  return (
+    previewDevice === "desktop" &&
+    ["snake", "snake-rect", "snake-rect-bend"].includes(animationType)
+  );
+}
+
+function isSnakeRectAnimation(animationType: TocAnimationType) {
+  return animationType === "snake-rect";
+}
+
+function isSnakeRectBendAnimation(animationType: TocAnimationType) {
+  return animationType === "snake-rect-bend";
+}
+
+function normalizeAngleDelta(delta: number) {
+  let normalized = delta;
+
+  while (normalized > 180) {
+    normalized -= 360;
+  }
+
+  while (normalized < -180) {
+    normalized += 360;
+  }
+
+  return normalized;
 }
 
 function clampSnakeCoordinate(value: number, limit: number) {
@@ -4902,9 +4935,86 @@ function buildSnakePath(points: Array<{ x: number; y: number }>) {
   }, "");
 }
 
+function measureSnakePathLength(points: Array<{ x: number; y: number }>) {
+  return points.slice(1).reduce((total, point, index) => {
+    const previousPoint = points[index];
+
+    return (
+      total +
+      Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y)
+    );
+  }, 0);
+}
+
+function appendSnakeTransitionPoints(
+  points: Array<{ x: number; y: number }>,
+  currentMetric: TocSnakeLinkMetric,
+  nextMetric: TocSnakeLinkMetric,
+  progress: number,
+) {
+  const transitionPoints: Array<{ x: number; y: number }> = [
+    { x: currentMetric.laneX, y: currentMetric.centerY },
+    { x: currentMetric.laneX, y: currentMetric.exitY },
+  ];
+  const turnY = (currentMetric.exitY + nextMetric.entryY) / 2;
+
+  transitionPoints.push({ x: currentMetric.laneX, y: turnY });
+
+  if (nextMetric.laneX !== currentMetric.laneX) {
+    transitionPoints.push({ x: nextMetric.laneX, y: turnY });
+  }
+
+  transitionPoints.push(
+    { x: nextMetric.laneX, y: nextMetric.entryY },
+    { x: nextMetric.laneX, y: nextMetric.centerY },
+  );
+
+  const clampedProgress = Math.min(Math.max(progress, 0), 1);
+  if (clampedProgress <= 0) {
+    return;
+  }
+
+  const transitionLength = measureSnakePathLength(transitionPoints);
+  if (transitionLength <= 0) {
+    pushSnakePoint(points, transitionPoints[transitionPoints.length - 1]);
+    return;
+  }
+
+  const targetLength = transitionLength * clampedProgress;
+  let traversed = 0;
+
+  for (let index = 1; index < transitionPoints.length; index += 1) {
+    const previousPoint = transitionPoints[index - 1];
+    const point = transitionPoints[index];
+    const segmentLength = Math.hypot(
+      point.x - previousPoint.x,
+      point.y - previousPoint.y,
+    );
+
+    if (segmentLength <= 0) {
+      continue;
+    }
+
+    if (traversed + segmentLength <= targetLength) {
+      pushSnakePoint(points, point);
+      traversed += segmentLength;
+      continue;
+    }
+
+    const segmentProgress = (targetLength - traversed) / segmentLength;
+    pushSnakePoint(points, {
+      x: previousPoint.x + (point.x - previousPoint.x) * segmentProgress,
+      y: previousPoint.y + (point.y - previousPoint.y) * segmentProgress,
+    });
+    return;
+  }
+}
+
 function measureTocSnakeGeometry(
   list: HTMLUListElement,
   activeLink: HTMLAnchorElement | null,
+  nextLink?: HTMLAnchorElement | null,
+  nextProgress = 0,
 ): TocSnakeGeometry | null {
   if (!activeLink) {
     return null;
@@ -4924,9 +5034,8 @@ function measureTocSnakeGeometry(
     return null;
   }
 
-  const metrics = links
-    .slice(0, activeIndex + 1)
-    .map((link) => createSnakeLinkMetric(listRect, link));
+  const allMetrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+  const metrics = allMetrics.slice(0, activeIndex + 1);
 
   if (!metrics.length) {
     return null;
@@ -4962,13 +5071,53 @@ function measureTocSnakeGeometry(
     });
   });
 
-  const head = metrics[metrics.length - 1];
+  const nextIndex = nextLink ? links.indexOf(nextLink) : -1;
+  if (nextIndex === activeIndex + 1 && nextIndex < allMetrics.length) {
+    appendSnakeTransitionPoints(
+      points,
+      allMetrics[activeIndex],
+      allMetrics[nextIndex],
+      nextProgress,
+    );
+  }
+
+  const headPoint = points[points.length - 1];
+  const segmentAngles: number[] = [];
+  let headAngle = 0;
+  let headBend = 0;
+
+  for (let index = points.length - 1; index > 0; index -= 1) {
+    const currentPoint = points[index];
+    const previousPoint = points[index - 1];
+    const deltaX = currentPoint.x - previousPoint.x;
+    const deltaY = currentPoint.y - previousPoint.y;
+
+    if (deltaX === 0 && deltaY === 0) {
+      continue;
+    }
+
+    segmentAngles.push((Math.atan2(deltaY, deltaX) * 180) / Math.PI);
+  }
+
+  if (segmentAngles.length > 0) {
+    headAngle = segmentAngles[0];
+  }
+
+  if (segmentAngles.length > 1) {
+    headBend = Math.max(
+      -18,
+      Math.min(18, normalizeAngleDelta(segmentAngles[0] - segmentAngles[1]) * 0.22),
+    );
+  }
 
   return {
-    headX: head.laneX,
-    headY: head.centerY,
+    headAngle,
+    headBend,
+    headX: headPoint?.x ?? metrics[metrics.length - 1].laneX,
+    headY: headPoint?.y ?? metrics[metrics.length - 1].centerY,
     height: Math.ceil(listRect.height),
     path: buildSnakePath(points),
+    pathLength: measureSnakePathLength(points),
     width: Math.ceil(listRect.width),
   };
 }
@@ -4983,8 +5132,11 @@ function snakeGeometryEqual(
 
   return (
     left.path === right.path &&
+    left.pathLength === right.pathLength &&
     left.width === right.width &&
     left.height === right.height &&
+    left.headAngle === right.headAngle &&
+    left.headBend === right.headBend &&
     left.headX === right.headX &&
     left.headY === right.headY
   );
@@ -5014,14 +5166,17 @@ function TocPreview({
   );
   const listRef = useRef<HTMLUListElement | null>(null);
   const snakeFrameRef = useRef<number | null>(null);
-  const snakeActive = isDesktopSnakeAnimation(
+  const snakeActive = isDesktopPathAnimation(
     previewDevice,
     device.animationType,
   );
+  const snakeRectActive = snakeActive && isSnakeRectAnimation(device.animationType);
+  const snakeRectBendActive =
+    snakeActive && isSnakeRectBendAnimation(device.animationType);
 
   const measureSnake = useCallback(() => {
     if (!snakeActive) {
-      setSnakeGeometry((current) => (current === null ? current : null));
+    setSnakeGeometry((current) => (current === null ? current : null));
       return;
     }
 
@@ -5030,7 +5185,9 @@ function TocPreview({
       ".toc-widget__link--current",
     );
     const nextGeometry =
-      list && activeLink ? measureTocSnakeGeometry(list, activeLink) : null;
+      list && activeLink
+        ? measureTocSnakeGeometry(list, activeLink, null, 0)
+        : null;
 
     setSnakeGeometry((current) =>
       snakeGeometryEqual(current, nextGeometry) ? current : nextGeometry,
@@ -5164,10 +5321,17 @@ function TocPreview({
   if (!preview.showToc) return null;
 
   const showToggle = device.showButton && needsToggle;
+  const bentPathStyle =
+    snakeRectBendActive && snakeGeometry
+      ? ({
+          strokeDasharray: `${Math.min(TOC_SNAKE_BENT_VISIBLE_LENGTH, snakeGeometry.pathLength)} ${Math.max(snakeGeometry.pathLength, 1)}`,
+          strokeDashoffset: `-${Math.max(snakeGeometry.pathLength - TOC_SNAKE_BENT_VISIBLE_LENGTH, 0)}`,
+        } as CSSProperties)
+      : undefined;
 
   const nav = (
     <nav
-      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${snakeActive ? " toc-widget--animation-snake" : ""}`}
+      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${snakeActive ? " toc-widget--animation-snake" : ""}${snakeRectActive ? " toc-widget--animation-snake-rect" : ""}${snakeRectBendActive ? " toc-widget--animation-snake-rect-bend" : ""}`}
       aria-label="Table of contents preview"
       data-device={previewDevice}
       style={getPreviewContainerStyle(device)}
@@ -5197,16 +5361,21 @@ function TocPreview({
                 <path
                   className="toc-widget__snake-path"
                   d={snakeGeometry.path}
+                  style={bentPathStyle}
                 />
               ) : null}
             </svg>
-            {snakeGeometry ? (
+            {snakeGeometry && !snakeRectBendActive ? (
               <span
                 className="toc-widget__snake-head"
-                style={{
-                  left: `${snakeGeometry.headX}px`,
-                  top: `${snakeGeometry.headY}px`,
-                }}
+                style={
+                  {
+                    left: `${snakeGeometry.headX}px`,
+                    top: `${snakeGeometry.headY}px`,
+                    "--toc-snake-head-rotation": `${snakeGeometry.headAngle}deg`,
+                    "--toc-snake-head-bend": `${snakeGeometry.headBend}deg`,
+                  } as CSSProperties
+                }
               ></span>
             ) : null}
           </div>
