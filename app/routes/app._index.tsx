@@ -27,6 +27,7 @@ import { authenticate } from "../shopify.server";
 
 type TocTextAlignment = "left" | "center" | "right";
 type TocMarkerFormat = "none" | "bullet" | "numeric";
+type TocAnimationType = "none" | "snake";
 type TocDesktopPosition =
   | "float-right"
   | "float-left"
@@ -75,6 +76,7 @@ type TocDeviceConfig = TocBorderConfig & {
   showButtonBorderColor: string;
   showButtonBorderWidth: number;
   showButtonBorderRadius: number;
+  animationType: TocAnimationType;
 };
 type TocConfig = {
   title: string;
@@ -95,12 +97,17 @@ const CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN = "{{mobileBreakpoint}}";
 const CUSTOM_CSS_EDITOR_EXTENSIONS = [cssLanguage()];
 const CUSTOM_CSS_REFERENCE_SELECTORS = [
   ".toc-widget",
+  ".toc-widget--animation-snake",
   ".toc-widget__title",
+  ".toc-widget__list-shell",
   ".toc-widget__list",
   ".toc-widget__sublist",
   ".toc-widget__item",
   ".toc-widget__link",
   ".toc-widget__link-label",
+  ".toc-widget__snake",
+  ".toc-widget__snake-path",
+  ".toc-widget__snake-head",
   ".toc-widget__toggle",
   ".toc-widget__fade",
   ".toc-widget__fade--top",
@@ -145,6 +152,7 @@ const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
   showButtonBorderColor: "#575757",
   showButtonBorderWidth: 0,
   showButtonBorderRadius: 0,
+  animationType: "none",
 };
 const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
   position: "before-first-heading",
@@ -181,6 +189,7 @@ const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
   showButtonBorderColor: "#575757",
   showButtonBorderWidth: 0,
   showButtonBorderRadius: 0,
+  animationType: "none",
 };
 
 const DEFAULT_CONFIG: TocConfig = {
@@ -207,6 +216,10 @@ const MARKER_FORMAT_OPTIONS = [
   { label: "None", value: "none" },
   { label: "Bullet", value: "bullet" },
   { label: "Numeric", value: "numeric" },
+] as const;
+const ANIMATION_TYPE_OPTIONS = [
+  { label: "None", value: "none" },
+  { label: "Snake", value: "snake" },
 ] as const;
 const FONT_WEIGHT_OPTIONS = [
   { label: "Thin", value: "100" },
@@ -640,7 +653,8 @@ type DeviceSectionKey =
   | "padding"
   | "offset"
   | "scroll"
-  | "showButton";
+  | "showButton"
+  | "animation";
 type SectionNavKey = GeneralSectionKey | DeviceSectionKey;
 const GENERAL_SECTION_NAV_ITEMS: Array<{
   key: GeneralSectionKey;
@@ -650,7 +664,21 @@ const GENERAL_SECTION_NAV_ITEMS: Array<{
   { key: "textFormatting", label: "Text Formatting" },
   { key: "advancedSettings", label: "Advanced settings" },
 ];
-const DEVICE_SECTION_NAV_ITEMS: Array<{
+const DESKTOP_DEVICE_SECTION_NAV_ITEMS: Array<{
+  key: DeviceSectionKey;
+  label: string;
+}> = [
+  { key: "general", label: "General" },
+  { key: "title", label: "Title" },
+  { key: "headings", label: "Headings" },
+  { key: "border", label: "Border" },
+  { key: "padding", label: "Padding" },
+  { key: "offset", label: "Offset" },
+  { key: "scroll", label: "Scroll" },
+  { key: "showButton", label: "Show more button" },
+  { key: "animation", label: "Animation" },
+];
+const MOBILE_DEVICE_SECTION_NAV_ITEMS: Array<{
   key: DeviceSectionKey;
   label: string;
 }> = [
@@ -717,6 +745,7 @@ type TocDeviceConfigInput = {
   showButtonBorderColor: string;
   showButtonBorderWidth: string;
   showButtonBorderRadius: string;
+  animationType: string;
 };
 
 type PreviewHeading = {
@@ -746,11 +775,7 @@ type AppBridgeExtensionRecord = {
 const DEVICE_SECTION_FIELDS = {
   general: ["position", "positionSelector", "background", "maxWidth"],
   title: ["showTitle", "titleFontSize", "titleFontColor", "titleFontWeight"],
-  headings: [
-    "headingsFontSize",
-    "headingsFontColor",
-    "headingsFontWeight",
-  ],
+  headings: ["headingsFontSize", "headingsFontColor", "headingsFontWeight"],
   border: ["color", "width", "radius"],
   padding: ["paddingTop", "paddingBottom", "paddingLeft", "paddingRight"],
   offset: ["offsetTop", "offsetBottom", "offsetLeft", "offsetRight"],
@@ -767,7 +792,11 @@ const DEVICE_SECTION_FIELDS = {
     "showButtonBorderWidth",
     "showButtonBorderRadius",
   ],
-} as const satisfies Record<DeviceSectionKey, readonly (keyof TocDeviceConfig)[]>;
+  animation: ["animationType"],
+} as const satisfies Record<
+  DeviceSectionKey,
+  readonly (keyof TocDeviceConfig)[]
+>;
 
 type GeneralSectionApplyPayload = Pick<
   TocDeviceConfig,
@@ -803,7 +832,9 @@ function deviceSectionFieldsEqual(
   right: TocDeviceConfig,
   section: DeviceSectionKey,
 ) {
-  return DEVICE_SECTION_FIELDS[section].every((field) => left[field] === right[field]);
+  return DEVICE_SECTION_FIELDS[section].every(
+    (field) => left[field] === right[field],
+  );
 }
 
 function getGeneralSectionApplyPayload(
@@ -1118,6 +1149,9 @@ export default function Index() {
     useState(String(config.desktop.showButtonBorderWidth));
   const [desktopShowButtonBorderRadius, setDesktopShowButtonBorderRadius] =
     useState(String(config.desktop.showButtonBorderRadius));
+  const [desktopAnimationType, setDesktopAnimationType] = useState(
+    config.desktop.animationType,
+  );
   const [mobilePosition, setMobilePosition] = useState(config.mobile.position);
   const [mobilePositionSelector, setMobilePositionSelector] = useState(
     config.mobile.positionSelector,
@@ -1215,6 +1249,9 @@ export default function Index() {
     useState(String(config.mobile.showButtonBorderWidth));
   const [mobileShowButtonBorderRadius, setMobileShowButtonBorderRadius] =
     useState(String(config.mobile.showButtonBorderRadius));
+  const [mobileAnimationType, setMobileAnimationType] = useState(
+    config.mobile.animationType,
+  );
   const [appliedSections, setAppliedSections] = useState(
     createEmptyDeviceSectionApplyState(),
   );
@@ -1271,6 +1308,7 @@ export default function Index() {
       showButtonBorderColor: desktopShowButtonBorderColor,
       showButtonBorderWidth: desktopShowButtonBorderWidth,
       showButtonBorderRadius: desktopShowButtonBorderRadius,
+      animationType: desktopAnimationType,
     },
     mobile: {
       position: mobilePosition,
@@ -1307,6 +1345,7 @@ export default function Index() {
       showButtonBorderColor: mobileShowButtonBorderColor,
       showButtonBorderWidth: mobileShowButtonBorderWidth,
       showButtonBorderRadius: mobileShowButtonBorderRadius,
+      animationType: mobileAnimationType,
     },
   });
   const desktopPreview = buildPreviewState(currentConfig);
@@ -1325,14 +1364,17 @@ export default function Index() {
     offset: null,
     scroll: null,
     showButton: null,
+    animation: null,
   });
   const customCssEditorViewRef = useRef<EditorView | null>(null);
   const activeSectionNavItems =
     activeTab === "general"
       ? GENERAL_SECTION_NAV_ITEMS
-      : activeDevice
-        ? DEVICE_SECTION_NAV_ITEMS
-        : [];
+      : activeTab === "desktop"
+        ? DESKTOP_DEVICE_SECTION_NAV_ITEMS
+        : activeTab === "mobile"
+          ? MOBILE_DEVICE_SECTION_NAV_ITEMS
+          : [];
 
   const scrollToSection = (section: SectionNavKey) => {
     const sectionElement = sectionRefs.current[section];
@@ -1410,7 +1452,10 @@ export default function Index() {
 
     switch (section) {
       case "general": {
-        const payload = getGeneralSectionApplyPayload(activeDevice, sourceConfig);
+        const payload = getGeneralSectionApplyPayload(
+          activeDevice,
+          sourceConfig,
+        );
 
         if (targetDevice === "desktop") {
           setDesktopBackground(payload.background);
@@ -1539,6 +1584,13 @@ export default function Index() {
           );
         }
         break;
+      case "animation":
+        if (targetDevice === "desktop") {
+          setDesktopAnimationType(sourceConfig.animationType);
+        } else {
+          setMobileAnimationType(sourceConfig.animationType);
+        }
+        break;
     }
 
     setAppliedSections((current) => ({
@@ -1625,6 +1677,7 @@ export default function Index() {
       setDesktopShowButtonBorderColor,
       setDesktopShowButtonBorderWidth,
       setDesktopShowButtonBorderRadius,
+      setDesktopAnimationType,
       setMobilePosition,
       setMobilePositionSelector,
       setMobileBorderColor,
@@ -1659,6 +1712,7 @@ export default function Index() {
       setMobileShowButtonBorderColor,
       setMobileShowButtonBorderWidth,
       setMobileShowButtonBorderRadius,
+      setMobileAnimationType,
     });
   }, [config]);
 
@@ -1878,6 +1932,7 @@ export default function Index() {
               setDesktopShowButtonBorderColor,
               setDesktopShowButtonBorderWidth,
               setDesktopShowButtonBorderRadius,
+              setDesktopAnimationType,
               setMobilePosition,
               setMobilePositionSelector,
               setMobileBorderColor,
@@ -1912,6 +1967,7 @@ export default function Index() {
               setMobileShowButtonBorderColor,
               setMobileShowButtonBorderWidth,
               setMobileShowButtonBorderRadius,
+              setMobileAnimationType,
             });
             setAppliedSections(createEmptyDeviceSectionApplyState());
           }}
@@ -1948,7 +2004,9 @@ export default function Index() {
                         details="Shown at the top of the table of contents"
                         value={title}
                         onInput={(event) => setTitle(event.currentTarget.value)}
-                        onChange={(event) => setTitle(event.currentTarget.value)}
+                        onChange={(event) =>
+                          setTitle(event.currentTarget.value)
+                        }
                       ></s-text-field>
                       <div className="toc-field">
                         <s-text>Heading levels</s-text>
@@ -1969,7 +2027,10 @@ export default function Index() {
 
                                 setHeadingLevels((current) => {
                                   const next = checked
-                                    ? normalizeHeadingLevels([...current, level])
+                                    ? normalizeHeadingLevels([
+                                        ...current,
+                                        level,
+                                      ])
                                     : current.filter(
                                         (currentLevel) =>
                                           currentLevel !== level,
@@ -2075,7 +2136,9 @@ export default function Index() {
                         name="indentation"
                         label="Indent nested headings"
                         details="Show lower-level headings as nested items"
-                        checked={textAlignment === "center" ? false : indentation}
+                        checked={
+                          textAlignment === "center" ? false : indentation
+                        }
                         disabled={textAlignment === "center"}
                         onChange={(event) =>
                           setIndentation(event.currentTarget.checked)
@@ -2093,13 +2156,13 @@ export default function Index() {
                   <s-section heading="Advanced settings">
                     <div className="toc-field">
                       <div className="toc-code-field">
-                        <span className="toc-code-field__label">Custom CSS</span>
+                        <span className="toc-code-field__label">
+                          Custom CSS
+                        </span>
                         <span className="toc-field-details">
-                          Same classes work for desktop and mobile. Use
-                          {" "}
-                          {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN}
-                          {" "}
-                          for mobile-only rules.
+                          Same classes work for desktop and mobile. Use{" "}
+                          {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN} for mobile-only
+                          rules.
                         </span>
                         <input
                           name="customCss"
@@ -2131,7 +2194,9 @@ export default function Index() {
             </div>
             {activeTab !== "general" ? (
               <>
-                {renderDeviceSection("general", "General", (
+                {renderDeviceSection(
+                  "general",
+                  "General",
                   <s-stack direction="block" gap="base">
                     <s-select
                       name={
@@ -2269,9 +2334,11 @@ export default function Index() {
                         }
                       }}
                     ></s-number-field>
-                  </s-stack>
-                ))}
-                {renderDeviceSection("title", "Title", (
+                  </s-stack>,
+                )}
+                {renderDeviceSection(
+                  "title",
+                  "Title",
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -2388,9 +2455,11 @@ export default function Index() {
                         ))}
                       </s-select>
                     </div>
-                  </s-stack>
-                ))}
-                {renderDeviceSection("headings", "Headings", (
+                  </s-stack>,
+                )}
+                {renderDeviceSection(
+                  "headings",
+                  "Headings",
                   <div className="toc-compact-fields">
                     <s-color-field
                       name={
@@ -2481,9 +2550,11 @@ export default function Index() {
                         </s-option>
                       ))}
                     </s-select>
-                  </div>
-                ))}
-                {renderDeviceSection("border", "Border", (
+                  </div>,
+                )}
+                {renderDeviceSection(
+                  "border",
+                  "Border",
                   <div className="toc-compact-fields">
                     <s-color-field
                       name={
@@ -2579,9 +2650,11 @@ export default function Index() {
                         }
                       }}
                     ></s-number-field>
-                  </div>
-                ))}
-                {renderDeviceSection("padding", "Padding", (
+                  </div>,
+                )}
+                {renderDeviceSection(
+                  "padding",
+                  "Padding",
                   <div className="toc-compact-fields-four">
                     <s-number-field
                       name={
@@ -2711,9 +2784,11 @@ export default function Index() {
                         }
                       }}
                     ></s-number-field>
-                  </div>
-                ))}
-                {renderDeviceSection("offset", "Offset", (
+                  </div>,
+                )}
+                {renderDeviceSection(
+                  "offset",
+                  "Offset",
                   <div className="toc-compact-fields-four">
                     <s-number-field
                       name={
@@ -2839,9 +2914,11 @@ export default function Index() {
                         }
                       }}
                     ></s-number-field>
-                  </div>
-                ))}
-                {renderDeviceSection("scroll", "Scroll", (
+                  </div>,
+                )}
+                {renderDeviceSection(
+                  "scroll",
+                  "Scroll",
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -2898,9 +2975,11 @@ export default function Index() {
                         }
                       }}
                     ></s-number-field>
-                  </s-stack>
-                ))}
-                {renderDeviceSection("showButton", "Show more button", (
+                  </s-stack>,
+                )}
+                {renderDeviceSection(
+                  "showButton",
+                  "Show more button",
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -3221,8 +3300,30 @@ export default function Index() {
                         ></s-number-field>
                       </div>
                     </div>
-                  </s-stack>
-                ))}
+                  </s-stack>,
+                )}
+                {activeTab === "desktop"
+                  ? renderDeviceSection(
+                      "animation",
+                      "Animation",
+                      <s-select
+                        name="desktopAnimationType"
+                        label="Type"
+                        value={desktopAnimationType}
+                        onChange={(event) => {
+                          setDesktopAnimationType(
+                            normalizeAnimationType(event.currentTarget.value),
+                          );
+                        }}
+                      >
+                        {ANIMATION_TYPE_OPTIONS.map((option) => (
+                          <s-option key={option.value} value={option.value}>
+                            {option.label}
+                          </s-option>
+                        ))}
+                      </s-select>,
+                    )
+                  : null}
               </>
             ) : null}
             {actionData?.userErrors?.length ? (
@@ -3406,6 +3507,7 @@ function applyConfigToForm(
     setDesktopShowButtonBorderColor: (value: string) => void;
     setDesktopShowButtonBorderWidth: (value: string) => void;
     setDesktopShowButtonBorderRadius: (value: string) => void;
+    setDesktopAnimationType: (value: TocAnimationType) => void;
     setMobilePosition: (value: TocMobilePosition) => void;
     setMobilePositionSelector: (value: string) => void;
     setMobileBorderColor: (value: string) => void;
@@ -3440,6 +3542,7 @@ function applyConfigToForm(
     setMobileShowButtonBorderColor: (value: string) => void;
     setMobileShowButtonBorderWidth: (value: string) => void;
     setMobileShowButtonBorderRadius: (value: string) => void;
+    setMobileAnimationType: (value: TocAnimationType) => void;
   },
 ) {
   controls.setTitle(config.title);
@@ -3499,6 +3602,7 @@ function applyConfigToForm(
   controls.setDesktopShowButtonBorderRadius(
     String(config.desktop.showButtonBorderRadius),
   );
+  controls.setDesktopAnimationType(config.desktop.animationType);
   controls.setMobilePosition(normalizeMobilePosition(config.mobile.position));
   controls.setMobilePositionSelector(config.mobile.positionSelector);
   controls.setMobileBorderColor(config.mobile.color);
@@ -3543,6 +3647,7 @@ function applyConfigToForm(
   controls.setMobileShowButtonBorderRadius(
     String(config.mobile.showButtonBorderRadius),
   );
+  controls.setMobileAnimationType(config.mobile.animationType);
 }
 
 function configsEqual(left: TocConfig, right: TocConfig) {
@@ -3592,6 +3697,7 @@ function configsEqual(left: TocConfig, right: TocConfig) {
       right.desktop.showButtonBorderWidth &&
     left.desktop.showButtonBorderRadius ===
       right.desktop.showButtonBorderRadius &&
+    left.desktop.animationType === right.desktop.animationType &&
     left.mobile.position === right.mobile.position &&
     left.mobile.positionSelector === right.mobile.positionSelector &&
     left.mobile.color === right.mobile.color &&
@@ -3627,6 +3733,7 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.mobile.showButtonBorderWidth === right.mobile.showButtonBorderWidth &&
     left.mobile.showButtonBorderRadius ===
       right.mobile.showButtonBorderRadius &&
+    left.mobile.animationType === right.mobile.animationType &&
     left.headingLevels.length === right.headingLevels.length &&
     left.headingLevels.every(
       (level, index) => level === right.headingLevels[index],
@@ -3904,6 +4011,11 @@ function HiddenDeviceFields({
         name={`${prefix}ShowButtonBorderRadius`}
         value={String(config.showButtonBorderRadius)}
       />
+      <input
+        type="hidden"
+        name={`${prefix}AnimationType`}
+        value={config.animationType}
+      />
     </>
   );
 }
@@ -4027,6 +4139,10 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       showButtonBorderRadius: String(
         formData.get("desktopShowButtonBorderRadius") || "",
       ),
+      animationType: String(
+        formData.get("desktopAnimationType") ||
+          DEFAULT_CONFIG.desktop.animationType,
+      ),
     },
     mobile: {
       position: String(
@@ -4094,6 +4210,10 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       showButtonBorderRadius: String(
         formData.get("mobileShowButtonBorderRadius") || "",
+      ),
+      animationType: String(
+        formData.get("mobileAnimationType") ||
+          DEFAULT_CONFIG.mobile.animationType,
       ),
     },
   });
@@ -4290,6 +4410,12 @@ function normalizeMarkerFormat(value: unknown): TocMarkerFormat {
     : (DEFAULT_CONFIG.markerFormat as TocMarkerFormat);
 }
 
+function normalizeAnimationType(value: unknown): TocAnimationType {
+  return ANIMATION_TYPE_OPTIONS.some((option) => option.value === value)
+    ? (value as TocAnimationType)
+    : DEFAULT_CONFIG.desktop.animationType;
+}
+
 function normalizeHeadingLevels(levels: number[]): number[] {
   return [...new Set(levels)]
     .filter((level) =>
@@ -4466,6 +4592,7 @@ function normalizeDeviceConfig(
       Number.isFinite(config.showButtonBorderRadius)
         ? Math.max(0, config.showButtonBorderRadius)
         : fallback.showButtonBorderRadius,
+    animationType: normalizeAnimationType(config.animationType),
   };
 }
 
@@ -4579,6 +4706,7 @@ function coerceDeviceConfig(
     showButtonBorderRadius: Number.isFinite(showButtonBorderRadius)
       ? showButtonBorderRadius
       : fallback.showButtonBorderRadius,
+    animationType: normalizeAnimationType(input.animationType),
   };
 }
 
@@ -4683,6 +4811,185 @@ function getPreviewPlacementStyle(
   };
 }
 
+type TocSnakeGeometry = {
+  headX: number;
+  headY: number;
+  height: number;
+  path: string;
+  width: number;
+};
+
+type TocSnakeLinkMetric = {
+  centerY: number;
+  entryY: number;
+  exitY: number;
+  laneX: number;
+};
+
+const TOC_SNAKE_HEAD_OFFSET = 12;
+const TOC_SNAKE_TOP_OFFSET = 8;
+
+function isDesktopSnakeAnimation(
+  previewDevice: "desktop" | "mobile",
+  animationType: TocAnimationType,
+) {
+  return previewDevice === "desktop" && animationType === "snake";
+}
+
+function clampSnakeCoordinate(value: number, limit: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  if (limit <= 0) {
+    return 0;
+  }
+
+  return Math.min(Math.max(value, 0), limit);
+}
+
+function createSnakeLinkMetric(
+  listRect: DOMRect,
+  link: HTMLAnchorElement,
+): TocSnakeLinkMetric {
+  const linkRect = link.getBoundingClientRect();
+  const rowTop = linkRect.top - listRect.top;
+  const rowBottom = linkRect.bottom - listRect.top;
+  const rowHeight = linkRect.height;
+  const inset = Math.min(6, Math.max(2, rowHeight * 0.24));
+  const entryY = rowTop + inset;
+  const exitY = Math.max(entryY, rowBottom - inset);
+
+  return {
+    centerY: rowTop + rowHeight / 2,
+    entryY,
+    exitY,
+    laneX: clampSnakeCoordinate(
+      linkRect.left - listRect.left - TOC_SNAKE_HEAD_OFFSET,
+      listRect.width,
+    ),
+  };
+}
+
+function pushSnakePoint(
+  points: Array<{ x: number; y: number }>,
+  point: { x: number; y: number },
+) {
+  const previousPoint = points[points.length - 1];
+
+  if (
+    previousPoint &&
+    previousPoint.x === point.x &&
+    previousPoint.y === point.y
+  ) {
+    return;
+  }
+
+  points.push(point);
+}
+
+function buildSnakePath(points: Array<{ x: number; y: number }>) {
+  if (!points.length) {
+    return "";
+  }
+
+  return points.reduce((path, point, index) => {
+    if (index === 0) {
+      return `M ${point.x} ${point.y}`;
+    }
+
+    return `${path} L ${point.x} ${point.y}`;
+  }, "");
+}
+
+function measureTocSnakeGeometry(
+  list: HTMLUListElement,
+  activeLink: HTMLAnchorElement | null,
+): TocSnakeGeometry | null {
+  if (!activeLink) {
+    return null;
+  }
+
+  const listRect = list.getBoundingClientRect();
+  if (listRect.width <= 0 || listRect.height <= 0) {
+    return null;
+  }
+
+  const links = Array.from(
+    list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link"),
+  );
+  const activeIndex = links.indexOf(activeLink);
+
+  if (activeIndex < 0) {
+    return null;
+  }
+
+  const metrics = links
+    .slice(0, activeIndex + 1)
+    .map((link) => createSnakeLinkMetric(listRect, link));
+
+  if (!metrics.length) {
+    return null;
+  }
+
+  const firstMetric = metrics[0];
+  const points: Array<{ x: number; y: number }> = [];
+  let currentX = firstMetric.laneX;
+
+  pushSnakePoint(points, {
+    x: currentX,
+    y: Math.min(TOC_SNAKE_TOP_OFFSET, firstMetric.entryY),
+  });
+
+  metrics.forEach((metric, index) => {
+    const turnY =
+      index === 0
+        ? metric.entryY
+        : (metrics[index - 1].exitY + metric.entryY) / 2;
+
+    pushSnakePoint(points, { x: currentX, y: turnY });
+
+    if (metric.laneX !== currentX) {
+      currentX = metric.laneX;
+      pushSnakePoint(points, { x: currentX, y: turnY });
+    }
+
+    pushSnakePoint(points, { x: currentX, y: metric.entryY });
+
+    pushSnakePoint(points, {
+      x: currentX,
+      y: index === metrics.length - 1 ? metric.centerY : metric.exitY,
+    });
+  });
+
+  const head = metrics[metrics.length - 1];
+
+  return {
+    headX: head.laneX,
+    headY: head.centerY,
+    height: Math.ceil(listRect.height),
+    path: buildSnakePath(points),
+    width: Math.ceil(listRect.width),
+  };
+}
+
+function snakeGeometryEqual(
+  left: TocSnakeGeometry | null,
+  right: TocSnakeGeometry | null,
+) {
+  if (!left || !right) {
+    return left === right;
+  }
+
+  return (
+    left.path === right.path &&
+    left.width === right.width &&
+    left.height === right.height &&
+    left.headX === right.headX &&
+    left.headY === right.headY
+  );
+}
+
 function TocPreview({
   preview,
   indentation,
@@ -4702,7 +5009,44 @@ function TocPreview({
   const [needsToggle, setNeedsToggle] = useState(false);
   const [showTopFade, setShowTopFade] = useState(false);
   const [showBottomFade, setShowBottomFade] = useState(false);
+  const [snakeGeometry, setSnakeGeometry] = useState<TocSnakeGeometry | null>(
+    null,
+  );
   const listRef = useRef<HTMLUListElement | null>(null);
+  const snakeFrameRef = useRef<number | null>(null);
+  const snakeActive = isDesktopSnakeAnimation(
+    previewDevice,
+    device.animationType,
+  );
+
+  const measureSnake = useCallback(() => {
+    if (!snakeActive) {
+      setSnakeGeometry((current) => (current === null ? current : null));
+      return;
+    }
+
+    const list = listRef.current;
+    const activeLink = list?.querySelector<HTMLAnchorElement>(
+      ".toc-widget__link--current",
+    );
+    const nextGeometry =
+      list && activeLink ? measureTocSnakeGeometry(list, activeLink) : null;
+
+    setSnakeGeometry((current) =>
+      snakeGeometryEqual(current, nextGeometry) ? current : nextGeometry,
+    );
+  }, [snakeActive]);
+
+  const scheduleSnakeMeasurement = useCallback(() => {
+    if (snakeFrameRef.current !== null) {
+      cancelAnimationFrame(snakeFrameRef.current);
+    }
+
+    snakeFrameRef.current = requestAnimationFrame(() => {
+      snakeFrameRef.current = null;
+      measureSnake();
+    });
+  }, [measureSnake]);
 
   const refreshFades = useCallback(() => {
     const list = listRef.current;
@@ -4729,6 +5073,14 @@ function TocPreview({
       setExpanded(false);
     }
   }, [needsToggle]);
+
+  useEffect(() => {
+    return () => {
+      if (snakeFrameRef.current !== null) {
+        cancelAnimationFrame(snakeFrameRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!device.showButton) {
@@ -4765,11 +5117,49 @@ function TocPreview({
       return;
     }
 
-    refreshFades();
-    list.addEventListener("scroll", refreshFades, { passive: true });
+    const handleListScroll = () => {
+      refreshFades();
+      scheduleSnakeMeasurement();
+    };
 
-    return () => list.removeEventListener("scroll", refreshFades);
-  }, [refreshFades]);
+    refreshFades();
+    scheduleSnakeMeasurement();
+    list.addEventListener("scroll", handleListScroll, { passive: true });
+
+    return () => list.removeEventListener("scroll", handleListScroll);
+  }, [refreshFades, scheduleSnakeMeasurement]);
+
+  useEffect(() => {
+    scheduleSnakeMeasurement();
+  }, [
+    device.animationType,
+    device.showTitle,
+    expanded,
+    indentation,
+    markerFormat,
+    needsToggle,
+    preview.activeId,
+    preview.items,
+    preview.title,
+    preview.showToc,
+    scheduleSnakeMeasurement,
+    snakeActive,
+    textAlignment,
+  ]);
+
+  useEffect(() => {
+    if (!snakeActive) {
+      return;
+    }
+
+    const handleResize = () => {
+      scheduleSnakeMeasurement();
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, [scheduleSnakeMeasurement, snakeActive]);
 
   if (!preview.showToc) return null;
 
@@ -4777,7 +5167,7 @@ function TocPreview({
 
   const nav = (
     <nav
-      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}`}
+      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${snakeActive ? " toc-widget--animation-snake" : ""}`}
       aria-label="Table of contents preview"
       data-device={previewDevice}
       style={getPreviewContainerStyle(device)}
@@ -4793,11 +5183,40 @@ function TocPreview({
           <span className="toc-widget__fade-shim"></span>
         </div>
       ) : null}
-      <PreviewTocList
-        ref={listRef}
-        items={preview.items}
-        activeId={preview.activeId}
-      />
+      <div className="toc-widget__list-shell">
+        {snakeActive ? (
+          <div className="toc-widget__snake" aria-hidden="true">
+            <svg
+              className="toc-widget__snake-svg"
+              viewBox={`0 0 ${snakeGeometry?.width || 0} ${snakeGeometry?.height || 0}`}
+              width={snakeGeometry?.width || 0}
+              height={snakeGeometry?.height || 0}
+              preserveAspectRatio="none"
+            >
+              {snakeGeometry?.path ? (
+                <path
+                  className="toc-widget__snake-path"
+                  d={snakeGeometry.path}
+                />
+              ) : null}
+            </svg>
+            {snakeGeometry ? (
+              <span
+                className="toc-widget__snake-head"
+                style={{
+                  left: `${snakeGeometry.headX}px`,
+                  top: `${snakeGeometry.headY}px`,
+                }}
+              ></span>
+            ) : null}
+          </div>
+        ) : null}
+        <PreviewTocList
+          ref={listRef}
+          items={preview.items}
+          activeId={preview.activeId}
+        />
+      </div>
       {showToggle ? (
         <div
           className="toc-widget__fade toc-widget__fade--bottom"

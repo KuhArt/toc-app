@@ -6,6 +6,8 @@
   const DEBUG_PREFIX = "[TOC]";
   const TOC_HEADING_ID_ATTRIBUTE = "data-shopify-toc-id";
   const TOC_GENERATED_ID_ATTRIBUTE = "data-shopify-toc-generated-id";
+  const TOC_SNAKE_HEAD_OFFSET = 12;
+  const TOC_SNAKE_TOP_OFFSET = 8;
   const DEFAULT_DESKTOP_CONTAINER = {
     position: "float-right",
     positionSelector: "",
@@ -41,6 +43,7 @@
     showButtonBorderColor: "#575757",
     showButtonBorderWidth: 0,
     showButtonBorderRadius: 0,
+    animationType: "none",
   };
   const DEFAULT_MOBILE_CONTAINER = {
     position: "before-first-heading",
@@ -77,6 +80,7 @@
     showButtonBorderColor: "#575757",
     showButtonBorderWidth: 0,
     showButtonBorderRadius: 0,
+    animationType: "none",
   };
 
   const readJsonScript = (id) => {
@@ -181,6 +185,8 @@
     isDesktopViewport()
       ? DEFAULT_DESKTOP_CONTAINER.position
       : DEFAULT_MOBILE_CONTAINER.position;
+  const isSnakeActive = () =>
+    isDesktopViewport() && desktopConfig.animationType === "snake";
   const getHeadingAnchorId = (heading) =>
     (heading.getAttribute(TOC_HEADING_ID_ATTRIBUTE) || heading.id || "").trim();
   const getHeadingByAnchorId = (anchorId) =>
@@ -248,7 +254,12 @@
   toc.appendChild(topFade);
 
   const list = buildNestedList(headings);
-  toc.appendChild(list);
+  const listShell = document.createElement("div");
+  listShell.className = "toc-widget__list-shell";
+  const snakeOverlay = createSnakeOverlay();
+  listShell.appendChild(snakeOverlay.root);
+  listShell.appendChild(list);
+  toc.appendChild(listShell);
 
   const linksById = new Map(
     Array.from(list.querySelectorAll(".toc-widget__link")).map((a) => [
@@ -257,6 +268,42 @@
     ]),
   );
   let currentLink = null;
+  let snakeFrame = null;
+
+  const syncSnakeMode = () => {
+    const enabled = isSnakeActive();
+
+    toc.classList.toggle("toc-widget--animation-snake", enabled);
+    snakeOverlay.root.hidden = !enabled;
+
+    if (!enabled) {
+      updateSnakeOverlay(snakeOverlay, null);
+    }
+  };
+  const syncSnake = (link) => {
+    syncSnakeMode();
+
+    if (!isSnakeActive()) {
+      return;
+    }
+
+    const activeLink =
+      link || list.querySelector(".toc-widget__link--current") || null;
+    updateSnakeOverlay(
+      snakeOverlay,
+      measureTocSnakeGeometry(list, activeLink),
+    );
+  };
+  const requestSnakeSync = () => {
+    if (snakeFrame !== null) {
+      return;
+    }
+
+    snakeFrame = requestAnimationFrame(() => {
+      snakeFrame = null;
+      syncSnake(currentLink);
+    });
+  };
 
   const bottomFade = document.createElement("div");
   bottomFade.className = "toc-widget__fade toc-widget__fade--bottom";
@@ -360,6 +407,7 @@
   };
 
   mount();
+  syncSnakeMode();
   console.info(`${DEBUG_PREFIX} Rendered`, {
     headingCount: headings.length,
     title: cfg.title || "Contents",
@@ -400,6 +448,7 @@
       const showToggle = activeConfig.showButton && needsToggle(activeConfig);
 
       syncTitleVisibility();
+      syncSnakeMode();
       toc.classList.toggle("toc-widget--show-more-active", showToggle);
 
       if (!showToggle) {
@@ -407,12 +456,14 @@
         toggle.hidden = true;
         topFade.hidden = true;
         bottomFade.hidden = true;
+        requestSnakeSync();
         return;
       }
 
       toggle.hidden = false;
       syncToggleLabel(activeConfig);
       refreshFades();
+      requestSnakeSync();
     };
 
     applyResponsiveState();
@@ -420,6 +471,7 @@
       "scroll",
       () => {
         refreshFades();
+        requestSnakeSync();
       },
       { passive: true },
     );
@@ -427,6 +479,7 @@
       toc.classList.toggle("toc-widget--expanded");
       syncToggleLabel(getActiveConfig());
       refreshFades();
+      requestSnakeSync();
     });
   });
 
@@ -449,11 +502,22 @@
     }
 
     const nextLink = linksById.get(currentId || "");
-    if (!nextLink || nextLink === currentLink) return;
-    currentLink?.classList.remove("toc-widget__link--current");
-    nextLink.classList.add("toc-widget__link--current");
-    currentLink = nextLink;
+
+    if (!nextLink) {
+      currentLink?.classList.remove("toc-widget__link--current");
+      currentLink = null;
+      requestSnakeSync();
+      return;
+    }
+
+    if (nextLink !== currentLink) {
+      currentLink?.classList.remove("toc-widget__link--current");
+      nextLink.classList.add("toc-widget__link--current");
+      currentLink = nextLink;
+    }
+
     keepCurrentLinkVisible(nextLink);
+    requestSnakeSync();
   };
 
   let ticking = false;
@@ -477,11 +541,13 @@
     }
     applyResponsiveState();
     onScrollOrResize();
+    requestSnakeSync();
   };
 
   window.addEventListener("scroll", onScrollOrResize, { passive: true });
   window.addEventListener("resize", handleResize);
   refreshCurrentLink();
+  requestSnakeSync();
 
   // smooth scroll
   toc.addEventListener("click", (e) => {
@@ -512,6 +578,10 @@
 
   function normalizeMarkerFormat(value) {
     return ["none", "bullet", "numeric"].includes(value) ? value : "none";
+  }
+
+  function normalizeAnimationType(value) {
+    return ["none", "snake"].includes(value) ? value : "none";
   }
 
   function normalizeMobileBreakpoint(value, fallback) {
@@ -735,6 +805,7 @@
         Number.isFinite(config.showButtonBorderRadius)
           ? Math.max(0, config.showButtonBorderRadius)
           : fallback.showButtonBorderRadius,
+      animationType: normalizeAnimationType(config.animationType),
     };
   }
 
@@ -903,6 +974,176 @@
     if (linkRect.bottom > containerRect.bottom - padding) {
       list.scrollTop += linkRect.bottom - (containerRect.bottom - padding);
     }
+  }
+
+  function createSnakeOverlay() {
+    const root = document.createElement("div");
+    root.className = "toc-widget__snake";
+    root.hidden = true;
+    root.setAttribute("aria-hidden", "true");
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.classList.add("toc-widget__snake-svg");
+    svg.setAttribute("preserveAspectRatio", "none");
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.classList.add("toc-widget__snake-path");
+    svg.appendChild(path);
+
+    const head = document.createElement("span");
+    head.className = "toc-widget__snake-head";
+    head.hidden = true;
+
+    root.appendChild(svg);
+    root.appendChild(head);
+
+    return { root, svg, path, head };
+  }
+
+  function updateSnakeOverlay(overlay, geometry) {
+    if (!geometry) {
+      overlay.svg.setAttribute("viewBox", "0 0 0 0");
+      overlay.svg.setAttribute("width", "0");
+      overlay.svg.setAttribute("height", "0");
+      overlay.path.setAttribute("d", "");
+      overlay.head.hidden = true;
+      return;
+    }
+
+    overlay.svg.setAttribute("viewBox", `0 0 ${geometry.width} ${geometry.height}`);
+    overlay.svg.setAttribute("width", String(geometry.width));
+    overlay.svg.setAttribute("height", String(geometry.height));
+    overlay.path.setAttribute("d", geometry.path);
+    overlay.head.hidden = false;
+    overlay.head.style.left = `${geometry.headX}px`;
+    overlay.head.style.top = `${geometry.headY}px`;
+  }
+
+  function clampSnakeCoordinate(value, limit) {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+
+    if (limit <= 0) {
+      return 0;
+    }
+
+    return Math.min(Math.max(value, 0), limit);
+  }
+
+  function createSnakeLinkMetric(listRect, link) {
+    const linkRect = link.getBoundingClientRect();
+    const rowTop = linkRect.top - listRect.top;
+    const rowBottom = linkRect.bottom - listRect.top;
+    const rowHeight = linkRect.height;
+    const inset = Math.min(6, Math.max(2, rowHeight * 0.24));
+    const entryY = rowTop + inset;
+    const exitY = Math.max(entryY, rowBottom - inset);
+
+    return {
+      centerY: rowTop + rowHeight / 2,
+      entryY,
+      exitY,
+      laneX: clampSnakeCoordinate(
+        linkRect.left - listRect.left - TOC_SNAKE_HEAD_OFFSET,
+        listRect.width,
+      ),
+    };
+  }
+
+  function pushSnakePoint(points, point) {
+    const previousPoint = points[points.length - 1];
+
+    if (
+      previousPoint &&
+      previousPoint.x === point.x &&
+      previousPoint.y === point.y
+    ) {
+      return;
+    }
+
+    points.push(point);
+  }
+
+  function buildSnakePath(points) {
+    if (!points.length) {
+      return "";
+    }
+
+    return points.reduce((path, point, index) => {
+      if (index === 0) {
+        return `M ${point.x} ${point.y}`;
+      }
+
+      return `${path} L ${point.x} ${point.y}`;
+    }, "");
+  }
+
+  function measureTocSnakeGeometry(listElement, activeLink) {
+    if (!(activeLink instanceof HTMLAnchorElement)) {
+      return null;
+    }
+
+    const listRect = listElement.getBoundingClientRect();
+    if (listRect.width <= 0 || listRect.height <= 0) {
+      return null;
+    }
+
+    const links = Array.from(
+      listElement.querySelectorAll(".toc-widget__link"),
+    );
+    const activeIndex = links.indexOf(activeLink);
+
+    if (activeIndex < 0) {
+      return null;
+    }
+
+    const metrics = links
+      .slice(0, activeIndex + 1)
+      .map((link) => createSnakeLinkMetric(listRect, link));
+
+    if (!metrics.length) {
+      return null;
+    }
+
+    const firstMetric = metrics[0];
+    const points = [];
+    let currentX = firstMetric.laneX;
+
+    pushSnakePoint(points, {
+      x: currentX,
+      y: Math.min(TOC_SNAKE_TOP_OFFSET, firstMetric.entryY),
+    });
+
+    metrics.forEach((metric, index) => {
+      const turnY =
+        index === 0
+          ? metric.entryY
+          : (metrics[index - 1].exitY + metric.entryY) / 2;
+
+      pushSnakePoint(points, { x: currentX, y: turnY });
+
+      if (metric.laneX !== currentX) {
+        currentX = metric.laneX;
+        pushSnakePoint(points, { x: currentX, y: turnY });
+      }
+
+      pushSnakePoint(points, { x: currentX, y: metric.entryY });
+      pushSnakePoint(points, {
+        x: currentX,
+        y: index === metrics.length - 1 ? metric.centerY : metric.exitY,
+      });
+    });
+
+    const head = metrics[metrics.length - 1];
+
+    return {
+      headX: head.laneX,
+      headY: head.centerY,
+      height: Math.ceil(listRect.height),
+      path: buildSnakePath(points),
+      width: Math.ceil(listRect.width),
+    };
   }
 
   function buildNestedList(nodes) {
