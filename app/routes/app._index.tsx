@@ -1640,18 +1640,20 @@ export default function Index() {
     section: DeviceSectionKey,
     heading: string,
     children: ReactNode,
+    options?: { allowApplyAction?: boolean },
   ) => {
     if (!activeDevice) {
       return null;
     }
 
     const sectionState = getSectionState(section);
+    const allowApplyAction = options?.allowApplyAction ?? true;
 
     return (
       <DeviceSettingsSection
         heading={heading}
         activeDevice={activeDevice}
-        showApplyAction={sectionState.showApplyAction}
+        showApplyAction={allowApplyAction && sectionState.showApplyAction}
         isApplied={sectionState.isApplied}
         sectionRef={(node) => {
           sectionRefs.current[section] = node;
@@ -3356,6 +3358,7 @@ export default function Index() {
                           </s-option>
                         ))}
                       </s-select>,
+                      { allowApplyAction: false },
                     )
                   : null}
               </>
@@ -3384,6 +3387,7 @@ export default function Index() {
                       setDesktopPreviewReplayToken((current) => current + 1);
                     }}
                   >
+                    <s-icon slot="graphic" type="play-circle"></s-icon>
                     Play animation
                   </s-clickable-chip>
                 ) : null}
@@ -6358,11 +6362,17 @@ function TocPreview({
 
   useEffect(() => {
     cancelReplay();
-    resetPreviewFlights(null);
+    resetPreviewFlights(snakeRectBendActive ? preview.activeId : null);
     previousActiveIdRef.current = preview.activeId;
     setActiveId(preview.activeId);
     setHighlightedId(preview.activeId);
-  }, [cancelReplay, preview.activeId, preview.items, resetPreviewFlights]);
+  }, [
+    cancelReplay,
+    preview.activeId,
+    preview.items,
+    resetPreviewFlights,
+    snakeRectBendActive,
+  ]);
 
   useEffect(() => {
     if (!needsToggle) {
@@ -6708,7 +6718,7 @@ function buildPreviewState(config: TocConfig) {
   const headings = buildPreviewHeadings(config.headingLevels);
 
   return {
-    activeId: headings[Math.min(4, headings.length - 1)]?.id || "",
+    activeId: headings[0]?.id || "",
     items: buildPreviewTocItems(headings),
     showToc: headings.length >= config.minHeadings,
     title: config.title,
