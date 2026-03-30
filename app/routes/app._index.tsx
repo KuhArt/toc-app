@@ -582,6 +582,26 @@ const PREVIEW_STYLES = `
     gap: 16px;
   }
 
+  .toc-preview-section {
+    display: grid;
+    gap: 16px;
+  }
+
+  .toc-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .toc-preview-heading {
+    margin: 0;
+    color: rgb(48, 48, 48);
+    font-size: 17px;
+    font-weight: 650;
+    line-height: 24px;
+  }
+
   .toc-preview-pane {
     min-width: 0;
   }
@@ -1163,6 +1183,7 @@ export default function Index() {
   const [desktopAnimationType, setDesktopAnimationType] = useState(
     config.desktop.animationType,
   );
+  const [desktopPreviewReplayToken, setDesktopPreviewReplayToken] = useState(0);
   const [mobilePosition, setMobilePosition] = useState(config.mobile.position);
   const [mobilePositionSelector, setMobilePositionSelector] = useState(
     config.mobile.positionSelector,
@@ -1363,6 +1384,8 @@ export default function Index() {
   const mobilePreview = buildPreviewState(currentConfig);
   const isDirty = !configsEqual(savedConfig, currentConfig);
   const isSaving = navigation.state === "submitting";
+  const desktopPreviewReplayAvailable =
+    currentConfig.desktop.animationType !== "none" && desktopPreview.showToc;
   const sectionRefs = useRef<Record<SectionNavKey, HTMLDivElement | null>>({
     generalSettings: null,
     textFormatting: null,
@@ -3349,42 +3372,60 @@ export default function Index() {
         <div
           className={`toc-preview-column${activeTab === "general" ? "" : " toc-preview-column--sticky"}`}
         >
-          <s-section heading="Preview">
-            <div className="toc-settings-preview">
-              {(activeTab === "general" || activeTab === "desktop") && (
-                <div className="toc-preview-pane">
-                  {activeTab === "general" ? (
-                    <p className="toc-preview-label">Desktop</p>
-                  ) : null}
-                  <div className="toc-preview-stage toc-preview-desktop">
-                    <TocPreview
-                      preview={desktopPreview}
-                      indentation={currentConfig.indentation}
-                      textAlignment={currentConfig.textAlignment}
-                      markerFormat={currentConfig.markerFormat}
-                      device={currentConfig.desktop}
-                      previewDevice="desktop"
-                    />
+          <s-section>
+            <div className="toc-preview-section">
+              <div className="toc-preview-header">
+                <h2 className="toc-preview-heading">Preview</h2>
+                {(activeTab === "general" || activeTab === "desktop") &&
+                desktopPreviewReplayAvailable ? (
+                  <s-clickable-chip
+                    accessibilityLabel="Replay preview animation"
+                    onClick={() => {
+                      setDesktopPreviewReplayToken((current) => current + 1);
+                    }}
+                  >
+                    Play animation
+                  </s-clickable-chip>
+                ) : null}
+              </div>
+              <div className="toc-settings-preview">
+                {(activeTab === "general" || activeTab === "desktop") && (
+                  <div className="toc-preview-pane">
+                    {activeTab === "general" ? (
+                      <p className="toc-preview-label">Desktop</p>
+                    ) : null}
+                    <div className="toc-preview-stage toc-preview-desktop">
+                      <TocPreview
+                        preview={desktopPreview}
+                        indentation={currentConfig.indentation}
+                        textAlignment={currentConfig.textAlignment}
+                        markerFormat={currentConfig.markerFormat}
+                        device={currentConfig.desktop}
+                        previewDevice="desktop"
+                        replayToken={desktopPreviewReplayToken}
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
-              {(activeTab === "general" || activeTab === "mobile") && (
-                <div className="toc-preview-pane">
-                  {activeTab === "general" ? (
-                    <p className="toc-preview-label">Mobile</p>
-                  ) : null}
-                  <div className="toc-preview-stage toc-preview-mobile">
-                    <TocPreview
-                      preview={mobilePreview}
-                      indentation={currentConfig.indentation}
-                      textAlignment={currentConfig.textAlignment}
-                      markerFormat={currentConfig.markerFormat}
-                      device={currentConfig.mobile}
-                      previewDevice="mobile"
-                    />
+                )}
+                {(activeTab === "general" || activeTab === "mobile") && (
+                  <div className="toc-preview-pane">
+                    {activeTab === "general" ? (
+                      <p className="toc-preview-label">Mobile</p>
+                    ) : null}
+                    <div className="toc-preview-stage toc-preview-mobile">
+                      <TocPreview
+                        preview={mobilePreview}
+                        indentation={currentConfig.indentation}
+                        textAlignment={currentConfig.textAlignment}
+                        markerFormat={currentConfig.markerFormat}
+                        device={currentConfig.mobile}
+                        previewDevice="mobile"
+                        replayToken={0}
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </s-section>
         </div>
@@ -4872,13 +4913,17 @@ type TocSnakeClickFlight = {
 const TOC_SNAKE_HEAD_OFFSET = 12;
 const TOC_SNAKE_TOP_OFFSET = 8;
 const TOC_SNAKE_BENT_VISIBLE_LENGTH = 24;
-const TOC_SNAKE_CLICK_MIN_DURATION = 220;
-const TOC_SNAKE_CLICK_MAX_DURATION = 460;
+const TOC_SNAKE_CLICK_MIN_DURATION = 200;
+const TOC_SNAKE_CLICK_MAX_DURATION = 400;
+const TOC_SNAKE_BENT_REPLAY_MIN_DURATION = 950;
+const TOC_SNAKE_BENT_REPLAY_MAX_DURATION = 1650;
 const TOC_SNAKE_RECT_WIDTH = 12;
 const TOC_SNAKE_RECT_HEIGHT = 6;
 const TOC_SQUARE_PARABOLA_SIZE = TOC_SNAKE_RECT_WIDTH;
-const TOC_SQUARE_PARABOLA_MIN_DURATION = 260;
-const TOC_SQUARE_PARABOLA_MAX_DURATION = 420;
+const TOC_SQUARE_PARABOLA_MIN_DURATION = 220;
+const TOC_SQUARE_PARABOLA_MAX_DURATION = 360;
+const TOC_PREVIEW_REPLAY_STEP_GAP = 50;
+const TOC_PREVIEW_REPLAY_SNAKE_STEP_DURATION = 220;
 
 function isDesktopMarkerAnimation(
   previewDevice: "desktop" | "mobile",
@@ -4905,6 +4950,28 @@ function isSnakeRectBendAnimation(animationType: TocAnimationType) {
 
 function isSquareParabolaAnimation(animationType: TocAnimationType) {
   return animationType === "square-parabola";
+}
+
+function getPreviewReplayStepDelay(animationType: TocAnimationType) {
+  switch (animationType) {
+    case "snake":
+    case "snake-rect":
+      return TOC_PREVIEW_REPLAY_SNAKE_STEP_DURATION;
+    case "snake-rect-bend":
+      return TOC_SNAKE_CLICK_MAX_DURATION + TOC_PREVIEW_REPLAY_STEP_GAP;
+    case "square-parabola":
+      return TOC_SQUARE_PARABOLA_MAX_DURATION + TOC_PREVIEW_REPLAY_STEP_GAP;
+    default:
+      return 0;
+  }
+}
+
+function flattenPreviewItemIds(items: PreviewTocItem[]): string[] {
+  return items.flatMap((item) => [item.id, ...flattenPreviewItemIds(item.children)]);
+}
+
+function getPreviewLinkId(link: HTMLAnchorElement | null) {
+  return (link?.getAttribute("href") || "").slice(1);
 }
 
 function normalizeAngleDelta(delta: number) {
@@ -5570,13 +5637,14 @@ function getSnakeClickFlightProgress(flight: TocSnakeClickFlight, now: number) {
   return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
 }
 
-function isSnakeLinkMovingUp(
+function getSnakeFlightCurrentLinkId(
   list: HTMLUListElement,
   fromLink: HTMLAnchorElement | null,
   toLink: HTMLAnchorElement | null,
+  progress: number,
 ) {
   if (!fromLink || !toLink) {
-    return false;
+    return null;
   }
 
   const links = Array.from(
@@ -5585,7 +5653,43 @@ function isSnakeLinkMovingUp(
   const fromIndex = links.indexOf(fromLink);
   const toIndex = links.indexOf(toLink);
 
-  return fromIndex > toIndex;
+  if (fromIndex < 0 || toIndex < 0) {
+    return null;
+  }
+
+  if (fromIndex === toIndex) {
+    return getPreviewLinkId(toLink);
+  }
+
+  const metrics = links.map((link) =>
+    createSnakeLinkMetric(list.getBoundingClientRect(), link),
+  );
+  const fullRoute = buildSnakeRoutePoints(metrics, fromIndex, toIndex);
+  const fullRouteLength = measureSnakePathLength(fullRoute);
+
+  if (fullRouteLength <= 0) {
+    return getPreviewLinkId(progress >= 1 ? toLink : fromLink);
+  }
+
+  const step = fromIndex < toIndex ? 1 : -1;
+  let currentIndex = fromIndex;
+
+  for (
+    let index = fromIndex + step;
+    step > 0 ? index <= toIndex : index >= toIndex;
+    index += step
+  ) {
+    const partialRoute = buildSnakeRoutePoints(metrics, fromIndex, index);
+    const partialProgress = measureSnakePathLength(partialRoute) / fullRouteLength;
+
+    if (progress + 0.001 < partialProgress) {
+      break;
+    }
+
+    currentIndex = index;
+  }
+
+  return getPreviewLinkId(links[currentIndex]);
 }
 
 function buildSettledSnakePoints(metrics: TocSnakeLinkMetric[]) {
@@ -5738,6 +5842,7 @@ function TocPreview({
   markerFormat,
   device,
   previewDevice,
+  replayToken,
 }: {
   preview: ReturnType<typeof buildPreviewState>;
   indentation: boolean;
@@ -5745,9 +5850,11 @@ function TocPreview({
   markerFormat: TocMarkerFormat;
   device: TocDeviceConfig;
   previewDevice: "desktop" | "mobile";
+  replayToken: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [activeId, setActiveId] = useState(preview.activeId);
+  const [highlightedId, setHighlightedId] = useState(preview.activeId);
   const [needsToggle, setNeedsToggle] = useState(false);
   const [showTopFade, setShowTopFade] = useState(false);
   const [showBottomFade, setShowBottomFade] = useState(false);
@@ -5757,13 +5864,20 @@ function TocPreview({
   const listRef = useRef<HTMLUListElement | null>(null);
   const snakeFrameRef = useRef<number | null>(null);
   const bentClickFrameRef = useRef<number | null>(null);
+  const replayStepTimeoutRef = useRef<number | null>(null);
+  const replayNonceRef = useRef(0);
   const squareParabolaFrameRef = useRef<number | null>(null);
   const snakeGeometryRef = useRef<TocSnakeGeometry | null>(null);
   const bentClickTargetIdRef = useRef<string | null>(null);
   const bentClickFlightRef = useRef<TocSnakeClickFlight | null>(null);
+  const bentReplayCompletionIdRef = useRef<string | null>(null);
+  const bentReplayResetIdRef = useRef<string | null>(null);
   const previousActiveIdRef = useRef(preview.activeId);
+  const previousAnimationTypeRef = useRef(device.animationType);
+  const previousReplayTokenRef = useRef(replayToken);
   const squareParabolaFlightRef = useRef<TocSquareParabolaFlight | null>(null);
   const squareParabolaRotationRef = useRef(0);
+  const previewItemIds = flattenPreviewItemIds(preview.items);
   const markerActive = isDesktopMarkerAnimation(previewDevice, device.animationType);
   const snakeActive = markerActive && device.animationType === "snake";
   const snakeRectActive = markerActive && isSnakeRectAnimation(device.animationType);
@@ -5777,6 +5891,34 @@ function TocPreview({
     setSnakeGeometry((current) =>
       snakeGeometryEqual(current, nextGeometry) ? current : nextGeometry,
     );
+  }, []);
+
+  const cancelReplay = useCallback(() => {
+    replayNonceRef.current += 1;
+
+    if (replayStepTimeoutRef.current !== null) {
+      window.clearTimeout(replayStepTimeoutRef.current);
+      replayStepTimeoutRef.current = null;
+    }
+  }, []);
+
+  const resetPreviewFlights = useCallback((targetId: string | null) => {
+    bentClickTargetIdRef.current = targetId;
+    bentClickFlightRef.current = null;
+    bentReplayCompletionIdRef.current = null;
+    bentReplayResetIdRef.current = null;
+    squareParabolaFlightRef.current = null;
+    squareParabolaRotationRef.current = 0;
+
+    if (bentClickFrameRef.current !== null) {
+      cancelAnimationFrame(bentClickFrameRef.current);
+      bentClickFrameRef.current = null;
+    }
+
+    if (squareParabolaFrameRef.current !== null) {
+      cancelAnimationFrame(squareParabolaFrameRef.current);
+      squareParabolaFrameRef.current = null;
+    }
   }, []);
 
   const keepPreviewLinkVisible = useCallback((link: HTMLAnchorElement | null) => {
@@ -5890,16 +6032,29 @@ function TocPreview({
     });
   }, [measureSnake]);
 
+  const resetReplayMarker = useCallback(
+    (itemId: string) => {
+      bentClickTargetIdRef.current = snakeRectBendActive ? itemId : null;
+      previousActiveIdRef.current = itemId;
+      setActiveId(itemId);
+      setHighlightedId(itemId);
+      scheduleSnakeMeasurement();
+    },
+    [scheduleSnakeMeasurement, snakeRectBendActive],
+  );
+
   const handleItemSelect = useCallback(
     (itemId: string) => {
+      cancelReplay();
       bentClickTargetIdRef.current = itemId;
       setActiveId(itemId);
+      setHighlightedId(itemId);
 
       if (itemId === activeId) {
         scheduleSnakeMeasurement();
       }
     },
-    [activeId, scheduleSnakeMeasurement],
+    [activeId, cancelReplay, scheduleSnakeMeasurement],
   );
 
   const runSquareParabolaFlight = useCallback(() => {
@@ -5950,6 +6105,16 @@ function TocPreview({
     }
 
     const progress = getSnakeClickFlightProgress(flight, performance.now());
+    const replayHighlightId = bentReplayCompletionIdRef.current
+      ? getSnakeFlightCurrentLinkId(list, flight.fromLink, flight.toLink, progress)
+      : null;
+
+    if (replayHighlightId) {
+      setHighlightedId((current) =>
+        current === replayHighlightId ? current : replayHighlightId,
+      );
+    }
+
     commitSnakeGeometry(
       measureTocSnakeClickFlightGeometry(
         list,
@@ -5962,12 +6127,124 @@ function TocPreview({
     if (progress >= 1) {
       bentClickFlightRef.current = null;
       bentClickFrameRef.current = null;
+
+      if (bentReplayCompletionIdRef.current) {
+        const resetId =
+          bentReplayResetIdRef.current || bentReplayCompletionIdRef.current;
+
+        bentReplayCompletionIdRef.current = null;
+        bentReplayResetIdRef.current = null;
+        resetReplayMarker(resetId);
+        return;
+      }
+
       measureSnake();
       return;
     }
 
     bentClickFrameRef.current = requestAnimationFrame(runBentClickFlight);
-  }, [commitSnakeGeometry, measureSnake]);
+  }, [commitSnakeGeometry, measureSnake, scheduleSnakeMeasurement]);
+
+  const replayFromTop = useCallback(() => {
+    if (!markerActive || !previewItemIds.length) {
+      cancelReplay();
+      return;
+    }
+
+    cancelReplay();
+
+    const replayNonce = replayNonceRef.current;
+    const [firstId] = previewItemIds;
+    const stepDelay = getPreviewReplayStepDelay(device.animationType);
+
+    resetPreviewFlights(firstId);
+    resetReplayMarker(firstId);
+
+    if (snakeRectBendActive && previewItemIds.length > 1) {
+      const list = listRef.current;
+
+      if (!list) {
+        return;
+      }
+
+      const lastId = previewItemIds[previewItemIds.length - 1];
+      const firstLink = findPreviewLinkById(list, firstId);
+      const lastLink = findPreviewLinkById(list, lastId);
+      const replayFlight = buildSnakeClickFlight(list, firstLink, lastLink);
+
+      if (!replayFlight) {
+        return;
+      }
+
+      replayFlight.duration = clampNumber(
+        replayFlight.duration * 6,
+        TOC_SNAKE_BENT_REPLAY_MIN_DURATION,
+        TOC_SNAKE_BENT_REPLAY_MAX_DURATION,
+      );
+
+      bentClickTargetIdRef.current = lastId;
+      bentReplayCompletionIdRef.current = lastId;
+      bentReplayResetIdRef.current = firstId;
+      bentClickFlightRef.current = replayFlight;
+
+      if (bentClickFrameRef.current !== null) {
+        cancelAnimationFrame(bentClickFrameRef.current);
+      }
+
+      bentClickFrameRef.current = requestAnimationFrame(runBentClickFlight);
+      return;
+    }
+
+    if (previewItemIds.length < 2 || stepDelay <= 0) {
+      return;
+    }
+
+    const queueReplayStep = (index: number) => {
+      replayStepTimeoutRef.current = window.setTimeout(() => {
+        if (replayNonceRef.current !== replayNonce) {
+          return;
+        }
+
+        const nextId = previewItemIds[index];
+
+        if (!nextId) {
+          replayStepTimeoutRef.current = null;
+          return;
+        }
+
+        bentClickTargetIdRef.current = nextId;
+        setActiveId(nextId);
+        setHighlightedId(nextId);
+
+        if (index + 1 < previewItemIds.length) {
+          queueReplayStep(index + 1);
+          return;
+        }
+
+        replayStepTimeoutRef.current = window.setTimeout(() => {
+          if (replayNonceRef.current !== replayNonce) {
+            return;
+          }
+
+          replayStepTimeoutRef.current = null;
+          resetReplayMarker(firstId);
+        }, stepDelay);
+      }, stepDelay);
+    };
+
+    queueReplayStep(1);
+  }, [
+    cancelReplay,
+    device.animationType,
+    findPreviewLinkById,
+    markerActive,
+    previewItemIds,
+    resetReplayMarker,
+    resetPreviewFlights,
+    scheduleSnakeMeasurement,
+    snakeRectBendActive,
+    runBentClickFlight,
+  ]);
 
   const startSquareParabolaFlight = useCallback(
     (targetId: string) => {
@@ -6040,12 +6317,6 @@ function TocPreview({
       const targetLink = findPreviewLinkById(list, targetId);
       const previousLink = findPreviewLinkById(list, previousActiveIdRef.current);
 
-      if (!isSnakeLinkMovingUp(list, previousLink, targetLink)) {
-        bentClickFlightRef.current = null;
-        measureSnake();
-        return;
-      }
-
       const nextFlight = buildSnakeClickFlight(list, previousLink, targetLink);
 
       if (!nextFlight) {
@@ -6086,15 +6357,12 @@ function TocPreview({
   }, [device.showButton, needsToggle]);
 
   useEffect(() => {
-    bentClickTargetIdRef.current = null;
-    bentClickFlightRef.current = null;
+    cancelReplay();
+    resetPreviewFlights(null);
     previousActiveIdRef.current = preview.activeId;
-    if (bentClickFrameRef.current !== null) {
-      cancelAnimationFrame(bentClickFrameRef.current);
-      bentClickFrameRef.current = null;
-    }
     setActiveId(preview.activeId);
-  }, [preview.activeId, preview.items]);
+    setHighlightedId(preview.activeId);
+  }, [cancelReplay, preview.activeId, preview.items, resetPreviewFlights]);
 
   useEffect(() => {
     if (!needsToggle) {
@@ -6104,6 +6372,7 @@ function TocPreview({
 
   useEffect(() => {
     return () => {
+      cancelReplay();
       if (snakeFrameRef.current !== null) {
         cancelAnimationFrame(snakeFrameRef.current);
       }
@@ -6114,7 +6383,7 @@ function TocPreview({
         cancelAnimationFrame(squareParabolaFrameRef.current);
       }
     };
-  }, []);
+  }, [cancelReplay]);
 
   useEffect(() => {
     if (!device.showButton) {
@@ -6165,7 +6434,7 @@ function TocPreview({
 
   useEffect(() => {
     const list = listRef.current;
-    const currentLink = list ? findPreviewLinkById(list, activeId) : null;
+    const currentLink = list ? findPreviewLinkById(list, highlightedId) : null;
 
     keepPreviewLinkVisible(currentLink);
 
@@ -6191,6 +6460,7 @@ function TocPreview({
   }, [
     activeId,
     findPreviewLinkById,
+    highlightedId,
     keepPreviewLinkVisible,
     scheduleSnakeMeasurement,
     snakeRectBendActive,
@@ -6230,6 +6500,35 @@ function TocPreview({
     squareParabolaActive,
     textAlignment,
   ]);
+
+  useEffect(() => {
+    if (previousAnimationTypeRef.current === device.animationType) {
+      return;
+    }
+
+    previousAnimationTypeRef.current = device.animationType;
+
+    if (!markerActive) {
+      cancelReplay();
+      return;
+    }
+
+    replayFromTop();
+  }, [cancelReplay, device.animationType, markerActive, replayFromTop]);
+
+  useEffect(() => {
+    if (previousReplayTokenRef.current === replayToken) {
+      return;
+    }
+
+    previousReplayTokenRef.current = replayToken;
+
+    if (!markerActive) {
+      return;
+    }
+
+    replayFromTop();
+  }, [markerActive, replayFromTop, replayToken]);
 
   useEffect(() => {
     if (!markerActive) {
@@ -6310,7 +6609,7 @@ function TocPreview({
         <PreviewTocList
           ref={listRef}
           items={preview.items}
-          activeId={activeId}
+          activeId={highlightedId}
           onItemSelect={handleItemSelect}
         />
       </div>
