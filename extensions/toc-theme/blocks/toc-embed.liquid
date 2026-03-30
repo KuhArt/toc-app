@@ -51,6 +51,15 @@
   <script id="toc-config" type="application/json">
     {{ cfg | json }}
   </script>
+  <script id="toc-animation-assets" type="application/json">
+    {
+      "shared": {{ 'toc-animation-shared.js' | asset_url | json }},
+      "snake": {{ 'toc-animation-snake.js' | asset_url | json }},
+      "snake-rect": {{ 'toc-animation-snake.js' | asset_url | json }},
+      "snake-rect-bend": {{ 'toc-animation-snake-bend.js' | asset_url | json }},
+      "square-parabola": {{ 'toc-animation-square-parabola.js' | asset_url | json }}
+    }
+  </script>
 {% endif %}
 
 {% schema %}

@@ -6,9 +6,22 @@
   const DEBUG_PREFIX = "[TOC]";
   const TOC_HEADING_ID_ATTRIBUTE = "data-shopify-toc-id";
   const TOC_GENERATED_ID_ATTRIBUTE = "data-shopify-toc-generated-id";
-  const TOC_SNAKE_HEAD_OFFSET = 12;
-  const TOC_SNAKE_TOP_OFFSET = 8;
-  const TOC_SNAKE_BENT_VISIBLE_LENGTH = 34;
+  const TOC_SNAKE_BENT_VISIBLE_LENGTH = 16;
+  const TOC_MARKER_ANIMATION_TYPES = [
+    "snake",
+    "snake-rect",
+    "snake-rect-bend",
+    "square-parabola",
+  ];
+  const TOC_MARKER_ANIMATION_CLASS_NAMES = {
+    snake: "toc-widget--animation-snake",
+    "snake-rect": "toc-widget--animation-snake-rect",
+    "snake-rect-bend": "toc-widget--animation-snake-rect-bend",
+    "square-parabola": "toc-widget--animation-square-parabola",
+  };
+  const TOC_ANIMATION_REGISTRY_KEY = "__shopifyTocAnimations";
+  const TOC_ANIMATION_SCRIPT_ATTRIBUTE = "data-shopify-toc-animation-src";
+  const loadedAnimationScripts = new Map();
   const DEFAULT_DESKTOP_CONTAINER = {
     position: "float-right",
     positionSelector: "",
@@ -139,6 +152,9 @@
     "mobile",
   );
   const customCss = compileCustomCss(cfg.customCss, mobileBreakpoint);
+  const animationAssetUrls = normalizeAnimationAssetUrls(
+    readJsonScript("toc-animation-assets") || cfg.animationAssets,
+  );
 
   const selectors = [
     ".article-template__content",
@@ -186,15 +202,11 @@
     isDesktopViewport()
       ? DEFAULT_DESKTOP_CONTAINER.position
       : DEFAULT_MOBILE_CONTAINER.position;
-  const isPathAnimationActive = () =>
+  const getMarkerAnimationType = () =>
     isDesktopViewport() &&
-    ["snake", "snake-rect", "snake-rect-bend"].includes(
-      desktopConfig.animationType,
-    );
-  const isSnakeRectAnimation = () =>
-    desktopConfig.animationType === "snake-rect";
-  const isSnakeRectBendAnimation = () =>
-    desktopConfig.animationType === "snake-rect-bend";
+    TOC_MARKER_ANIMATION_TYPES.includes(desktopConfig.animationType)
+      ? desktopConfig.animationType
+      : "none";
   const getHeadingAnchorId = (heading) =>
     (heading.getAttribute(TOC_HEADING_ID_ATTRIBUTE) || heading.id || "").trim();
   const getHeadingByAnchorId = (anchorId) =>
@@ -276,59 +288,172 @@
     ]),
   );
   let currentLink = null;
-  let nextSnakeLink = null;
-  let snakeProgress = 0;
+  let markerTransitionLink = null;
+  let markerTransitionProgress = 0;
   let snakeFrame = null;
-
-  const syncSnakeMode = () => {
-    const enabled = isPathAnimationActive();
-
-    toc.classList.toggle("toc-widget--animation-snake", enabled);
-    toc.classList.toggle(
-      "toc-widget--animation-snake-rect",
-      enabled && isSnakeRectAnimation(),
+  let activeAnimationType = "none";
+  let pendingAnimationType = "";
+  let animationLoadPromise = Promise.resolve(null);
+  let animationLoadNonce = 0;
+  const setSnakeClickAnimating = (animating) => {
+    snakeOverlay.root.classList.toggle(
+      "toc-widget__snake--animating",
+      animating,
     );
-    toc.classList.toggle(
-      "toc-widget--animation-snake-rect-bend",
-      enabled && isSnakeRectBendAnimation(),
-    );
-    snakeOverlay.root.hidden = !enabled;
-
-    if (!enabled) {
-      updateSnakeOverlay(snakeOverlay, null);
+  };
+  const syncAnimationClasses = (animationType) => {
+    TOC_MARKER_ANIMATION_TYPES.forEach((type) => {
+      toc.classList.toggle(
+        TOC_MARKER_ANIMATION_CLASS_NAMES[type],
+        animationType === type,
+      );
+    });
+    snakeOverlay.root.hidden = animationType === "none";
+    if (animationType === "none") {
+      setSnakeClickAnimating(false);
     }
   };
-  const syncSnake = (link) => {
-    syncSnakeMode();
+  const renderAnimationGeometry = (geometry) => {
+    updateSnakeOverlay(snakeOverlay, geometry, activeAnimationType);
+  };
+  let animationController = createNullAnimationController({
+    renderGeometry: renderAnimationGeometry,
+    setAnimating: setSnakeClickAnimating,
+  });
 
-    if (!isPathAnimationActive()) {
+  function createAnimationContext() {
+    return {
+      getCurrentLink: () => currentLink,
+      list,
+      now: () => performance.now(),
+      renderGeometry: renderAnimationGeometry,
+      requestSync: requestSnakeSync,
+      setAnimating: setSnakeClickAnimating,
+    };
+  }
+
+  function replaceAnimationController(nextController, nextType) {
+    if (animationController && animationController !== nextController) {
+      animationController.destroy();
+    }
+    animationController = nextController;
+    activeAnimationType = nextType;
+    syncAnimationClasses(nextType);
+  }
+
+  function resetAnimationController() {
+    pendingAnimationType = "";
+    animationLoadNonce += 1;
+    replaceAnimationController(
+      createNullAnimationController(createAnimationContext()),
+      "none",
+    );
+    animationController.clear();
+  }
+
+  function ensureAnimationController() {
+    const requestedType = getMarkerAnimationType();
+
+    syncAnimationClasses(requestedType);
+
+    if (requestedType === activeAnimationType && !pendingAnimationType) {
+      return Promise.resolve(animationController);
+    }
+
+    if (requestedType === pendingAnimationType) {
+      return animationLoadPromise;
+    }
+
+    const loadNonce = ++animationLoadNonce;
+    pendingAnimationType = requestedType;
+    replaceAnimationController(
+      createNullAnimationController(createAnimationContext()),
+      "none",
+    );
+
+    if (requestedType === "none") {
+      pendingAnimationType = "";
+      animationController.clear();
+      return Promise.resolve(animationController);
+    }
+
+    animationLoadPromise = loadAnimationControllerFactory(
+      requestedType,
+      animationAssetUrls,
+    )
+      .then((factory) => {
+        if (loadNonce !== animationLoadNonce) {
+          return animationController;
+        }
+
+        pendingAnimationType = "";
+        replaceAnimationController(
+          factory(createAnimationContext()),
+          requestedType,
+        );
+        requestSnakeSync();
+        return animationController;
+      })
+      .catch((error) => {
+        if (loadNonce !== animationLoadNonce) {
+          return animationController;
+        }
+
+        pendingAnimationType = "";
+        console.error(
+          `${DEBUG_PREFIX} Failed to load animation controller`,
+          {
+            animationType: requestedType,
+            error,
+          },
+        );
+        replaceAnimationController(
+          createNullAnimationController(createAnimationContext()),
+          "none",
+        );
+        animationController.clear();
+        return animationController;
+      });
+
+    return animationLoadPromise;
+  }
+
+  function syncSnake() {
+    const requestedType = getMarkerAnimationType();
+    const activeLink =
+      currentLink || list.querySelector(".toc-widget__link--current") || null;
+
+    syncAnimationClasses(requestedType);
+
+    if (requestedType === "none") {
+      animationController.clear();
       return;
     }
 
-    const activeLink =
-      link || list.querySelector(".toc-widget__link--current") || null;
-    const transitionLink = isSnakeRectBendAnimation() ? nextSnakeLink : null;
-    const transitionProgress = isSnakeRectBendAnimation() ? snakeProgress : 0;
-    updateSnakeOverlay(
-      snakeOverlay,
-      measureTocSnakeGeometry(
-        list,
-        activeLink,
-        transitionLink,
-        transitionProgress,
-      ),
-    );
-  };
-  const requestSnakeSync = () => {
+    if (requestedType !== activeAnimationType || pendingAnimationType) {
+      ensureAnimationController();
+      return;
+    }
+
+    animationController.sync({
+      activeLink,
+      transitionLink: markerTransitionLink,
+      transitionProgress: markerTransitionProgress,
+    });
+  }
+
+  function requestSnakeSync() {
+    ensureAnimationController();
+
     if (snakeFrame !== null) {
       return;
     }
 
     snakeFrame = requestAnimationFrame(() => {
       snakeFrame = null;
-      syncSnake(currentLink);
+      syncSnake();
     });
-  };
+  }
 
   const bottomFade = document.createElement("div");
   bottomFade.className = "toc-widget__fade toc-widget__fade--bottom";
@@ -432,7 +557,7 @@
   };
 
   mount();
-  syncSnakeMode();
+  ensureAnimationController();
   console.info(`${DEBUG_PREFIX} Rendered`, {
     headingCount: headings.length,
     title: cfg.title || "Contents",
@@ -473,7 +598,7 @@
       const showToggle = activeConfig.showButton && needsToggle(activeConfig);
 
       syncTitleVisibility();
-      syncSnakeMode();
+      ensureAnimationController();
       toc.classList.toggle("toc-widget--show-more-active", showToggle);
 
       if (!showToggle) {
@@ -508,6 +633,20 @@
     });
   });
 
+  const setCurrentLink = (nextLink) => {
+    if (nextLink === currentLink) {
+      return;
+    }
+
+    currentLink?.classList.remove("toc-widget__link--current");
+
+    if (nextLink) {
+      nextLink.classList.add("toc-widget__link--current");
+    }
+
+    currentLink = nextLink;
+  };
+
   const refreshCurrentLink = () => {
     const scrollY = window.scrollY + getActiveConfig().scrollOffset + 24;
     let currentIndex = headings.length ? 0 : -1;
@@ -533,7 +672,6 @@
       currentIndex >= 0 ? getHeadingAnchorId(headings[currentIndex]) : "";
 
     if (
-      isSnakeRectBendAnimation() &&
       currentIndex >= 0 &&
       currentIndex < headings.length - 1 &&
       !isAtBottom
@@ -542,35 +680,47 @@
       const nextHeading = headings[currentIndex + 1];
       const span = Math.max(nextHeading.offsetTop - currentHeading.offsetTop, 1);
 
-      snakeProgress = Math.min(
+      markerTransitionProgress = Math.min(
         Math.max((scrollY - currentHeading.offsetTop) / span, 0),
         1,
       );
-      nextSnakeLink =
+      markerTransitionLink =
         linksById.get(getHeadingAnchorId(nextHeading) || "") || null;
     } else {
-      snakeProgress = 0;
-      nextSnakeLink = null;
+      markerTransitionProgress = 0;
+      markerTransitionLink = null;
     }
 
-    const nextLink = linksById.get(currentId || "");
+    let nextLink = linksById.get(currentId || "") || null;
+
+    nextLink =
+      animationController.resolveTrackedLink({
+        currentId,
+        detectedLink: nextLink,
+      }) || null;
 
     if (!nextLink) {
-      currentLink?.classList.remove("toc-widget__link--current");
-      currentLink = null;
-      nextSnakeLink = null;
-      snakeProgress = 0;
+      setCurrentLink(null);
+      markerTransitionLink = null;
+      markerTransitionProgress = 0;
+      animationController.clear();
       requestSnakeSync();
       return;
     }
 
-    if (nextLink !== currentLink) {
-      currentLink?.classList.remove("toc-widget__link--current");
-      nextLink.classList.add("toc-widget__link--current");
-      currentLink = nextLink;
-    }
+    const previousLink = currentLink;
+
+    setCurrentLink(nextLink);
 
     keepCurrentLinkVisible(nextLink);
+
+    if (nextLink !== previousLink) {
+      animationController.handleCurrentLinkChange({
+        nextLink,
+        previousLink,
+      });
+    }
+
     requestSnakeSync();
   };
 
@@ -586,6 +736,7 @@
 
   const handleResize = () => {
     const previousDevice = toc.dataset.device;
+    resetAnimationController();
     syncDeviceState();
     mount();
     applyHeadingScrollMargins();
@@ -612,6 +763,22 @@
     const target = getHeadingByAnchorId(id);
     if (target) {
       const activeConfig = getActiveConfig();
+      const previousLink = currentLink;
+      const targetLink = linksById.get(id || "") || a;
+      const clickResult = animationController.handleLinkClick({
+        previousLink,
+        smoothScroll: activeConfig.smoothScroll,
+        targetHeading: target,
+        targetId: id,
+        targetLink,
+      });
+
+      if (clickResult?.nextCurrentLink) {
+        setCurrentLink(clickResult.nextCurrentLink);
+        keepCurrentLinkVisible(clickResult.nextCurrentLink);
+        requestSnakeSync();
+      }
+
       target.scrollIntoView({
         behavior: activeConfig.smoothScroll ? "smooth" : "auto",
       });
@@ -635,7 +802,13 @@
   }
 
   function normalizeAnimationType(value) {
-    return ["none", "snake", "snake-rect", "snake-rect-bend"].includes(value)
+    return [
+      "none",
+      "snake",
+      "snake-rect",
+      "snake-rect-bend",
+      "square-parabola",
+    ].includes(value)
       ? value
       : "none";
   }
@@ -1056,7 +1229,7 @@
     return { root, svg, path, head };
   }
 
-  function updateSnakeOverlay(overlay, geometry) {
+  function updateSnakeOverlay(overlay, geometry, animationType) {
     if (!geometry) {
       overlay.svg.setAttribute("viewBox", "0 0 0 0");
       overlay.svg.setAttribute("width", "0");
@@ -1074,7 +1247,7 @@
     overlay.svg.setAttribute("width", String(geometry.width));
     overlay.svg.setAttribute("height", String(geometry.height));
     overlay.path.setAttribute("d", geometry.path);
-    if (isSnakeRectBendAnimation()) {
+    if (animationType === "snake-rect-bend") {
       overlay.path.style.setProperty(
         "stroke-dasharray",
         `${Math.min(TOC_SNAKE_BENT_VISIBLE_LENGTH, geometry.pathLength)} ${Math.max(geometry.pathLength, 1)}`,
@@ -1100,265 +1273,143 @@
     );
   }
 
-  function normalizeAngleDelta(delta) {
-    let normalized = delta;
+  function normalizeAnimationAssetUrls(value) {
+    const assetUrls = value && typeof value === "object" ? value : {};
 
-    while (normalized > 180) {
-      normalized -= 360;
-    }
+    return TOC_MARKER_ANIMATION_TYPES.reduce(
+      (normalized, animationType) => {
+        if (
+          typeof assetUrls[animationType] === "string" &&
+          assetUrls[animationType].trim()
+        ) {
+          normalized[animationType] = assetUrls[animationType].trim();
+        }
 
-    while (normalized < -180) {
-      normalized += 360;
-    }
-
-    return normalized;
-  }
-
-  function clampSnakeCoordinate(value, limit) {
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-
-    if (limit <= 0) {
-      return 0;
-    }
-
-    return Math.min(Math.max(value, 0), limit);
-  }
-
-  function createSnakeLinkMetric(listRect, link) {
-    const linkRect = link.getBoundingClientRect();
-    const rowTop = linkRect.top - listRect.top;
-    const rowBottom = linkRect.bottom - listRect.top;
-    const rowHeight = linkRect.height;
-    const inset = Math.min(6, Math.max(2, rowHeight * 0.24));
-    const entryY = rowTop + inset;
-    const exitY = Math.max(entryY, rowBottom - inset);
-
-    return {
-      centerY: rowTop + rowHeight / 2,
-      entryY,
-      exitY,
-      laneX: clampSnakeCoordinate(
-        linkRect.left - listRect.left - TOC_SNAKE_HEAD_OFFSET,
-        listRect.width,
-      ),
-    };
-  }
-
-  function pushSnakePoint(points, point) {
-    const previousPoint = points[points.length - 1];
-
-    if (
-      previousPoint &&
-      previousPoint.x === point.x &&
-      previousPoint.y === point.y
-    ) {
-      return;
-    }
-
-    points.push(point);
-  }
-
-  function buildSnakePath(points) {
-    if (!points.length) {
-      return "";
-    }
-
-    return points.reduce((path, point, index) => {
-      if (index === 0) {
-        return `M ${point.x} ${point.y}`;
-      }
-
-      return `${path} L ${point.x} ${point.y}`;
-    }, "");
-  }
-
-  function measureSnakePathLength(points) {
-    return points.slice(1).reduce((total, point, index) => {
-      const previousPoint = points[index];
-
-      return (
-        total + Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y)
-      );
-    }, 0);
-  }
-
-  function appendSnakeTransitionPoints(
-    points,
-    currentMetric,
-    nextMetric,
-    progress,
-  ) {
-    const transitionPoints = [
-      { x: currentMetric.laneX, y: currentMetric.centerY },
-      { x: currentMetric.laneX, y: currentMetric.exitY },
-    ];
-    const turnY = (currentMetric.exitY + nextMetric.entryY) / 2;
-
-    transitionPoints.push({ x: currentMetric.laneX, y: turnY });
-
-    if (nextMetric.laneX !== currentMetric.laneX) {
-      transitionPoints.push({ x: nextMetric.laneX, y: turnY });
-    }
-
-    transitionPoints.push(
-      { x: nextMetric.laneX, y: nextMetric.entryY },
-      { x: nextMetric.laneX, y: nextMetric.centerY },
+        return normalized;
+      },
+      {
+        shared:
+          typeof assetUrls.shared === "string" && assetUrls.shared.trim()
+            ? assetUrls.shared.trim()
+            : "",
+      },
     );
+  }
 
-    const clampedProgress = Math.min(Math.max(progress, 0), 1);
-    if (clampedProgress <= 0) {
-      return;
+  function getTocAnimationRegistry() {
+    if (!window[TOC_ANIMATION_REGISTRY_KEY]) {
+      window[TOC_ANIMATION_REGISTRY_KEY] = {};
     }
 
-    const transitionLength = measureSnakePathLength(transitionPoints);
-    if (transitionLength <= 0) {
-      pushSnakePoint(points, transitionPoints[transitionPoints.length - 1]);
-      return;
+    return window[TOC_ANIMATION_REGISTRY_KEY];
+  }
+
+  function loadAnimationControllerFactory(animationType, assetUrls) {
+    const registry = getTocAnimationRegistry();
+
+    if (typeof registry[animationType] === "function") {
+      return Promise.resolve(registry[animationType]);
     }
 
-    const targetLength = transitionLength * clampedProgress;
-    let traversed = 0;
+    const scriptUrl = assetUrls[animationType];
 
-    for (let index = 1; index < transitionPoints.length; index += 1) {
-      const previousPoint = transitionPoints[index - 1];
-      const point = transitionPoints[index];
-      const segmentLength = Math.hypot(
-        point.x - previousPoint.x,
-        point.y - previousPoint.y,
+    if (!scriptUrl) {
+      return Promise.reject(
+        new Error(`Missing animation asset URL for ${animationType}`),
       );
+    }
 
-      if (segmentLength <= 0) {
-        continue;
-      }
+    const sharedAssetPromise = assetUrls.shared
+      ? loadAnimationScript(assetUrls.shared)
+      : Promise.resolve();
 
-      if (traversed + segmentLength <= targetLength) {
-        pushSnakePoint(points, point);
-        traversed += segmentLength;
-        continue;
-      }
+    return sharedAssetPromise
+      .then(() => loadAnimationScript(scriptUrl))
+      .then(() => {
+        const factory = getTocAnimationRegistry()[animationType];
 
-      const segmentProgress = (targetLength - traversed) / segmentLength;
-      pushSnakePoint(points, {
-        x: previousPoint.x + (point.x - previousPoint.x) * segmentProgress,
-        y: previousPoint.y + (point.y - previousPoint.y) * segmentProgress,
+        if (typeof factory !== "function") {
+          throw new Error(`Animation factory ${animationType} did not register`);
+        }
+
+        return factory;
       });
-      return;
-    }
   }
 
-  function measureTocSnakeGeometry(
-    listElement,
-    activeLink,
-    nextLink = null,
-    nextProgress = 0,
-  ) {
-    if (!(activeLink instanceof HTMLAnchorElement)) {
-      return null;
+  function loadAnimationScript(url) {
+    if (!url) {
+      return Promise.reject(new Error("Missing animation script URL"));
     }
 
-    const listRect = listElement.getBoundingClientRect();
-    if (listRect.width <= 0 || listRect.height <= 0) {
-      return null;
+    if (loadedAnimationScripts.has(url)) {
+      return loadedAnimationScripts.get(url);
     }
 
-    const links = Array.from(
-      listElement.querySelectorAll(".toc-widget__link"),
-    );
-    const activeIndex = links.indexOf(activeLink);
+    const promise = new Promise((resolve, reject) => {
+      let script = Array.from(
+        document.querySelectorAll(`script[${TOC_ANIMATION_SCRIPT_ATTRIBUTE}]`),
+      ).find((element) => element.getAttribute(TOC_ANIMATION_SCRIPT_ATTRIBUTE) === url);
 
-    if (activeIndex < 0) {
-      return null;
-    }
+      const handleLoad = () => {
+        script?.setAttribute("data-shopify-toc-animation-loaded", "true");
+        cleanup();
+        resolve();
+      };
+      const handleError = () => {
+        loadedAnimationScripts.delete(url);
+        cleanup();
+        reject(new Error(`Failed to load animation script: ${url}`));
+      };
+      const cleanup = () => {
+        script?.removeEventListener("load", handleLoad);
+        script?.removeEventListener("error", handleError);
+      };
 
-    const allMetrics = links.map((link) => createSnakeLinkMetric(listRect, link));
-    const metrics = allMetrics.slice(0, activeIndex + 1);
+      if (!script) {
+        script = document.createElement("script");
+        script.async = true;
+        script.src = url;
+        script.setAttribute(TOC_ANIMATION_SCRIPT_ATTRIBUTE, url);
+        document.head.appendChild(script);
+      }
 
-    if (!metrics.length) {
-      return null;
-    }
+      if (
+        script.getAttribute("data-shopify-toc-animation-loaded") === "true"
+      ) {
+        cleanup();
+        resolve();
+        return;
+      }
 
-    const firstMetric = metrics[0];
-    const points = [];
-    let currentX = firstMetric.laneX;
-
-    pushSnakePoint(points, {
-      x: currentX,
-      y: Math.min(TOC_SNAKE_TOP_OFFSET, firstMetric.entryY),
+      script.addEventListener("load", handleLoad);
+      script.addEventListener("error", handleError);
     });
 
-    metrics.forEach((metric, index) => {
-      const turnY =
-        index === 0
-          ? metric.entryY
-          : (metrics[index - 1].exitY + metric.entryY) / 2;
+    loadedAnimationScripts.set(url, promise);
+    return promise;
+  }
 
-      pushSnakePoint(points, { x: currentX, y: turnY });
-
-      if (metric.laneX !== currentX) {
-        currentX = metric.laneX;
-        pushSnakePoint(points, { x: currentX, y: turnY });
-      }
-
-      pushSnakePoint(points, { x: currentX, y: metric.entryY });
-      pushSnakePoint(points, {
-        x: currentX,
-        y: index === metrics.length - 1 ? metric.centerY : metric.exitY,
-      });
-    });
-
-    const nextIndex = nextLink ? links.indexOf(nextLink) : -1;
-    if (nextIndex === activeIndex + 1 && nextIndex < allMetrics.length) {
-      appendSnakeTransitionPoints(
-        points,
-        allMetrics[activeIndex],
-        allMetrics[nextIndex],
-        nextProgress,
-      );
-    }
-
-    const headPoint = points[points.length - 1];
-    const segmentAngles = [];
-    let headAngle = 0;
-    let headBend = 0;
-
-    for (let index = points.length - 1; index > 0; index -= 1) {
-      const currentPoint = points[index];
-      const previousPoint = points[index - 1];
-      const deltaX = currentPoint.x - previousPoint.x;
-      const deltaY = currentPoint.y - previousPoint.y;
-
-      if (deltaX === 0 && deltaY === 0) {
-        continue;
-      }
-
-      segmentAngles.push((Math.atan2(deltaY, deltaX) * 180) / Math.PI);
-    }
-
-    if (segmentAngles.length > 0) {
-      headAngle = segmentAngles[0];
-    }
-
-    if (segmentAngles.length > 1) {
-      headBend = Math.max(
-        -18,
-        Math.min(
-          18,
-          normalizeAngleDelta(segmentAngles[0] - segmentAngles[1]) * 0.22,
-        ),
-      );
-    }
-
+  function createNullAnimationController(context) {
     return {
-      headAngle,
-      headBend,
-      headX: headPoint?.x ?? metrics[metrics.length - 1].laneX,
-      headY: headPoint?.y ?? metrics[metrics.length - 1].centerY,
-      height: Math.ceil(listRect.height),
-      path: buildSnakePath(points),
-      pathLength: measureSnakePathLength(points),
-      width: Math.ceil(listRect.width),
+      clear() {
+        context.setAnimating?.(false);
+        context.renderGeometry?.(null);
+      },
+      destroy() {
+        context.setAnimating?.(false);
+        context.renderGeometry?.(null);
+      },
+      handleCurrentLinkChange() {},
+      handleLinkClick() {
+        return null;
+      },
+      resolveTrackedLink({ detectedLink }) {
+        return detectedLink;
+      },
+      sync() {
+        context.setAnimating?.(false);
+        context.renderGeometry?.(null);
+      },
     };
   }
 

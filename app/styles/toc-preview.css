@@ -3,7 +3,7 @@
   --toc-snake-size: 10px;
   --toc-snake-rect-width: 12px;
   --toc-snake-rect-height: 6px;
-  --toc-snake-bent-rect-height: 9px;
+  --toc-snake-bent-rect-height: 7px;
   --toc-snake-line-width: 2px;
   --toc-snake-color: var(--toc-active-headings-font-color);
   --toc-snake-rail-space: 26px;
@@ -162,19 +162,22 @@
 
 .toc-widget--animation-snake .toc-widget__list,
 .toc-widget--animation-snake-rect .toc-widget__list,
-.toc-widget--animation-snake-rect-bend .toc-widget__list {
+.toc-widget--animation-snake-rect-bend .toc-widget__list,
+.toc-widget--animation-square-parabola .toc-widget__list {
   padding-left: calc(12px + var(--toc-snake-rail-space));
 }
 
 .toc-widget--animation-snake.toc-widget--flat .toc-widget__list,
 .toc-widget--animation-snake-rect.toc-widget--flat .toc-widget__list,
-.toc-widget--animation-snake-rect-bend.toc-widget--flat .toc-widget__list {
+.toc-widget--animation-snake-rect-bend.toc-widget--flat .toc-widget__list,
+.toc-widget--animation-square-parabola.toc-widget--flat .toc-widget__list {
   padding-left: var(--toc-snake-rail-space);
 }
 
 .toc-widget--animation-snake .toc-widget__sublist,
 .toc-widget--animation-snake-rect .toc-widget__sublist,
-.toc-widget--animation-snake-rect-bend .toc-widget__sublist {
+.toc-widget--animation-snake-rect-bend .toc-widget__sublist,
+.toc-widget--animation-square-parabola .toc-widget__sublist {
   padding-left: calc(12px + 8px);
 }
 
@@ -213,6 +216,10 @@
 .toc-widget--animation-snake-rect-bend.toc-widget--align-center
   .toc-widget__list,
 .toc-widget--animation-snake-rect-bend.toc-widget--align-right
+  .toc-widget__list,
+.toc-widget--animation-square-parabola.toc-widget--align-center
+  .toc-widget__list,
+.toc-widget--animation-square-parabola.toc-widget--align-right
   .toc-widget__list {
   padding-left: calc(12px + var(--toc-snake-rail-space));
 }
@@ -228,6 +235,10 @@
 .toc-widget--animation-snake-rect-bend.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
 .toc-widget--animation-snake-rect-bend.toc-widget--align-right.toc-widget--flat
+  .toc-widget__list,
+.toc-widget--animation-square-parabola.toc-widget--align-center.toc-widget--flat
+  .toc-widget__list,
+.toc-widget--animation-square-parabola.toc-widget--align-right.toc-widget--flat
   .toc-widget__list {
   padding-left: var(--toc-snake-rail-space);
 }
@@ -239,6 +250,10 @@
 .toc-widget--animation-snake-rect-bend.toc-widget--align-center
   .toc-widget__sublist,
 .toc-widget--animation-snake-rect-bend.toc-widget--align-right
+  .toc-widget__sublist,
+.toc-widget--animation-square-parabola.toc-widget--align-center
+  .toc-widget__sublist,
+.toc-widget--animation-square-parabola.toc-widget--align-right
   .toc-widget__sublist {
   padding-left: calc(12px + 8px);
 }
@@ -327,6 +342,20 @@
   height: var(--toc-snake-rect-height);
   border-radius: 2px;
   animation: none;
+}
+
+.toc-widget--animation-square-parabola .toc-widget__snake-path {
+  opacity: 0;
+  animation: none;
+}
+
+.toc-widget--animation-square-parabola .toc-widget__snake-head {
+  width: var(--toc-snake-rect-width);
+  height: var(--toc-snake-rect-width);
+  border-radius: 2px;
+  animation: none;
+  transition: none;
+  will-change: left, top, transform;
 }
 
 .toc-widget--animation-snake-rect-bend .toc-widget__snake-path {

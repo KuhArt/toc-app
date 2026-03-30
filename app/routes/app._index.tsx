@@ -27,7 +27,12 @@ import { authenticate } from "../shopify.server";
 
 type TocTextAlignment = "left" | "center" | "right";
 type TocMarkerFormat = "none" | "bullet" | "numeric";
-type TocAnimationType = "none" | "snake" | "snake-rect" | "snake-rect-bend";
+type TocAnimationType =
+  | "none"
+  | "snake"
+  | "snake-rect"
+  | "snake-rect-bend"
+  | "square-parabola";
 type TocDesktopPosition =
   | "float-right"
   | "float-left"
@@ -100,6 +105,7 @@ const CUSTOM_CSS_REFERENCE_SELECTORS = [
   ".toc-widget--animation-snake",
   ".toc-widget--animation-snake-rect",
   ".toc-widget--animation-snake-rect-bend",
+  ".toc-widget--animation-square-parabola",
   ".toc-widget__title",
   ".toc-widget__list-shell",
   ".toc-widget__list",
@@ -224,6 +230,7 @@ const ANIMATION_TYPE_OPTIONS = [
   { label: "Snake", value: "snake" },
   { label: "Snake rectangle", value: "snake-rect" },
   { label: "Snake bent rectangle", value: "snake-rect-bend" },
+  { label: "Square parabola", value: "square-parabola" },
 ] as const;
 const FONT_WEIGHT_OPTIONS = [
   { label: "Thin", value: "100" },
@@ -4833,17 +4840,58 @@ type TocSnakeLinkMetric = {
   laneX: number;
 };
 
+type TocPoint = {
+  x: number;
+  y: number;
+};
+
+type TocMarkerBounds = {
+  maxX: number;
+  maxY: number;
+  minX: number;
+  minY: number;
+};
+
+type TocSquareParabolaFlight = {
+  controlPoint: TocPoint;
+  duration: number;
+  endPoint: TocPoint;
+  rotationDelta: number;
+  startPoint: TocPoint;
+  startRotation: number;
+  startTime: number;
+};
+
+type TocSnakeClickFlight = {
+  duration: number;
+  fromLink: HTMLAnchorElement;
+  startTime: number;
+  toLink: HTMLAnchorElement;
+};
+
 const TOC_SNAKE_HEAD_OFFSET = 12;
 const TOC_SNAKE_TOP_OFFSET = 8;
-const TOC_SNAKE_BENT_VISIBLE_LENGTH = 34;
+const TOC_SNAKE_BENT_VISIBLE_LENGTH = 24;
+const TOC_SNAKE_CLICK_MIN_DURATION = 220;
+const TOC_SNAKE_CLICK_MAX_DURATION = 460;
+const TOC_SNAKE_RECT_WIDTH = 12;
+const TOC_SNAKE_RECT_HEIGHT = 6;
+const TOC_SQUARE_PARABOLA_SIZE = TOC_SNAKE_RECT_WIDTH;
+const TOC_SQUARE_PARABOLA_MIN_DURATION = 260;
+const TOC_SQUARE_PARABOLA_MAX_DURATION = 420;
 
-function isDesktopPathAnimation(
+function isDesktopMarkerAnimation(
   previewDevice: "desktop" | "mobile",
   animationType: TocAnimationType,
 ) {
   return (
     previewDevice === "desktop" &&
-    ["snake", "snake-rect", "snake-rect-bend"].includes(animationType)
+    [
+      "snake",
+      "snake-rect",
+      "snake-rect-bend",
+      "square-parabola",
+    ].includes(animationType)
   );
 }
 
@@ -4853,6 +4901,10 @@ function isSnakeRectAnimation(animationType: TocAnimationType) {
 
 function isSnakeRectBendAnimation(animationType: TocAnimationType) {
   return animationType === "snake-rect-bend";
+}
+
+function isSquareParabolaAnimation(animationType: TocAnimationType) {
+  return animationType === "square-parabola";
 }
 
 function normalizeAngleDelta(delta: number) {
@@ -4881,6 +4933,10 @@ function clampSnakeCoordinate(value: number, limit: number) {
   return Math.min(Math.max(value, 0), limit);
 }
 
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 function createSnakeLinkMetric(
   listRect: DOMRect,
   link: HTMLAnchorElement,
@@ -4902,6 +4958,242 @@ function createSnakeLinkMetric(
       listRect.width,
     ),
   };
+}
+
+function getTocMarkerBounds(listRect: DOMRect): TocMarkerBounds {
+  const horizontalInset = TOC_SQUARE_PARABOLA_SIZE / 2 + 2;
+  const verticalInset = TOC_SQUARE_PARABOLA_SIZE / 2 + 2;
+
+  return {
+    maxX: Math.max(horizontalInset, listRect.width - horizontalInset),
+    maxY: Math.max(verticalInset, listRect.height - verticalInset),
+    minX: horizontalInset,
+    minY: verticalInset,
+  };
+}
+
+function clampPointToBounds(point: TocPoint, bounds: TocMarkerBounds): TocPoint {
+  return {
+    x: clampNumber(point.x, bounds.minX, bounds.maxX),
+    y: clampNumber(point.y, bounds.minY, bounds.maxY),
+  };
+}
+
+function getSnakeHeadPoint(
+  metric: TocSnakeLinkMetric,
+  bounds: TocMarkerBounds,
+): TocPoint {
+  return clampPointToBounds(
+    { x: metric.laneX, y: metric.centerY },
+    bounds,
+  );
+}
+
+function measureListLinkHeadPoint(
+  list: HTMLUListElement,
+  link: HTMLAnchorElement,
+): TocPoint | null {
+  const listRect = list.getBoundingClientRect();
+  if (listRect.width <= 0 || listRect.height <= 0) {
+    return null;
+  }
+
+  return getSnakeHeadPoint(
+    createSnakeLinkMetric(listRect, link),
+    getTocMarkerBounds(listRect),
+  );
+}
+
+function measureRayToBounds(
+  origin: TocPoint,
+  direction: TocPoint,
+  bounds: TocMarkerBounds,
+) {
+  let maxDistance = Number.POSITIVE_INFINITY;
+
+  if (Math.abs(direction.x) > 0.0001) {
+    const distanceX =
+      direction.x > 0
+        ? (bounds.maxX - origin.x) / direction.x
+        : (bounds.minX - origin.x) / direction.x;
+    if (distanceX >= 0) {
+      maxDistance = Math.min(maxDistance, distanceX);
+    }
+  }
+
+  if (Math.abs(direction.y) > 0.0001) {
+    const distanceY =
+      direction.y > 0
+        ? (bounds.maxY - origin.y) / direction.y
+        : (bounds.minY - origin.y) / direction.y;
+    if (distanceY >= 0) {
+      maxDistance = Math.min(maxDistance, distanceY);
+    }
+  }
+
+  return Number.isFinite(maxDistance) ? Math.max(0, maxDistance) : 0;
+}
+
+function measurePointDistance(left: TocPoint, right: TocPoint) {
+  return Math.hypot(right.x - left.x, right.y - left.y);
+}
+
+function chooseParabolaControlPoint(
+  startPoint: TocPoint,
+  endPoint: TocPoint,
+  bounds: TocMarkerBounds,
+): TocPoint {
+  const deltaX = endPoint.x - startPoint.x;
+  const deltaY = endPoint.y - startPoint.y;
+  const distance = Math.hypot(deltaX, deltaY);
+  const midpoint = {
+    x: (startPoint.x + endPoint.x) / 2,
+    y: (startPoint.y + endPoint.y) / 2,
+  };
+
+  if (distance <= 1) {
+    return midpoint;
+  }
+
+  const perpendicular = {
+    x: -deltaY / distance,
+    y: deltaX / distance,
+  };
+  const oppositePerpendicular = {
+    x: -perpendicular.x,
+    y: -perpendicular.y,
+  };
+  const preferredHeight = clampNumber(distance * 0.24, 18, 56);
+  const positiveRoom = measureRayToBounds(midpoint, perpendicular, bounds);
+  const negativeRoom = measureRayToBounds(
+    midpoint,
+    oppositePerpendicular,
+    bounds,
+  );
+  let chosenDirection =
+    negativeRoom >= positiveRoom ? perpendicular : oppositePerpendicular;
+  let availableRoom =
+    chosenDirection === perpendicular ? negativeRoom : positiveRoom;
+
+  if (Math.abs(negativeRoom - positiveRoom) <= 1) {
+    const centerPoint = {
+      x: (bounds.minX + bounds.maxX) / 2,
+      y: (bounds.minY + bounds.maxY) / 2,
+    };
+    const positiveCandidate = {
+      x: midpoint.x + perpendicular.x * Math.min(preferredHeight, positiveRoom),
+      y: midpoint.y + perpendicular.y * Math.min(preferredHeight, positiveRoom),
+    };
+    const negativeCandidate = {
+      x:
+        midpoint.x +
+        oppositePerpendicular.x * Math.min(preferredHeight, negativeRoom),
+      y:
+        midpoint.y +
+        oppositePerpendicular.y * Math.min(preferredHeight, negativeRoom),
+    };
+    if (
+      measurePointDistance(negativeCandidate, centerPoint) <
+      measurePointDistance(positiveCandidate, centerPoint)
+    ) {
+      chosenDirection = perpendicular;
+      availableRoom = negativeRoom;
+    } else {
+      chosenDirection = oppositePerpendicular;
+      availableRoom = positiveRoom;
+    }
+  }
+
+  const amplitude = Math.min(preferredHeight, Math.max(availableRoom * 0.92, 0));
+
+  if (amplitude < 6) {
+    return midpoint;
+  }
+
+  return clampPointToBounds(
+    {
+      x: midpoint.x + chosenDirection.x * amplitude,
+      y: midpoint.y + chosenDirection.y * amplitude,
+    },
+    bounds,
+  );
+}
+
+function easeInOutCubic(progress: number) {
+  return progress < 0.5
+    ? 4 * progress * progress * progress
+    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+}
+
+function snapRotationToQuarterTurn(angle: number) {
+  return Math.round(angle / 90) * 90;
+}
+
+function getQuadraticPoint(
+  startPoint: TocPoint,
+  controlPoint: TocPoint,
+  endPoint: TocPoint,
+  progress: number,
+): TocPoint {
+  const inverse = 1 - progress;
+
+  return {
+    x:
+      inverse * inverse * startPoint.x +
+      2 * inverse * progress * controlPoint.x +
+      progress * progress * endPoint.x,
+    y:
+      inverse * inverse * startPoint.y +
+      2 * inverse * progress * controlPoint.y +
+      progress * progress * endPoint.y,
+  };
+}
+
+function buildSquareParabolaFlight(
+  list: HTMLUListElement,
+  startPoint: TocPoint,
+  startRotation: number,
+  targetLink: HTMLAnchorElement | null,
+): TocSquareParabolaFlight | null {
+  if (!targetLink) {
+    return null;
+  }
+
+  const listRect = list.getBoundingClientRect();
+  if (listRect.width <= 0 || listRect.height <= 0) {
+    return null;
+  }
+
+  const bounds = getTocMarkerBounds(listRect);
+  const targetMetric = createSnakeLinkMetric(listRect, targetLink);
+  const boundedStartPoint = clampPointToBounds(startPoint, bounds);
+  const endPoint = getSnakeHeadPoint(targetMetric, bounds);
+  const distance = measurePointDistance(boundedStartPoint, endPoint);
+
+  if (distance <= 1) {
+    return null;
+  }
+
+  return {
+    controlPoint: chooseParabolaControlPoint(boundedStartPoint, endPoint, bounds),
+    duration: clampNumber(
+      220 + distance * 0.45,
+      TOC_SQUARE_PARABOLA_MIN_DURATION,
+      TOC_SQUARE_PARABOLA_MAX_DURATION,
+    ),
+    endPoint,
+    rotationDelta: endPoint.y > boundedStartPoint.y ? -90 : 90,
+    startPoint: boundedStartPoint,
+    startRotation,
+    startTime: performance.now(),
+  };
+}
+
+function getSquareParabolaProgress(
+  flight: TocSquareParabolaFlight,
+  now: number,
+) {
+  return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
 }
 
 function pushSnakePoint(
@@ -4946,46 +5238,69 @@ function measureSnakePathLength(points: Array<{ x: number; y: number }>) {
   }, 0);
 }
 
-function appendSnakeTransitionPoints(
+function buildSnakeRoutePoints(
+  metrics: TocSnakeLinkMetric[],
+  startIndex: number,
+  endIndex: number,
+) {
+  if (
+    startIndex < 0 ||
+    endIndex < 0 ||
+    startIndex >= metrics.length ||
+    endIndex >= metrics.length
+  ) {
+    return [];
+  }
+
+  const points: Array<{ x: number; y: number }> = [];
+  const step = startIndex < endIndex ? 1 : -1;
+  const startMetric = metrics[startIndex];
+
+  pushSnakePoint(points, { x: startMetric.laneX, y: startMetric.centerY });
+
+  for (let index = startIndex; index !== endIndex; index += step) {
+    const currentMetric = metrics[index];
+    const nextMetric = metrics[index + step];
+    const currentEdgeY = step > 0 ? currentMetric.exitY : currentMetric.entryY;
+    const nextEdgeY = step > 0 ? nextMetric.entryY : nextMetric.exitY;
+    const turnY = (currentEdgeY + nextEdgeY) / 2;
+
+    pushSnakePoint(points, { x: currentMetric.laneX, y: currentEdgeY });
+    pushSnakePoint(points, { x: currentMetric.laneX, y: turnY });
+
+    if (nextMetric.laneX !== currentMetric.laneX) {
+      pushSnakePoint(points, { x: nextMetric.laneX, y: turnY });
+    }
+
+    pushSnakePoint(points, { x: nextMetric.laneX, y: nextEdgeY });
+    pushSnakePoint(points, { x: nextMetric.laneX, y: nextMetric.centerY });
+  }
+
+  return points;
+}
+
+function appendSnakeRouteProgress(
   points: Array<{ x: number; y: number }>,
-  currentMetric: TocSnakeLinkMetric,
-  nextMetric: TocSnakeLinkMetric,
+  routePoints: Array<{ x: number; y: number }>,
   progress: number,
 ) {
-  const transitionPoints: Array<{ x: number; y: number }> = [
-    { x: currentMetric.laneX, y: currentMetric.centerY },
-    { x: currentMetric.laneX, y: currentMetric.exitY },
-  ];
-  const turnY = (currentMetric.exitY + nextMetric.entryY) / 2;
-
-  transitionPoints.push({ x: currentMetric.laneX, y: turnY });
-
-  if (nextMetric.laneX !== currentMetric.laneX) {
-    transitionPoints.push({ x: nextMetric.laneX, y: turnY });
-  }
-
-  transitionPoints.push(
-    { x: nextMetric.laneX, y: nextMetric.entryY },
-    { x: nextMetric.laneX, y: nextMetric.centerY },
-  );
-
   const clampedProgress = Math.min(Math.max(progress, 0), 1);
-  if (clampedProgress <= 0) {
+  if (clampedProgress <= 0 || routePoints.length < 2) {
     return;
   }
 
-  const transitionLength = measureSnakePathLength(transitionPoints);
-  if (transitionLength <= 0) {
-    pushSnakePoint(points, transitionPoints[transitionPoints.length - 1]);
+  const routeLength = measureSnakePathLength(routePoints);
+  if (routeLength <= 0) {
+    pushSnakePoint(points, routePoints[routePoints.length - 1]);
     return;
   }
 
-  const targetLength = transitionLength * clampedProgress;
+  const targetLength = routeLength * clampedProgress;
   let traversed = 0;
 
-  for (let index = 1; index < transitionPoints.length; index += 1) {
-    const previousPoint = transitionPoints[index - 1];
-    const point = transitionPoints[index];
+  for (let index = 1; index < routePoints.length; index += 1) {
+    const previousPoint = routePoints[index - 1];
+    const point = routePoints[index];
     const segmentLength = Math.hypot(
       point.x - previousPoint.x,
       point.y - previousPoint.y,
@@ -5010,11 +5325,41 @@ function appendSnakeTransitionPoints(
   }
 }
 
+function appendSnakeTransitionPoints(
+  points: Array<{ x: number; y: number }>,
+  currentMetric: TocSnakeLinkMetric,
+  nextMetric: TocSnakeLinkMetric,
+  progress: number,
+) {
+  appendSnakeRouteProgress(
+    points,
+    buildSnakeRoutePoints([currentMetric, nextMetric], 0, 1),
+    progress,
+  );
+}
+
+function appendCenteredBentMarkerTail(
+  points: Array<{ x: number; y: number }>,
+  activeMetric: TocSnakeLinkMetric,
+  listHeight: number,
+) {
+  const centeredTailLength = TOC_SNAKE_BENT_VISIBLE_LENGTH / 2;
+  const tailEndY = clampSnakeCoordinate(
+    activeMetric.centerY + centeredTailLength,
+    listHeight,
+  );
+
+  if (tailEndY > activeMetric.centerY) {
+    pushSnakePoint(points, { x: activeMetric.laneX, y: tailEndY });
+  }
+}
+
 function measureTocSnakeGeometry(
   list: HTMLUListElement,
   activeLink: HTMLAnchorElement | null,
   nextLink?: HTMLAnchorElement | null,
   nextProgress = 0,
+  centerBentMarker = false,
 ): TocSnakeGeometry | null {
   if (!activeLink) {
     return null;
@@ -5081,6 +5426,10 @@ function measureTocSnakeGeometry(
     );
   }
 
+  if (centerBentMarker) {
+    appendCenteredBentMarkerTail(points, allMetrics[activeIndex], listRect.height);
+  }
+
   const headPoint = points[points.length - 1];
   const segmentAngles: number[] = [];
   let headAngle = 0;
@@ -5115,6 +5464,246 @@ function measureTocSnakeGeometry(
     headBend,
     headX: headPoint?.x ?? metrics[metrics.length - 1].laneX,
     headY: headPoint?.y ?? metrics[metrics.length - 1].centerY,
+    height: Math.ceil(listRect.height),
+    path: buildSnakePath(points),
+    pathLength: measureSnakePathLength(points),
+    width: Math.ceil(listRect.width),
+  };
+}
+
+function measureTocSquareParabolaGeometry(
+  list: HTMLUListElement,
+  activeLink: HTMLAnchorElement | null,
+  settledRotation: number,
+  flight?: TocSquareParabolaFlight | null,
+  flightProgress = 1,
+): TocSnakeGeometry | null {
+  if (!activeLink) {
+    return null;
+  }
+
+  const listRect = list.getBoundingClientRect();
+  if (listRect.width <= 0 || listRect.height <= 0) {
+    return null;
+  }
+
+  const bounds = getTocMarkerBounds(listRect);
+  const activeMetric = createSnakeLinkMetric(listRect, activeLink);
+  const settledPoint = getSnakeHeadPoint(activeMetric, bounds);
+  const point =
+    flight && flightProgress < 1
+      ? clampPointToBounds(
+          getQuadraticPoint(
+            flight.startPoint,
+            flight.controlPoint,
+            flight.endPoint,
+            easeInOutCubic(flightProgress),
+          ),
+          bounds,
+        )
+      : settledPoint;
+  const rotation =
+    flight && flightProgress < 1
+      ? flight.startRotation + flight.rotationDelta * easeInOutCubic(flightProgress)
+      : settledRotation;
+
+  return {
+    headAngle: rotation,
+    headBend: 0,
+    headX: point.x,
+    headY: point.y,
+    height: Math.ceil(listRect.height),
+    path: "",
+    pathLength: 0,
+    width: Math.ceil(listRect.width),
+  };
+}
+
+function buildSnakeClickFlight(
+  list: HTMLUListElement,
+  fromLink: HTMLAnchorElement | null,
+  toLink: HTMLAnchorElement | null,
+): TocSnakeClickFlight | null {
+  if (!fromLink || !toLink) {
+    return null;
+  }
+
+  const listRect = list.getBoundingClientRect();
+  if (listRect.width <= 0 || listRect.height <= 0) {
+    return null;
+  }
+
+  const links = Array.from(
+    list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link"),
+  );
+  const fromIndex = links.indexOf(fromLink);
+  const toIndex = links.indexOf(toLink);
+
+  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+    return null;
+  }
+
+  const metrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+  const routePoints =
+    fromIndex < toIndex
+      ? buildSnakeRoutePoints(metrics, fromIndex, toIndex)
+      : buildSnakeRoutePoints(metrics, toIndex, fromIndex);
+  const routeLength = measureSnakePathLength(routePoints);
+
+  if (routeLength <= 0) {
+    return null;
+  }
+
+  return {
+    duration: clampNumber(
+      180 + routeLength * 0.7,
+      TOC_SNAKE_CLICK_MIN_DURATION,
+      TOC_SNAKE_CLICK_MAX_DURATION,
+    ),
+    fromLink,
+    startTime: performance.now(),
+    toLink,
+  };
+}
+
+function getSnakeClickFlightProgress(flight: TocSnakeClickFlight, now: number) {
+  return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
+}
+
+function isSnakeLinkMovingUp(
+  list: HTMLUListElement,
+  fromLink: HTMLAnchorElement | null,
+  toLink: HTMLAnchorElement | null,
+) {
+  if (!fromLink || !toLink) {
+    return false;
+  }
+
+  const links = Array.from(
+    list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link"),
+  );
+  const fromIndex = links.indexOf(fromLink);
+  const toIndex = links.indexOf(toLink);
+
+  return fromIndex > toIndex;
+}
+
+function buildSettledSnakePoints(metrics: TocSnakeLinkMetric[]) {
+  if (!metrics.length) {
+    return [];
+  }
+
+  const firstMetric = metrics[0];
+  const points: Array<{ x: number; y: number }> = [];
+  let currentX = firstMetric.laneX;
+
+  pushSnakePoint(points, {
+    x: currentX,
+    y: Math.min(TOC_SNAKE_TOP_OFFSET, firstMetric.entryY),
+  });
+
+  metrics.forEach((metric, index) => {
+    const turnY =
+      index === 0
+        ? metric.entryY
+        : (metrics[index - 1].exitY + metric.entryY) / 2;
+
+    pushSnakePoint(points, { x: currentX, y: turnY });
+
+    if (metric.laneX !== currentX) {
+      currentX = metric.laneX;
+      pushSnakePoint(points, { x: currentX, y: turnY });
+    }
+
+    pushSnakePoint(points, { x: currentX, y: metric.entryY });
+    pushSnakePoint(points, {
+      x: currentX,
+      y: index === metrics.length - 1 ? metric.centerY : metric.exitY,
+    });
+  });
+
+  return points;
+}
+
+function measureTocSnakeClickFlightGeometry(
+  list: HTMLUListElement,
+  fromLink: HTMLAnchorElement | null,
+  toLink: HTMLAnchorElement | null,
+  progress: number,
+): TocSnakeGeometry | null {
+  if (!fromLink || !toLink) {
+    return null;
+  }
+
+  const listRect = list.getBoundingClientRect();
+  if (listRect.width <= 0 || listRect.height <= 0) {
+    return null;
+  }
+
+  const links = Array.from(
+    list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link"),
+  );
+  const fromIndex = links.indexOf(fromLink);
+  const toIndex = links.indexOf(toLink);
+
+  if (fromIndex < 0 || toIndex < 0) {
+    return null;
+  }
+
+  if (fromIndex === toIndex) {
+    return measureTocSnakeGeometry(list, toLink);
+  }
+
+  const allMetrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+  const movingForward = fromIndex < toIndex;
+  const anchorIndex = movingForward ? fromIndex : toIndex;
+  const routeProgress = movingForward ? progress : 1 - progress;
+  const points = buildSettledSnakePoints(allMetrics.slice(0, anchorIndex + 1));
+
+  appendSnakeRouteProgress(
+    points,
+    buildSnakeRoutePoints(
+      allMetrics,
+      anchorIndex,
+      movingForward ? toIndex : fromIndex,
+    ),
+    routeProgress,
+  );
+
+  const headPoint = points[points.length - 1];
+  const segmentAngles: number[] = [];
+  let headAngle = 0;
+  let headBend = 0;
+
+  for (let index = points.length - 1; index > 0; index -= 1) {
+    const currentPoint = points[index];
+    const previousPoint = points[index - 1];
+    const deltaX = currentPoint.x - previousPoint.x;
+    const deltaY = currentPoint.y - previousPoint.y;
+
+    if (deltaX === 0 && deltaY === 0) {
+      continue;
+    }
+
+    segmentAngles.push((Math.atan2(deltaY, deltaX) * 180) / Math.PI);
+  }
+
+  if (segmentAngles.length > 0) {
+    headAngle = segmentAngles[0];
+  }
+
+  if (segmentAngles.length > 1) {
+    headBend = Math.max(
+      -18,
+      Math.min(18, normalizeAngleDelta(segmentAngles[0] - segmentAngles[1]) * 0.22),
+    );
+  }
+
+  return {
+    headAngle,
+    headBend,
+    headX: headPoint?.x ?? allMetrics[anchorIndex].laneX,
+    headY: headPoint?.y ?? allMetrics[anchorIndex].centerY,
     height: Math.ceil(listRect.height),
     path: buildSnakePath(points),
     pathLength: measureSnakePathLength(points),
@@ -5158,6 +5747,7 @@ function TocPreview({
   previewDevice: "desktop" | "mobile";
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [activeId, setActiveId] = useState(preview.activeId);
   const [needsToggle, setNeedsToggle] = useState(false);
   const [showTopFade, setShowTopFade] = useState(false);
   const [showBottomFade, setShowBottomFade] = useState(false);
@@ -5166,17 +5756,61 @@ function TocPreview({
   );
   const listRef = useRef<HTMLUListElement | null>(null);
   const snakeFrameRef = useRef<number | null>(null);
-  const snakeActive = isDesktopPathAnimation(
-    previewDevice,
-    device.animationType,
-  );
-  const snakeRectActive = snakeActive && isSnakeRectAnimation(device.animationType);
+  const bentClickFrameRef = useRef<number | null>(null);
+  const squareParabolaFrameRef = useRef<number | null>(null);
+  const snakeGeometryRef = useRef<TocSnakeGeometry | null>(null);
+  const bentClickTargetIdRef = useRef<string | null>(null);
+  const bentClickFlightRef = useRef<TocSnakeClickFlight | null>(null);
+  const previousActiveIdRef = useRef(preview.activeId);
+  const squareParabolaFlightRef = useRef<TocSquareParabolaFlight | null>(null);
+  const squareParabolaRotationRef = useRef(0);
+  const markerActive = isDesktopMarkerAnimation(previewDevice, device.animationType);
+  const snakeActive = markerActive && device.animationType === "snake";
+  const snakeRectActive = markerActive && isSnakeRectAnimation(device.animationType);
   const snakeRectBendActive =
-    snakeActive && isSnakeRectBendAnimation(device.animationType);
+    markerActive && isSnakeRectBendAnimation(device.animationType);
+  const squareParabolaActive =
+    markerActive && isSquareParabolaAnimation(device.animationType);
+
+  const commitSnakeGeometry = useCallback((nextGeometry: TocSnakeGeometry | null) => {
+    snakeGeometryRef.current = nextGeometry;
+    setSnakeGeometry((current) =>
+      snakeGeometryEqual(current, nextGeometry) ? current : nextGeometry,
+    );
+  }, []);
+
+  const keepPreviewLinkVisible = useCallback((link: HTMLAnchorElement | null) => {
+    const list = listRef.current;
+
+    if (!list || !link || list.scrollHeight <= list.clientHeight) return;
+
+    const containerRect = list.getBoundingClientRect();
+    const linkRect = link.getBoundingClientRect();
+    const padding = 8;
+
+    if (linkRect.top < containerRect.top + padding) {
+      list.scrollTop -= containerRect.top + padding - linkRect.top;
+      return;
+    }
+
+    if (linkRect.bottom > containerRect.bottom - padding) {
+      list.scrollTop += linkRect.bottom - (containerRect.bottom - padding);
+    }
+  }, []);
+
+  const findPreviewLinkById = useCallback(
+    (list: HTMLUListElement, itemId: string) =>
+      Array.from(list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link")).find(
+        (link) => (link.getAttribute("href") || "").slice(1) === itemId,
+      ) || null,
+    [],
+  );
 
   const measureSnake = useCallback(() => {
-    if (!snakeActive) {
-    setSnakeGeometry((current) => (current === null ? current : null));
+    if (!markerActive) {
+      bentClickFlightRef.current = null;
+      squareParabolaFlightRef.current = null;
+      commitSnakeGeometry(null);
       return;
     }
 
@@ -5184,15 +5818,66 @@ function TocPreview({
     const activeLink = list?.querySelector<HTMLAnchorElement>(
       ".toc-widget__link--current",
     );
-    const nextGeometry =
-      list && activeLink
-        ? measureTocSnakeGeometry(list, activeLink, null, 0)
-        : null;
+    const centerBentMarker =
+      snakeRectBendActive && bentClickTargetIdRef.current === activeId;
+    let nextGeometry: TocSnakeGeometry | null = null;
 
-    setSnakeGeometry((current) =>
-      snakeGeometryEqual(current, nextGeometry) ? current : nextGeometry,
-    );
-  }, [snakeActive]);
+    if (list && activeLink) {
+      if (squareParabolaActive) {
+        const flight = squareParabolaFlightRef.current;
+        const progress = flight
+          ? getSquareParabolaProgress(flight, performance.now())
+          : 1;
+
+        nextGeometry = measureTocSquareParabolaGeometry(
+          list,
+          activeLink,
+          squareParabolaRotationRef.current,
+          flight,
+          progress,
+        );
+
+        if (flight && progress >= 1) {
+          squareParabolaRotationRef.current = snapRotationToQuarterTurn(
+            flight.startRotation + flight.rotationDelta,
+          );
+          squareParabolaFlightRef.current = null;
+        }
+      } else if (snakeRectBendActive && bentClickFlightRef.current) {
+        const progress = getSnakeClickFlightProgress(
+          bentClickFlightRef.current,
+          performance.now(),
+        );
+
+        nextGeometry = measureTocSnakeClickFlightGeometry(
+          list,
+          bentClickFlightRef.current.fromLink,
+          bentClickFlightRef.current.toLink,
+          progress,
+        );
+
+        if (progress >= 1) {
+          bentClickFlightRef.current = null;
+        }
+      } else {
+        nextGeometry = measureTocSnakeGeometry(
+          list,
+          activeLink,
+          null,
+          0,
+          centerBentMarker,
+        );
+      }
+    }
+
+    commitSnakeGeometry(nextGeometry);
+  }, [
+    activeId,
+    commitSnakeGeometry,
+    markerActive,
+    snakeRectBendActive,
+    squareParabolaActive,
+  ]);
 
   const scheduleSnakeMeasurement = useCallback(() => {
     if (snakeFrameRef.current !== null) {
@@ -5204,6 +5889,181 @@ function TocPreview({
       measureSnake();
     });
   }, [measureSnake]);
+
+  const handleItemSelect = useCallback(
+    (itemId: string) => {
+      bentClickTargetIdRef.current = itemId;
+      setActiveId(itemId);
+
+      if (itemId === activeId) {
+        scheduleSnakeMeasurement();
+      }
+    },
+    [activeId, scheduleSnakeMeasurement],
+  );
+
+  const runSquareParabolaFlight = useCallback(() => {
+    const list = listRef.current;
+    const activeLink = list?.querySelector<HTMLAnchorElement>(
+      ".toc-widget__link--current",
+    );
+    const flight = squareParabolaFlightRef.current;
+
+    if (!list || !activeLink || !flight) {
+      squareParabolaFrameRef.current = null;
+      measureSnake();
+      return;
+    }
+
+    const progress = getSquareParabolaProgress(flight, performance.now());
+    commitSnakeGeometry(
+      measureTocSquareParabolaGeometry(
+        list,
+        activeLink,
+        squareParabolaRotationRef.current,
+        flight,
+        progress,
+      ),
+    );
+
+    if (progress >= 1) {
+      squareParabolaRotationRef.current = snapRotationToQuarterTurn(
+        flight.startRotation + flight.rotationDelta,
+      );
+      squareParabolaFlightRef.current = null;
+      squareParabolaFrameRef.current = null;
+      measureSnake();
+      return;
+    }
+
+    squareParabolaFrameRef.current = requestAnimationFrame(runSquareParabolaFlight);
+  }, [commitSnakeGeometry, measureSnake]);
+
+  const runBentClickFlight = useCallback(() => {
+    const list = listRef.current;
+    const flight = bentClickFlightRef.current;
+
+    if (!list || !flight) {
+      bentClickFrameRef.current = null;
+      measureSnake();
+      return;
+    }
+
+    const progress = getSnakeClickFlightProgress(flight, performance.now());
+    commitSnakeGeometry(
+      measureTocSnakeClickFlightGeometry(
+        list,
+        flight.fromLink,
+        flight.toLink,
+        progress,
+      ),
+    );
+
+    if (progress >= 1) {
+      bentClickFlightRef.current = null;
+      bentClickFrameRef.current = null;
+      measureSnake();
+      return;
+    }
+
+    bentClickFrameRef.current = requestAnimationFrame(runBentClickFlight);
+  }, [commitSnakeGeometry, measureSnake]);
+
+  const startSquareParabolaFlight = useCallback(
+    (targetId: string) => {
+      const list = listRef.current;
+
+      if (!list) {
+        return;
+      }
+
+      const targetLink = findPreviewLinkById(list, targetId);
+      if (!targetLink) {
+        squareParabolaFlightRef.current = null;
+        measureSnake();
+        return;
+      }
+
+      const previousLink = findPreviewLinkById(list, previousActiveIdRef.current);
+      const currentGeometry = snakeGeometryRef.current;
+      const fallbackStartPoint =
+        (previousLink && measureListLinkHeadPoint(list, previousLink)) ||
+        measureListLinkHeadPoint(list, targetLink);
+
+      if (!fallbackStartPoint) {
+        squareParabolaFlightRef.current = null;
+        measureSnake();
+        return;
+      }
+
+      const startPoint = currentGeometry
+        ? { x: currentGeometry.headX, y: currentGeometry.headY }
+        : fallbackStartPoint;
+      const startRotation =
+        currentGeometry?.headAngle ?? squareParabolaRotationRef.current;
+      const snappedStartRotation = snapRotationToQuarterTurn(startRotation);
+      const nextFlight = buildSquareParabolaFlight(
+        list,
+        startPoint,
+        snappedStartRotation,
+        targetLink,
+      );
+
+      if (!nextFlight) {
+        squareParabolaRotationRef.current = snappedStartRotation;
+        squareParabolaFlightRef.current = null;
+        measureSnake();
+        return;
+      }
+
+      squareParabolaFlightRef.current = nextFlight;
+
+      if (squareParabolaFrameRef.current !== null) {
+        cancelAnimationFrame(squareParabolaFrameRef.current);
+      }
+
+      squareParabolaFrameRef.current = requestAnimationFrame(runSquareParabolaFlight);
+    },
+    [findPreviewLinkById, measureSnake, runSquareParabolaFlight],
+  );
+
+  const startBentClickFlight = useCallback(
+    (targetId: string) => {
+      const list = listRef.current;
+
+      if (!list || !snakeRectBendActive) {
+        bentClickFlightRef.current = null;
+        measureSnake();
+        return;
+      }
+
+      const targetLink = findPreviewLinkById(list, targetId);
+      const previousLink = findPreviewLinkById(list, previousActiveIdRef.current);
+
+      if (!isSnakeLinkMovingUp(list, previousLink, targetLink)) {
+        bentClickFlightRef.current = null;
+        measureSnake();
+        return;
+      }
+
+      const nextFlight = buildSnakeClickFlight(list, previousLink, targetLink);
+
+      if (!nextFlight) {
+        bentClickFlightRef.current = null;
+        measureSnake();
+        return;
+      }
+
+      bentClickFlightRef.current = nextFlight;
+
+      if (bentClickFrameRef.current !== null) {
+        cancelAnimationFrame(bentClickFrameRef.current);
+      }
+
+      bentClickFrameRef.current = requestAnimationFrame(runBentClickFlight);
+    },
+    [findPreviewLinkById, measureSnake, runBentClickFlight, snakeRectBendActive],
+  );
 
   const refreshFades = useCallback(() => {
     const list = listRef.current;
@@ -5226,6 +6086,17 @@ function TocPreview({
   }, [device.showButton, needsToggle]);
 
   useEffect(() => {
+    bentClickTargetIdRef.current = null;
+    bentClickFlightRef.current = null;
+    previousActiveIdRef.current = preview.activeId;
+    if (bentClickFrameRef.current !== null) {
+      cancelAnimationFrame(bentClickFrameRef.current);
+      bentClickFrameRef.current = null;
+    }
+    setActiveId(preview.activeId);
+  }, [preview.activeId, preview.items]);
+
+  useEffect(() => {
     if (!needsToggle) {
       setExpanded(false);
     }
@@ -5235,6 +6106,12 @@ function TocPreview({
     return () => {
       if (snakeFrameRef.current !== null) {
         cancelAnimationFrame(snakeFrameRef.current);
+      }
+      if (bentClickFrameRef.current !== null) {
+        cancelAnimationFrame(bentClickFrameRef.current);
+      }
+      if (squareParabolaFrameRef.current !== null) {
+        cancelAnimationFrame(squareParabolaFrameRef.current);
       }
     };
   }, []);
@@ -5287,6 +6164,55 @@ function TocPreview({
   }, [refreshFades, scheduleSnakeMeasurement]);
 
   useEffect(() => {
+    const list = listRef.current;
+    const currentLink = list ? findPreviewLinkById(list, activeId) : null;
+
+    keepPreviewLinkVisible(currentLink);
+
+    if (!squareParabolaActive) {
+      if (snakeRectBendActive && previousActiveIdRef.current !== activeId) {
+        startBentClickFlight(activeId);
+        previousActiveIdRef.current = activeId;
+        return;
+      }
+
+      previousActiveIdRef.current = activeId;
+      scheduleSnakeMeasurement();
+      return;
+    }
+
+    if (previousActiveIdRef.current === activeId) {
+      scheduleSnakeMeasurement();
+      return;
+    }
+
+    startSquareParabolaFlight(activeId);
+    previousActiveIdRef.current = activeId;
+  }, [
+    activeId,
+    findPreviewLinkById,
+    keepPreviewLinkVisible,
+    scheduleSnakeMeasurement,
+    snakeRectBendActive,
+    squareParabolaActive,
+    startBentClickFlight,
+    startSquareParabolaFlight,
+  ]);
+
+  useEffect(() => {
+    if (!squareParabolaActive) {
+      squareParabolaFlightRef.current = null;
+      squareParabolaRotationRef.current = 0;
+    }
+
+    if (!snakeRectBendActive) {
+      bentClickFlightRef.current = null;
+      if (bentClickFrameRef.current !== null) {
+        cancelAnimationFrame(bentClickFrameRef.current);
+        bentClickFrameRef.current = null;
+      }
+    }
+
     scheduleSnakeMeasurement();
   }, [
     device.animationType,
@@ -5295,17 +6221,18 @@ function TocPreview({
     indentation,
     markerFormat,
     needsToggle,
-    preview.activeId,
+    activeId,
     preview.items,
     preview.title,
     preview.showToc,
     scheduleSnakeMeasurement,
-    snakeActive,
+    snakeRectBendActive,
+    squareParabolaActive,
     textAlignment,
   ]);
 
   useEffect(() => {
-    if (!snakeActive) {
+    if (!markerActive) {
       return;
     }
 
@@ -5316,7 +6243,7 @@ function TocPreview({
     window.addEventListener("resize", handleResize);
 
     return () => window.removeEventListener("resize", handleResize);
-  }, [scheduleSnakeMeasurement, snakeActive]);
+  }, [markerActive, scheduleSnakeMeasurement]);
 
   if (!preview.showToc) return null;
 
@@ -5331,7 +6258,7 @@ function TocPreview({
 
   const nav = (
     <nav
-      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${snakeActive ? " toc-widget--animation-snake" : ""}${snakeRectActive ? " toc-widget--animation-snake-rect" : ""}${snakeRectBendActive ? " toc-widget--animation-snake-rect-bend" : ""}`}
+      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${snakeActive ? " toc-widget--animation-snake" : ""}${snakeRectActive ? " toc-widget--animation-snake-rect" : ""}${snakeRectBendActive ? " toc-widget--animation-snake-rect-bend" : ""}${squareParabolaActive ? " toc-widget--animation-square-parabola" : ""}`}
       aria-label="Table of contents preview"
       data-device={previewDevice}
       style={getPreviewContainerStyle(device)}
@@ -5348,7 +6275,7 @@ function TocPreview({
         </div>
       ) : null}
       <div className="toc-widget__list-shell">
-        {snakeActive ? (
+        {markerActive ? (
           <div className="toc-widget__snake" aria-hidden="true">
             <svg
               className="toc-widget__snake-svg"
@@ -5383,7 +6310,8 @@ function TocPreview({
         <PreviewTocList
           ref={listRef}
           items={preview.items}
-          activeId={preview.activeId}
+          activeId={activeId}
+          onItemSelect={handleItemSelect}
         />
       </div>
       {showToggle ? (
@@ -5423,12 +6351,18 @@ const PreviewTocList = forwardRef<
   {
     items: PreviewTocItem[];
     activeId: string;
+    onItemSelect: (itemId: string) => void;
   }
->(function PreviewTocList({ items, activeId }, ref) {
+>(function PreviewTocList({ items, activeId, onItemSelect }, ref) {
   return (
     <ul ref={ref} className="toc-widget__list">
       {items.map((item) => (
-        <PreviewTocListItem key={item.id} item={item} activeId={activeId} />
+        <PreviewTocListItem
+          key={item.id}
+          item={item}
+          activeId={activeId}
+          onItemSelect={onItemSelect}
+        />
       ))}
     </ul>
   );
@@ -5437,16 +6371,21 @@ const PreviewTocList = forwardRef<
 function PreviewTocListItem({
   item,
   activeId,
+  onItemSelect,
 }: {
   item: PreviewTocItem;
   activeId: string;
+  onItemSelect: (itemId: string) => void;
 }) {
   return (
     <li className="toc-widget__item">
       <a
         href={`#${item.id}`}
         className={`toc-widget__link${item.id === activeId ? " toc-widget__link--current" : ""}`}
-        onClick={(event) => event.preventDefault()}
+        onClick={(event) => {
+          event.preventDefault();
+          onItemSelect(item.id);
+        }}
       >
         <span className="toc-widget__link-label">{item.title}</span>
       </a>
@@ -5457,6 +6396,7 @@ function PreviewTocListItem({
               key={child.id}
               item={child}
               activeId={activeId}
+              onItemSelect={onItemSelect}
             />
           ))}
         </ul>
