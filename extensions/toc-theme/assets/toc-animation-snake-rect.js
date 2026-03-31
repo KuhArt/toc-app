@@ -7,7 +7,7 @@
     throw new Error("Missing shared TOC animation helpers");
   }
 
-  function createSnakeController(context) {
+  registry["snake-rect"] = function createSnakeRectController(context) {
     let lastGeometry = null;
     let snakeClickFlight = null;
     let snakeClickFrame = null;
@@ -197,8 +197,5 @@
         renderGeometry(shared.measureTocSnakeGeometry(context.list, activeLink));
       },
     };
-  }
-
-  registry.snake = createSnakeController;
-  registry["snake-rect"] = createSnakeController;
+  };
 })();

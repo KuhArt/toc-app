@@ -29,7 +29,6 @@ type TocTextAlignment = "left" | "center" | "right";
 type TocMarkerFormat = "none" | "bullet" | "numeric";
 type TocAnimationType =
   | "none"
-  | "snake"
   | "snake-rect"
   | "snake-rect-bend"
   | "square-parabola";
@@ -102,7 +101,6 @@ const CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN = "{{mobileBreakpoint}}";
 const CUSTOM_CSS_EDITOR_EXTENSIONS = [cssLanguage()];
 const CUSTOM_CSS_REFERENCE_SELECTORS = [
   ".toc-widget",
-  ".toc-widget--animation-snake",
   ".toc-widget--animation-snake-rect",
   ".toc-widget--animation-snake-rect-bend",
   ".toc-widget--animation-square-parabola",
@@ -227,7 +225,6 @@ const MARKER_FORMAT_OPTIONS = [
 ] as const;
 const ANIMATION_TYPE_OPTIONS = [
   { label: "None", value: "none" },
-  { label: "Snake", value: "snake" },
   { label: "Snake rectangle", value: "snake-rect" },
   { label: "Snake bent rectangle", value: "snake-rect-bend" },
   { label: "Square parabola", value: "square-parabola" },
@@ -4934,7 +4931,6 @@ const TOC_SQUARE_PARABOLA_MIN_DURATION = 220;
 const TOC_SQUARE_PARABOLA_MAX_DURATION = 360;
 const TOC_PREVIEW_REPLAY_STEP_GAP = 50;
 const TOC_PREVIEW_REPLAY_SNAKE_STEP_DURATION = 220;
-
 function readMarkerCssPixels(
   element: Element | null,
   propertyName: string,
@@ -4956,7 +4952,7 @@ function getMarkerWidget(list: HTMLUListElement) {
 
 function getMarkerSettingsForList(list: HTMLUListElement): TocMarkerSettings {
   const widget = getMarkerWidget(list);
-  let headOffsetPropertyName = "--toc-snake-head-offset";
+  let headOffsetPropertyName = "--toc-square-parabola-head-offset";
 
   if (widget?.classList.contains("toc-widget--animation-snake-rect")) {
     headOffsetPropertyName = "--toc-snake-rect-head-offset";
@@ -4995,12 +4991,7 @@ function isDesktopMarkerAnimation(
 ) {
   return (
     previewDevice === "desktop" &&
-    [
-      "snake",
-      "snake-rect",
-      "snake-rect-bend",
-      "square-parabola",
-    ].includes(animationType)
+    ["snake-rect", "snake-rect-bend", "square-parabola"].includes(animationType)
   );
 }
 
@@ -5018,7 +5009,6 @@ function isSquareParabolaAnimation(animationType: TocAnimationType) {
 
 function getPreviewReplayStepDelay(animationType: TocAnimationType) {
   switch (animationType) {
-    case "snake":
     case "snake-rect":
       return TOC_PREVIEW_REPLAY_SNAKE_STEP_DURATION;
     case "snake-rect-bend":
@@ -5907,7 +5897,6 @@ function TocPreview({
   const squareParabolaRotationRef = useRef(0);
   const previewItemIds = flattenPreviewItemIds(preview.items);
   const markerActive = isDesktopMarkerAnimation(previewDevice, device.animationType);
-  const snakeActive = markerActive && device.animationType === "snake";
   const snakeRectActive = markerActive && isSnakeRectAnimation(device.animationType);
   const snakeRectBendActive =
     markerActive && isSnakeRectBendAnimation(device.animationType);
@@ -6595,7 +6584,7 @@ function TocPreview({
 
   const nav = (
     <nav
-      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${snakeActive ? " toc-widget--animation-snake" : ""}${snakeRectActive ? " toc-widget--animation-snake-rect" : ""}${snakeRectBendActive ? " toc-widget--animation-snake-rect-bend" : ""}${squareParabolaActive ? " toc-widget--animation-square-parabola" : ""}`}
+      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${snakeRectActive ? " toc-widget--animation-snake-rect" : ""}${snakeRectBendActive ? " toc-widget--animation-snake-rect-bend" : ""}${squareParabolaActive ? " toc-widget--animation-square-parabola" : ""}`}
       aria-label="Table of contents preview"
       data-device={previewDevice}
       style={getPreviewContainerStyle(device)}

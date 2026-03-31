@@ -28,7 +28,7 @@
 
   function getMarkerSettingsForList(listElement) {
     const widget = getMarkerWidget(listElement);
-    let headOffsetPropertyName = "--toc-snake-head-offset";
+    let headOffsetPropertyName = "--toc-square-parabola-head-offset";
 
     if (widget?.classList.contains("toc-widget--animation-snake-rect")) {
       headOffsetPropertyName = "--toc-snake-rect-head-offset";

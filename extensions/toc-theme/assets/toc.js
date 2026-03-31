@@ -8,13 +8,11 @@
   const TOC_GENERATED_ID_ATTRIBUTE = "data-shopify-toc-generated-id";
   const TOC_SNAKE_BENT_VISIBLE_LENGTH = 16;
   const TOC_MARKER_ANIMATION_TYPES = [
-    "snake",
     "snake-rect",
     "snake-rect-bend",
     "square-parabola",
   ];
   const TOC_MARKER_ANIMATION_CLASS_NAMES = {
-    snake: "toc-widget--animation-snake",
     "snake-rect": "toc-widget--animation-snake-rect",
     "snake-rect-bend": "toc-widget--animation-snake-rect-bend",
     "square-parabola": "toc-widget--animation-square-parabola",
@@ -802,13 +800,7 @@
   }
 
   function normalizeAnimationType(value) {
-    return [
-      "none",
-      "snake",
-      "snake-rect",
-      "snake-rect-bend",
-      "square-parabola",
-    ].includes(value)
+    return ["none", "snake-rect", "snake-rect-bend", "square-parabola"].includes(value)
       ? value
       : "none";
   }
