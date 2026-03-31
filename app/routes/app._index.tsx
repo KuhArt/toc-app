@@ -4908,6 +4908,7 @@ type TocSnakeClickFlight = {
   duration: number;
   fromLink: HTMLAnchorElement;
   startTime: number;
+  timing: "ease-in-out" | "linear";
   toLink: HTMLAnchorElement;
 };
 
@@ -5665,6 +5666,7 @@ function buildSnakeClickFlight(
   list: HTMLUListElement,
   fromLink: HTMLAnchorElement | null,
   toLink: HTMLAnchorElement | null,
+  timing: TocSnakeClickFlight["timing"] = "ease-in-out",
 ): TocSnakeClickFlight | null {
   if (!fromLink || !toLink) {
     return null;
@@ -5707,12 +5709,15 @@ function buildSnakeClickFlight(
     ),
     fromLink,
     startTime: performance.now(),
+    timing,
     toLink,
   };
 }
 
 function getSnakeClickFlightProgress(flight: TocSnakeClickFlight, now: number) {
-  return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
+  const progress = clampNumber((now - flight.startTime) / flight.duration, 0, 1);
+
+  return flight.timing === "linear" ? progress : easeInOutCubic(progress);
 }
 
 function getSnakeFlightCurrentLinkId(
@@ -6187,7 +6192,12 @@ function TocPreview({
       const lastId = previewItemIds[previewItemIds.length - 1];
       const firstLink = findPreviewLinkById(list, firstId);
       const lastLink = findPreviewLinkById(list, lastId);
-      const replayFlight = buildSnakeClickFlight(list, firstLink, lastLink);
+      const replayFlight = buildSnakeClickFlight(
+        list,
+        firstLink,
+        lastLink,
+        "linear",
+      );
 
       if (!replayFlight) {
         return;
@@ -6334,7 +6344,12 @@ function TocPreview({
       const targetLink = findPreviewLinkById(list, targetId);
       const previousLink = findPreviewLinkById(list, previousActiveIdRef.current);
 
-      const nextFlight = buildSnakeClickFlight(list, previousLink, targetLink);
+      const nextFlight = buildSnakeClickFlight(
+        list,
+        previousLink,
+        targetLink,
+        "linear",
+      );
 
       if (!nextFlight) {
         bentClickFlightRef.current = null;

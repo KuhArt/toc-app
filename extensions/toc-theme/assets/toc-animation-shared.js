@@ -324,7 +324,12 @@
     return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
   }
 
-  function buildSnakeClickFlight(listElement, fromLink, toLink) {
+  function buildSnakeClickFlight(
+    listElement,
+    fromLink,
+    toLink,
+    timing = "ease-in-out",
+  ) {
     if (
       !(fromLink instanceof HTMLAnchorElement) ||
       !(toLink instanceof HTMLAnchorElement)
@@ -369,12 +374,15 @@
       ),
       fromLink,
       toLink,
+      timing,
       startTime: performance.now(),
     };
   }
 
   function getSnakeClickFlightProgress(flight, now) {
-    return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
+    const progress = clampNumber((now - flight.startTime) / flight.duration, 0, 1);
+
+    return flight?.timing === "linear" ? progress : easeInOutCubic(progress);
   }
 
   function isSnakeLinkMovingUp(listElement, fromLink, toLink) {

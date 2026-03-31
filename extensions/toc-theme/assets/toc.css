@@ -326,7 +326,7 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-dasharray: 3 10;
-  animation: toc-widget-snake-crawl 1.8s linear infinite;
+  animation: toc-widget-snake-crawl 1.8s ease-in-out infinite;
   opacity: 0.85;
 }
 
@@ -346,9 +346,9 @@
     rotate(var(--toc-snake-head-rotation))
     skewY(var(--toc-snake-head-bend));
   transition:
-    left 220ms ease,
-    top 220ms ease,
-    transform 220ms ease;
+    left 220ms ease-in-out,
+    top 220ms ease-in-out,
+    transform 220ms ease-in-out;
   animation: toc-widget-snake-head-pulse 2.8s ease-in-out infinite;
 }
 

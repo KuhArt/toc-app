@@ -55,6 +55,7 @@
         context.list,
         fromLink,
         toLink,
+        "linear",
       );
 
       if (!nextFlight) {
