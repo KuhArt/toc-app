@@ -1229,6 +1229,20 @@
     return { root, svg, path, head };
   }
 
+  function readOverlayWidgetCssPixels(overlayRoot, propertyName, fallback) {
+    const widget = overlayRoot.closest(".toc-widget");
+    if (!(widget instanceof Element)) {
+      return fallback;
+    }
+
+    const rawValue = window
+      .getComputedStyle(widget)
+      .getPropertyValue(propertyName);
+    const parsedValue = Number.parseFloat(rawValue);
+
+    return Number.isFinite(parsedValue) ? parsedValue : fallback;
+  }
+
   function updateSnakeOverlay(overlay, geometry, animationType) {
     if (!geometry) {
       overlay.svg.setAttribute("viewBox", "0 0 0 0");
@@ -1248,13 +1262,18 @@
     overlay.svg.setAttribute("height", String(geometry.height));
     overlay.path.setAttribute("d", geometry.path);
     if (animationType === "snake-rect-bend") {
+      const bentVisibleLength = readOverlayWidgetCssPixels(
+        overlay.root,
+        "--toc-snake-rect-bend-width",
+        TOC_SNAKE_BENT_VISIBLE_LENGTH,
+      );
       overlay.path.style.setProperty(
         "stroke-dasharray",
-        `${Math.min(TOC_SNAKE_BENT_VISIBLE_LENGTH, geometry.pathLength)} ${Math.max(geometry.pathLength, 1)}`,
+        `${Math.min(bentVisibleLength, geometry.pathLength)} ${Math.max(geometry.pathLength, 1)}`,
       );
       overlay.path.style.setProperty(
         "stroke-dashoffset",
-        `-${Math.max(geometry.pathLength - TOC_SNAKE_BENT_VISIBLE_LENGTH, 0)}`,
+        `-${Math.max(geometry.pathLength - bentVisibleLength, 0)}`,
       );
     } else {
       overlay.path.style.removeProperty("stroke-dasharray");

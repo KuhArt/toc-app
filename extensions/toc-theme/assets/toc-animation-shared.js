@@ -11,6 +11,56 @@
   const TOC_SQUARE_PARABOLA_MIN_DURATION = 260;
   const TOC_SQUARE_PARABOLA_MAX_DURATION = 420;
 
+  function readMarkerCssPixels(element, propertyName, fallback) {
+    if (!(element instanceof Element)) {
+      return fallback;
+    }
+
+    const rawValue = window.getComputedStyle(element).getPropertyValue(propertyName);
+    const parsedValue = Number.parseFloat(rawValue);
+
+    return Number.isFinite(parsedValue) ? parsedValue : fallback;
+  }
+
+  function getMarkerWidget(listElement) {
+    return listElement.closest(".toc-widget");
+  }
+
+  function getMarkerSettingsForList(listElement) {
+    const widget = getMarkerWidget(listElement);
+    let headOffsetPropertyName = "--toc-snake-head-offset";
+
+    if (widget?.classList.contains("toc-widget--animation-snake-rect")) {
+      headOffsetPropertyName = "--toc-snake-rect-head-offset";
+    } else if (
+      widget?.classList.contains("toc-widget--animation-snake-rect-bend")
+    ) {
+      headOffsetPropertyName = "--toc-snake-rect-bend-head-offset";
+    } else if (
+      widget?.classList.contains("toc-widget--animation-square-parabola")
+    ) {
+      headOffsetPropertyName = "--toc-square-parabola-head-offset";
+    }
+
+    return {
+      headOffset: readMarkerCssPixels(
+        widget,
+        headOffsetPropertyName,
+        TOC_SNAKE_HEAD_OFFSET,
+      ),
+      snakeRectBendWidth: readMarkerCssPixels(
+        widget,
+        "--toc-snake-rect-bend-width",
+        16,
+      ),
+      squareParabolaSize: readMarkerCssPixels(
+        widget,
+        "--toc-square-parabola-size",
+        TOC_SQUARE_PARABOLA_SIZE,
+      ),
+    };
+  }
+
   function normalizeAngleDelta(delta) {
     let normalized = delta;
 
@@ -41,7 +91,7 @@
     return Math.min(Math.max(value, min), max);
   }
 
-  function createSnakeLinkMetric(listRect, link) {
+  function createSnakeLinkMetric(listRect, link, headOffset = TOC_SNAKE_HEAD_OFFSET) {
     const linkRect = link.getBoundingClientRect();
     const rowTop = linkRect.top - listRect.top;
     const rowBottom = linkRect.bottom - listRect.top;
@@ -55,15 +105,15 @@
       entryY,
       exitY,
       laneX: clampSnakeCoordinate(
-        linkRect.left - listRect.left - TOC_SNAKE_HEAD_OFFSET,
+        linkRect.left - listRect.left - headOffset,
         listRect.width,
       ),
     };
   }
 
-  function getTocMarkerBounds(listRect) {
-    const horizontalInset = TOC_SQUARE_PARABOLA_SIZE / 2 + 2;
-    const verticalInset = TOC_SQUARE_PARABOLA_SIZE / 2 + 2;
+  function getTocMarkerBounds(listRect, markerSize = TOC_SQUARE_PARABOLA_SIZE) {
+    const horizontalInset = markerSize / 2 + 2;
+    const verticalInset = markerSize / 2 + 2;
 
     return {
       maxX: Math.max(horizontalInset, listRect.width - horizontalInset),
@@ -93,9 +143,11 @@
       return null;
     }
 
+    const markerSettings = getMarkerSettingsForList(listElement);
+
     return getSnakeHeadPoint(
-      createSnakeLinkMetric(listRect, link),
-      getTocMarkerBounds(listRect),
+      createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
+      getTocMarkerBounds(listRect, markerSettings.squareParabolaSize),
     );
   }
 
@@ -151,49 +203,27 @@
       y: -perpendicular.y,
     };
     const preferredHeight = clampNumber(distance * 0.24, 18, 56);
-    const positiveRoom = measureRayToBounds(midpoint, perpendicular, bounds);
-    const negativeRoom = measureRayToBounds(
+    const preferredDirection =
+      perpendicular.x <= oppositePerpendicular.x
+        ? perpendicular
+        : oppositePerpendicular;
+    const fallbackDirection =
+      preferredDirection === perpendicular
+        ? oppositePerpendicular
+        : perpendicular;
+    const preferredRoom = measureRayToBounds(
       midpoint,
-      oppositePerpendicular,
+      preferredDirection,
       bounds,
     );
-    let chosenDirection =
-      negativeRoom >= positiveRoom ? perpendicular : oppositePerpendicular;
-    let availableRoom =
-      chosenDirection === perpendicular ? negativeRoom : positiveRoom;
-
-    if (Math.abs(negativeRoom - positiveRoom) <= 1) {
-      const centerPoint = {
-        x: (bounds.minX + bounds.maxX) / 2,
-        y: (bounds.minY + bounds.maxY) / 2,
-      };
-      const positiveCandidate = {
-        x:
-          midpoint.x +
-          perpendicular.x * Math.min(preferredHeight, positiveRoom),
-        y:
-          midpoint.y +
-          perpendicular.y * Math.min(preferredHeight, positiveRoom),
-      };
-      const negativeCandidate = {
-        x:
-          midpoint.x +
-          oppositePerpendicular.x * Math.min(preferredHeight, negativeRoom),
-        y:
-          midpoint.y +
-          oppositePerpendicular.y * Math.min(preferredHeight, negativeRoom),
-      };
-      if (
-        measurePointDistance(negativeCandidate, centerPoint) <
-        measurePointDistance(positiveCandidate, centerPoint)
-      ) {
-        chosenDirection = perpendicular;
-        availableRoom = negativeRoom;
-      } else {
-        chosenDirection = oppositePerpendicular;
-        availableRoom = positiveRoom;
-      }
-    }
+    const fallbackRoom = measureRayToBounds(
+      midpoint,
+      fallbackDirection,
+      bounds,
+    );
+    const chosenDirection =
+      preferredRoom > 0 ? preferredDirection : fallbackDirection;
+    const availableRoom = preferredRoom > 0 ? preferredRoom : fallbackRoom;
 
     const amplitude = Math.min(
       preferredHeight,
@@ -253,8 +283,16 @@
       return null;
     }
 
-    const bounds = getTocMarkerBounds(listRect);
-    const targetMetric = createSnakeLinkMetric(listRect, targetLink);
+    const markerSettings = getMarkerSettingsForList(listElement);
+    const bounds = getTocMarkerBounds(
+      listRect,
+      markerSettings.squareParabolaSize,
+    );
+    const targetMetric = createSnakeLinkMetric(
+      listRect,
+      targetLink,
+      markerSettings.headOffset,
+    );
     const boundedStartPoint = clampPointToBounds(startPoint, bounds);
     const endPoint = getSnakeHeadPoint(targetMetric, bounds);
     const distance = measurePointDistance(boundedStartPoint, endPoint);
@@ -309,7 +347,10 @@
       return null;
     }
 
-    const metrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+    const { headOffset } = getMarkerSettingsForList(listElement);
+    const metrics = links.map((link) =>
+      createSnakeLinkMetric(listRect, link, headOffset),
+    );
     const routePoints =
       fromIndex < toIndex
         ? buildSnakeRoutePoints(metrics, fromIndex, toIndex)
@@ -521,8 +562,13 @@
     );
   }
 
-  function appendCenteredBentMarkerTail(points, activeMetric, listHeight) {
-    const centeredTailLength = 8;
+  function appendCenteredBentMarkerTail(
+    points,
+    activeMetric,
+    listHeight,
+    visibleLength,
+  ) {
+    const centeredTailLength = visibleLength / 2;
     const tailEndY = clampSnakeCoordinate(
       activeMetric.centerY + centeredTailLength,
       listHeight,
@@ -558,7 +604,10 @@
       return null;
     }
 
-    const allMetrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+    const markerSettings = getMarkerSettingsForList(listElement);
+    const allMetrics = links.map((link) =>
+      createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
+    );
     if (!allMetrics.length) {
       return null;
     }
@@ -580,6 +629,7 @@
         points,
         allMetrics[activeIndex],
         listRect.height,
+        markerSettings.snakeRectBendWidth,
       );
     }
 
@@ -659,7 +709,10 @@
       return measureTocSnakeGeometry(listElement, toLink);
     }
 
-    const allMetrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+    const { headOffset } = getMarkerSettingsForList(listElement);
+    const allMetrics = links.map((link) =>
+      createSnakeLinkMetric(listRect, link, headOffset),
+    );
     const movingForward = fromIndex < toIndex;
     const anchorIndex = movingForward ? fromIndex : toIndex;
     const routeProgress = movingForward ? progress : 1 - progress;
@@ -737,8 +790,16 @@
       return null;
     }
 
-    const bounds = getTocMarkerBounds(listRect);
-    const activeMetric = createSnakeLinkMetric(listRect, activeLink);
+    const markerSettings = getMarkerSettingsForList(listElement);
+    const bounds = getTocMarkerBounds(
+      listRect,
+      markerSettings.squareParabolaSize,
+    );
+    const activeMetric = createSnakeLinkMetric(
+      listRect,
+      activeLink,
+      markerSettings.headOffset,
+    );
     const settledPoint = getSnakeHeadPoint(activeMetric, bounds);
     const point =
       flight && flightProgress < 1

@@ -1,12 +1,27 @@
 .toc-widget {
   --spacing: 4px;
-  --toc-snake-size: 10px;
-  --toc-snake-rect-width: 12px;
-  --toc-snake-rect-height: 6px;
-  --toc-snake-bent-rect-height: 7px;
-  --toc-snake-line-width: 2px;
+  --toc-snake-size: 6px;
+  --toc-snake-line-width: 1px;
   --toc-snake-color: var(--toc-active-headings-font-color);
   --toc-snake-rail-space: 26px;
+  --toc-snake-head-offset: 12px;
+  --toc-snake-border-radius: 999px;
+  --toc-snake-rect-width: 6px;
+  --toc-snake-rect-height: 6px;
+  --toc-snake-rect-color: #575757cf;
+  --toc-snake-rect-rail-space: 26px;
+  --toc-snake-rect-head-offset: 8px;
+  --toc-snake-rect-border-radius: 2px;
+  --toc-snake-rect-bend-height: 3px;
+  --toc-snake-rect-bend-width: 10px;
+  --toc-snake-rect-bend-color: #575757cf;
+  --toc-snake-rect-bend-rail-space: 26px;
+  --toc-snake-rect-bend-head-offset: 8px;
+  --toc-square-parabola-size: 6px;
+  --toc-square-parabola-color: #575757cf;
+  --toc-square-parabola-rail-space: 26px;
+  --toc-square-parabola-head-offset: 8px;
+  --toc-square-parabola-border-radius: 2px;
   --toc-border-color: #0000001f;
   --toc-border-width: 1px;
   --toc-border-radius: 12px;
@@ -160,18 +175,36 @@
   padding-right: 0;
 }
 
-.toc-widget--animation-snake .toc-widget__list,
-.toc-widget--animation-snake-rect .toc-widget__list,
-.toc-widget--animation-snake-rect-bend .toc-widget__list,
-.toc-widget--animation-square-parabola .toc-widget__list {
+.toc-widget--animation-snake .toc-widget__list {
   padding-left: calc(12px + var(--toc-snake-rail-space));
 }
 
-.toc-widget--animation-snake.toc-widget--flat .toc-widget__list,
-.toc-widget--animation-snake-rect.toc-widget--flat .toc-widget__list,
-.toc-widget--animation-snake-rect-bend.toc-widget--flat .toc-widget__list,
-.toc-widget--animation-square-parabola.toc-widget--flat .toc-widget__list {
+.toc-widget--animation-snake-rect .toc-widget__list {
+  padding-left: calc(12px + var(--toc-snake-rect-rail-space));
+}
+
+.toc-widget--animation-snake-rect-bend .toc-widget__list {
+  padding-left: calc(12px + var(--toc-snake-rect-bend-rail-space));
+}
+
+.toc-widget--animation-square-parabola .toc-widget__list {
+  padding-left: calc(12px + var(--toc-square-parabola-rail-space));
+}
+
+.toc-widget--animation-snake.toc-widget--flat .toc-widget__list {
   padding-left: var(--toc-snake-rail-space);
+}
+
+.toc-widget--animation-snake-rect.toc-widget--flat .toc-widget__list {
+  padding-left: var(--toc-snake-rect-rail-space);
+}
+
+.toc-widget--animation-snake-rect-bend.toc-widget--flat .toc-widget__list {
+  padding-left: var(--toc-snake-rect-bend-rail-space);
+}
+
+.toc-widget--animation-square-parabola.toc-widget--flat .toc-widget__list {
+  padding-left: var(--toc-square-parabola-rail-space);
 }
 
 .toc-widget--animation-snake .toc-widget__sublist,
@@ -210,37 +243,55 @@
 }
 
 .toc-widget--animation-snake.toc-widget--align-center .toc-widget__list,
-.toc-widget--animation-snake.toc-widget--align-right .toc-widget__list,
+.toc-widget--animation-snake.toc-widget--align-right .toc-widget__list {
+  padding-left: calc(12px + var(--toc-snake-rail-space));
+}
+
 .toc-widget--animation-snake-rect.toc-widget--align-center .toc-widget__list,
-.toc-widget--animation-snake-rect.toc-widget--align-right .toc-widget__list,
+.toc-widget--animation-snake-rect.toc-widget--align-right .toc-widget__list {
+  padding-left: calc(12px + var(--toc-snake-rect-rail-space));
+}
+
 .toc-widget--animation-snake-rect-bend.toc-widget--align-center
   .toc-widget__list,
 .toc-widget--animation-snake-rect-bend.toc-widget--align-right
-  .toc-widget__list,
+  .toc-widget__list {
+  padding-left: calc(12px + var(--toc-snake-rect-bend-rail-space));
+}
+
 .toc-widget--animation-square-parabola.toc-widget--align-center
   .toc-widget__list,
 .toc-widget--animation-square-parabola.toc-widget--align-right
   .toc-widget__list {
-  padding-left: calc(12px + var(--toc-snake-rail-space));
+  padding-left: calc(12px + var(--toc-square-parabola-rail-space));
 }
 
 .toc-widget--animation-snake.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
 .toc-widget--animation-snake.toc-widget--align-right.toc-widget--flat
-  .toc-widget__list,
+  .toc-widget__list {
+  padding-left: var(--toc-snake-rail-space);
+}
+
 .toc-widget--animation-snake-rect.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
 .toc-widget--animation-snake-rect.toc-widget--align-right.toc-widget--flat
-  .toc-widget__list,
+  .toc-widget__list {
+  padding-left: var(--toc-snake-rect-rail-space);
+}
+
 .toc-widget--animation-snake-rect-bend.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
 .toc-widget--animation-snake-rect-bend.toc-widget--align-right.toc-widget--flat
-  .toc-widget__list,
+  .toc-widget__list {
+  padding-left: var(--toc-snake-rect-bend-rail-space);
+}
+
 .toc-widget--animation-square-parabola.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
 .toc-widget--animation-square-parabola.toc-widget--align-right.toc-widget--flat
   .toc-widget__list {
-  padding-left: var(--toc-snake-rail-space);
+  padding-left: var(--toc-square-parabola-rail-space);
 }
 
 .toc-widget--animation-snake.toc-widget--align-center .toc-widget__sublist,
@@ -301,13 +352,16 @@
 
 .toc-widget__snake-path {
   fill: none;
-  stroke: var(--toc-snake-color);
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: var(--toc-snake-line-width);
   stroke-dasharray: 3 10;
   animation: toc-widget-snake-crawl 1.8s linear infinite;
   opacity: 0.85;
+}
+
+.toc-widget--animation-snake .toc-widget__snake-path {
+  stroke: var(--toc-snake-color);
+  stroke-width: var(--toc-snake-line-width);
 }
 
 .toc-widget__snake-head {
@@ -316,7 +370,7 @@
   position: absolute;
   width: var(--toc-snake-size);
   height: var(--toc-snake-size);
-  border-radius: 999px;
+  border-radius: var(--toc-snake-border-radius);
   background: var(--toc-snake-color);
   box-shadow:
     0 0 0 2px var(--toc-active-background),
@@ -344,7 +398,8 @@
 .toc-widget--animation-snake-rect .toc-widget__snake-head {
   width: var(--toc-snake-rect-width);
   height: var(--toc-snake-rect-height);
-  border-radius: 2px;
+  border-radius: var(--toc-snake-rect-border-radius);
+  background: var(--toc-snake-rect-color);
   animation: none;
 }
 
@@ -354,9 +409,10 @@
 }
 
 .toc-widget--animation-square-parabola .toc-widget__snake-head {
-  width: var(--toc-snake-rect-width);
-  height: var(--toc-snake-rect-width);
-  border-radius: 2px;
+  width: var(--toc-square-parabola-size);
+  height: var(--toc-square-parabola-size);
+  border-radius: var(--toc-square-parabola-border-radius);
+  background: var(--toc-square-parabola-color);
   animation: none;
   transition: none;
   will-change: left, top, transform;
@@ -365,7 +421,8 @@
 .toc-widget--animation-snake-rect-bend .toc-widget__snake-path {
   opacity: 1;
   animation: none;
-  stroke-width: var(--toc-snake-bent-rect-height);
+  stroke: var(--toc-snake-rect-bend-color);
+  stroke-width: var(--toc-snake-rect-bend-height);
   stroke-linecap: round;
   stroke-linejoin: round;
 }

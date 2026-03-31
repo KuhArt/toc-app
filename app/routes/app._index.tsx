@@ -4914,6 +4914,12 @@ type TocSnakeClickFlight = {
   toLink: HTMLAnchorElement;
 };
 
+type TocMarkerSettings = {
+  headOffset: number;
+  snakeRectBendWidth: number;
+  squareParabolaSize: number;
+};
+
 const TOC_SNAKE_HEAD_OFFSET = 12;
 const TOC_SNAKE_TOP_OFFSET = 8;
 const TOC_SNAKE_BENT_VISIBLE_LENGTH = 24;
@@ -4928,6 +4934,60 @@ const TOC_SQUARE_PARABOLA_MIN_DURATION = 220;
 const TOC_SQUARE_PARABOLA_MAX_DURATION = 360;
 const TOC_PREVIEW_REPLAY_STEP_GAP = 50;
 const TOC_PREVIEW_REPLAY_SNAKE_STEP_DURATION = 220;
+
+function readMarkerCssPixels(
+  element: Element | null,
+  propertyName: string,
+  fallback: number,
+) {
+  if (typeof window === "undefined" || !element) {
+    return fallback;
+  }
+
+  const rawValue = window.getComputedStyle(element).getPropertyValue(propertyName);
+  const parsedValue = Number.parseFloat(rawValue);
+
+  return Number.isFinite(parsedValue) ? parsedValue : fallback;
+}
+
+function getMarkerWidget(list: HTMLUListElement) {
+  return list.closest(".toc-widget");
+}
+
+function getMarkerSettingsForList(list: HTMLUListElement): TocMarkerSettings {
+  const widget = getMarkerWidget(list);
+  let headOffsetPropertyName = "--toc-snake-head-offset";
+
+  if (widget?.classList.contains("toc-widget--animation-snake-rect")) {
+    headOffsetPropertyName = "--toc-snake-rect-head-offset";
+  } else if (
+    widget?.classList.contains("toc-widget--animation-snake-rect-bend")
+  ) {
+    headOffsetPropertyName = "--toc-snake-rect-bend-head-offset";
+  } else if (
+    widget?.classList.contains("toc-widget--animation-square-parabola")
+  ) {
+    headOffsetPropertyName = "--toc-square-parabola-head-offset";
+  }
+
+  return {
+    headOffset: readMarkerCssPixels(
+      widget,
+      headOffsetPropertyName,
+      TOC_SNAKE_HEAD_OFFSET,
+    ),
+    snakeRectBendWidth: readMarkerCssPixels(
+      widget,
+      "--toc-snake-rect-bend-width",
+      TOC_SNAKE_BENT_VISIBLE_LENGTH,
+    ),
+    squareParabolaSize: readMarkerCssPixels(
+      widget,
+      "--toc-square-parabola-size",
+      TOC_SQUARE_PARABOLA_SIZE,
+    ),
+  };
+}
 
 function isDesktopMarkerAnimation(
   previewDevice: "desktop" | "mobile",
@@ -5011,6 +5071,7 @@ function clampNumber(value: number, min: number, max: number) {
 function createSnakeLinkMetric(
   listRect: DOMRect,
   link: HTMLAnchorElement,
+  headOffset = TOC_SNAKE_HEAD_OFFSET,
 ): TocSnakeLinkMetric {
   const linkRect = link.getBoundingClientRect();
   const rowTop = linkRect.top - listRect.top;
@@ -5025,15 +5086,18 @@ function createSnakeLinkMetric(
     entryY,
     exitY,
     laneX: clampSnakeCoordinate(
-      linkRect.left - listRect.left - TOC_SNAKE_HEAD_OFFSET,
+      linkRect.left - listRect.left - headOffset,
       listRect.width,
     ),
   };
 }
 
-function getTocMarkerBounds(listRect: DOMRect): TocMarkerBounds {
-  const horizontalInset = TOC_SQUARE_PARABOLA_SIZE / 2 + 2;
-  const verticalInset = TOC_SQUARE_PARABOLA_SIZE / 2 + 2;
+function getTocMarkerBounds(
+  listRect: DOMRect,
+  markerSize = TOC_SQUARE_PARABOLA_SIZE,
+): TocMarkerBounds {
+  const horizontalInset = markerSize / 2 + 2;
+  const verticalInset = markerSize / 2 + 2;
 
   return {
     maxX: Math.max(horizontalInset, listRect.width - horizontalInset),
@@ -5069,9 +5133,11 @@ function measureListLinkHeadPoint(
     return null;
   }
 
+  const markerSettings = getMarkerSettingsForList(list);
+
   return getSnakeHeadPoint(
-    createSnakeLinkMetric(listRect, link),
-    getTocMarkerBounds(listRect),
+    createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
+    getTocMarkerBounds(listRect, markerSettings.squareParabolaSize),
   );
 }
 
@@ -5135,45 +5201,27 @@ function chooseParabolaControlPoint(
     y: -perpendicular.y,
   };
   const preferredHeight = clampNumber(distance * 0.24, 18, 56);
-  const positiveRoom = measureRayToBounds(midpoint, perpendicular, bounds);
-  const negativeRoom = measureRayToBounds(
+  const preferredDirection =
+    perpendicular.x <= oppositePerpendicular.x
+      ? perpendicular
+      : oppositePerpendicular;
+  const fallbackDirection =
+    preferredDirection === perpendicular
+      ? oppositePerpendicular
+      : perpendicular;
+  const preferredRoom = measureRayToBounds(
     midpoint,
-    oppositePerpendicular,
+    preferredDirection,
     bounds,
   );
-  let chosenDirection =
-    negativeRoom >= positiveRoom ? perpendicular : oppositePerpendicular;
-  let availableRoom =
-    chosenDirection === perpendicular ? negativeRoom : positiveRoom;
-
-  if (Math.abs(negativeRoom - positiveRoom) <= 1) {
-    const centerPoint = {
-      x: (bounds.minX + bounds.maxX) / 2,
-      y: (bounds.minY + bounds.maxY) / 2,
-    };
-    const positiveCandidate = {
-      x: midpoint.x + perpendicular.x * Math.min(preferredHeight, positiveRoom),
-      y: midpoint.y + perpendicular.y * Math.min(preferredHeight, positiveRoom),
-    };
-    const negativeCandidate = {
-      x:
-        midpoint.x +
-        oppositePerpendicular.x * Math.min(preferredHeight, negativeRoom),
-      y:
-        midpoint.y +
-        oppositePerpendicular.y * Math.min(preferredHeight, negativeRoom),
-    };
-    if (
-      measurePointDistance(negativeCandidate, centerPoint) <
-      measurePointDistance(positiveCandidate, centerPoint)
-    ) {
-      chosenDirection = perpendicular;
-      availableRoom = negativeRoom;
-    } else {
-      chosenDirection = oppositePerpendicular;
-      availableRoom = positiveRoom;
-    }
-  }
+  const fallbackRoom = measureRayToBounds(
+    midpoint,
+    fallbackDirection,
+    bounds,
+  );
+  const chosenDirection =
+    preferredRoom > 0 ? preferredDirection : fallbackDirection;
+  const availableRoom = preferredRoom > 0 ? preferredRoom : fallbackRoom;
 
   const amplitude = Math.min(preferredHeight, Math.max(availableRoom * 0.92, 0));
 
@@ -5235,8 +5283,13 @@ function buildSquareParabolaFlight(
     return null;
   }
 
-  const bounds = getTocMarkerBounds(listRect);
-  const targetMetric = createSnakeLinkMetric(listRect, targetLink);
+  const markerSettings = getMarkerSettingsForList(list);
+  const bounds = getTocMarkerBounds(listRect, markerSettings.squareParabolaSize);
+  const targetMetric = createSnakeLinkMetric(
+    listRect,
+    targetLink,
+    markerSettings.headOffset,
+  );
   const boundedStartPoint = clampPointToBounds(startPoint, bounds);
   const endPoint = getSnakeHeadPoint(targetMetric, bounds);
   const distance = measurePointDistance(boundedStartPoint, endPoint);
@@ -5413,8 +5466,9 @@ function appendCenteredBentMarkerTail(
   points: Array<{ x: number; y: number }>,
   activeMetric: TocSnakeLinkMetric,
   listHeight: number,
+  visibleLength: number,
 ) {
-  const centeredTailLength = TOC_SNAKE_BENT_VISIBLE_LENGTH / 2;
+  const centeredTailLength = visibleLength / 2;
   const tailEndY = clampSnakeCoordinate(
     activeMetric.centerY + centeredTailLength,
     listHeight,
@@ -5425,36 +5479,9 @@ function appendCenteredBentMarkerTail(
   }
 }
 
-function measureTocSnakeGeometry(
-  list: HTMLUListElement,
-  activeLink: HTMLAnchorElement | null,
-  nextLink?: HTMLAnchorElement | null,
-  nextProgress = 0,
-  centerBentMarker = false,
-): TocSnakeGeometry | null {
-  if (!activeLink) {
-    return null;
-  }
-
-  const listRect = list.getBoundingClientRect();
-  if (listRect.width <= 0 || listRect.height <= 0) {
-    return null;
-  }
-
-  const links = Array.from(
-    list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link"),
-  );
-  const activeIndex = links.indexOf(activeLink);
-
-  if (activeIndex < 0) {
-    return null;
-  }
-
-  const allMetrics = links.map((link) => createSnakeLinkMetric(listRect, link));
-  const metrics = allMetrics.slice(0, activeIndex + 1);
-
+function buildSettledSnakePoints(metrics: TocSnakeLinkMetric[]) {
   if (!metrics.length) {
-    return null;
+    return [];
   }
 
   const firstMetric = metrics[0];
@@ -5480,27 +5507,16 @@ function measureTocSnakeGeometry(
     }
 
     pushSnakePoint(points, { x: currentX, y: metric.entryY });
-
     pushSnakePoint(points, {
       x: currentX,
       y: index === metrics.length - 1 ? metric.centerY : metric.exitY,
     });
   });
 
-  const nextIndex = nextLink ? links.indexOf(nextLink) : -1;
-  if (nextIndex === activeIndex + 1 && nextIndex < allMetrics.length) {
-    appendSnakeTransitionPoints(
-      points,
-      allMetrics[activeIndex],
-      allMetrics[nextIndex],
-      nextProgress,
-    );
-  }
+  return points;
+}
 
-  if (centerBentMarker) {
-    appendCenteredBentMarkerTail(points, allMetrics[activeIndex], listRect.height);
-  }
-
+function getSnakeHeadState(points: Array<{ x: number; y: number }>) {
   const headPoint = points[points.length - 1];
   const segmentAngles: number[] = [];
   let headAngle = 0;
@@ -5530,11 +5546,71 @@ function measureTocSnakeGeometry(
     );
   }
 
+  return { headAngle, headBend, headPoint };
+}
+
+function measureTocSnakeGeometry(
+  list: HTMLUListElement,
+  activeLink: HTMLAnchorElement | null,
+  nextLink?: HTMLAnchorElement | null,
+  nextProgress = 0,
+  centerBentMarker = false,
+): TocSnakeGeometry | null {
+  if (!activeLink) {
+    return null;
+  }
+
+  const listRect = list.getBoundingClientRect();
+  if (listRect.width <= 0 || listRect.height <= 0) {
+    return null;
+  }
+
+  const links = Array.from(
+    list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link"),
+  );
+  const activeIndex = links.indexOf(activeLink);
+
+  if (activeIndex < 0) {
+    return null;
+  }
+
+  const markerSettings = getMarkerSettingsForList(list);
+  const allMetrics = links.map((link) =>
+    createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
+  );
+
+  if (!allMetrics.length) {
+    return null;
+  }
+
+  const points = buildSettledSnakePoints(allMetrics.slice(0, activeIndex + 1));
+
+  const nextIndex = nextLink ? links.indexOf(nextLink) : -1;
+  if (nextIndex === activeIndex + 1 && nextIndex < allMetrics.length) {
+    appendSnakeTransitionPoints(
+      points,
+      allMetrics[activeIndex],
+      allMetrics[nextIndex],
+      nextProgress,
+    );
+  }
+
+  if (centerBentMarker) {
+    appendCenteredBentMarkerTail(
+      points,
+      allMetrics[activeIndex],
+      listRect.height,
+      markerSettings.snakeRectBendWidth,
+    );
+  }
+
+  const { headAngle, headBend, headPoint } = getSnakeHeadState(points);
+
   return {
     headAngle,
     headBend,
-    headX: headPoint?.x ?? metrics[metrics.length - 1].laneX,
-    headY: headPoint?.y ?? metrics[metrics.length - 1].centerY,
+    headX: headPoint?.x ?? allMetrics[activeIndex].laneX,
+    headY: headPoint?.y ?? allMetrics[activeIndex].centerY,
     height: Math.ceil(listRect.height),
     path: buildSnakePath(points),
     pathLength: measureSnakePathLength(points),
@@ -5558,8 +5634,13 @@ function measureTocSquareParabolaGeometry(
     return null;
   }
 
-  const bounds = getTocMarkerBounds(listRect);
-  const activeMetric = createSnakeLinkMetric(listRect, activeLink);
+  const markerSettings = getMarkerSettingsForList(list);
+  const bounds = getTocMarkerBounds(listRect, markerSettings.squareParabolaSize);
+  const activeMetric = createSnakeLinkMetric(
+    listRect,
+    activeLink,
+    markerSettings.headOffset,
+  );
   const settledPoint = getSnakeHeadPoint(activeMetric, bounds);
   const point =
     flight && flightProgress < 1
@@ -5614,7 +5695,10 @@ function buildSnakeClickFlight(
     return null;
   }
 
-  const metrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+  const { headOffset } = getMarkerSettingsForList(list);
+  const metrics = links.map((link) =>
+    createSnakeLinkMetric(listRect, link, headOffset),
+  );
   const routePoints =
     fromIndex < toIndex
       ? buildSnakeRoutePoints(metrics, fromIndex, toIndex)
@@ -5665,8 +5749,9 @@ function getSnakeFlightCurrentLinkId(
     return getPreviewLinkId(toLink);
   }
 
+  const { headOffset } = getMarkerSettingsForList(list);
   const metrics = links.map((link) =>
-    createSnakeLinkMetric(list.getBoundingClientRect(), link),
+    createSnakeLinkMetric(list.getBoundingClientRect(), link, headOffset),
   );
   const fullRoute = buildSnakeRoutePoints(metrics, fromIndex, toIndex);
   const fullRouteLength = measureSnakePathLength(fullRoute);
@@ -5694,43 +5779,6 @@ function getSnakeFlightCurrentLinkId(
   }
 
   return getPreviewLinkId(links[currentIndex]);
-}
-
-function buildSettledSnakePoints(metrics: TocSnakeLinkMetric[]) {
-  if (!metrics.length) {
-    return [];
-  }
-
-  const firstMetric = metrics[0];
-  const points: Array<{ x: number; y: number }> = [];
-  let currentX = firstMetric.laneX;
-
-  pushSnakePoint(points, {
-    x: currentX,
-    y: Math.min(TOC_SNAKE_TOP_OFFSET, firstMetric.entryY),
-  });
-
-  metrics.forEach((metric, index) => {
-    const turnY =
-      index === 0
-        ? metric.entryY
-        : (metrics[index - 1].exitY + metric.entryY) / 2;
-
-    pushSnakePoint(points, { x: currentX, y: turnY });
-
-    if (metric.laneX !== currentX) {
-      currentX = metric.laneX;
-      pushSnakePoint(points, { x: currentX, y: turnY });
-    }
-
-    pushSnakePoint(points, { x: currentX, y: metric.entryY });
-    pushSnakePoint(points, {
-      x: currentX,
-      y: index === metrics.length - 1 ? metric.centerY : metric.exitY,
-    });
-  });
-
-  return points;
 }
 
 function measureTocSnakeClickFlightGeometry(
@@ -5762,7 +5810,10 @@ function measureTocSnakeClickFlightGeometry(
     return measureTocSnakeGeometry(list, toLink);
   }
 
-  const allMetrics = links.map((link) => createSnakeLinkMetric(listRect, link));
+  const { headOffset } = getMarkerSettingsForList(list);
+  const allMetrics = links.map((link) =>
+    createSnakeLinkMetric(listRect, link, headOffset),
+  );
   const movingForward = fromIndex < toIndex;
   const anchorIndex = movingForward ? fromIndex : toIndex;
   const routeProgress = movingForward ? progress : 1 - progress;
@@ -5778,34 +5829,7 @@ function measureTocSnakeClickFlightGeometry(
     routeProgress,
   );
 
-  const headPoint = points[points.length - 1];
-  const segmentAngles: number[] = [];
-  let headAngle = 0;
-  let headBend = 0;
-
-  for (let index = points.length - 1; index > 0; index -= 1) {
-    const currentPoint = points[index];
-    const previousPoint = points[index - 1];
-    const deltaX = currentPoint.x - previousPoint.x;
-    const deltaY = currentPoint.y - previousPoint.y;
-
-    if (deltaX === 0 && deltaY === 0) {
-      continue;
-    }
-
-    segmentAngles.push((Math.atan2(deltaY, deltaX) * 180) / Math.PI);
-  }
-
-  if (segmentAngles.length > 0) {
-    headAngle = segmentAngles[0];
-  }
-
-  if (segmentAngles.length > 1) {
-    headBend = Math.max(
-      -18,
-      Math.min(18, normalizeAngleDelta(segmentAngles[0] - segmentAngles[1]) * 0.22),
-    );
-  }
+  const { headAngle, headBend, headPoint } = getSnakeHeadState(points);
 
   return {
     headAngle,
@@ -6181,7 +6205,7 @@ function TocPreview({
       }
 
       replayFlight.duration = clampNumber(
-        replayFlight.duration * 6,
+        replayFlight.duration * 12,
         TOC_SNAKE_BENT_REPLAY_MIN_DURATION,
         TOC_SNAKE_BENT_REPLAY_MAX_DURATION,
       );
@@ -6557,11 +6581,15 @@ function TocPreview({
   if (!preview.showToc) return null;
 
   const showToggle = device.showButton && needsToggle;
+  const bentVisibleLength =
+    snakeRectBendActive && listRef.current
+      ? getMarkerSettingsForList(listRef.current).snakeRectBendWidth
+      : TOC_SNAKE_BENT_VISIBLE_LENGTH;
   const bentPathStyle =
     snakeRectBendActive && snakeGeometry
       ? ({
-          strokeDasharray: `${Math.min(TOC_SNAKE_BENT_VISIBLE_LENGTH, snakeGeometry.pathLength)} ${Math.max(snakeGeometry.pathLength, 1)}`,
-          strokeDashoffset: `-${Math.max(snakeGeometry.pathLength - TOC_SNAKE_BENT_VISIBLE_LENGTH, 0)}`,
+          strokeDasharray: `${Math.min(bentVisibleLength, snakeGeometry.pathLength)} ${Math.max(snakeGeometry.pathLength, 1)}`,
+          strokeDashoffset: `-${Math.max(snakeGeometry.pathLength - bentVisibleLength, 0)}`,
         } as CSSProperties)
       : undefined;
 
