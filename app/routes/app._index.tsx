@@ -119,9 +119,6 @@ const CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN = "{{mobileBreakpoint}}";
 const CUSTOM_CSS_EDITOR_EXTENSIONS = [cssLanguage()];
 const CUSTOM_CSS_REFERENCE_SELECTORS = [
   ".toc-widget",
-  ".toc-widget--animation-following-marker",
-  ".toc-widget--animation-crawling-snake",
-  ".toc-widget--animation-jumping-marker",
   ".toc-widget__title",
   ".toc-widget__list-shell",
   ".toc-widget__list",
@@ -129,9 +126,6 @@ const CUSTOM_CSS_REFERENCE_SELECTORS = [
   ".toc-widget__item",
   ".toc-widget__link",
   ".toc-widget__link-label",
-  ".toc-widget__snake",
-  ".toc-widget__snake-path",
-  ".toc-widget__snake-head",
   ".toc-widget__toggle",
   ".toc-widget__fade",
   ".toc-widget__fade--top",
