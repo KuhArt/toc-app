@@ -617,11 +617,19 @@ const PREVIEW_STYLES = `
   .toc-settings-preview {
     display: grid;
     gap: 16px;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
   }
 
   .toc-preview-section {
     display: grid;
     gap: 16px;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
   }
 
   .toc-preview-header {
@@ -641,6 +649,11 @@ const PREVIEW_STYLES = `
 
   .toc-preview-pane {
     min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    align-content: start;
   }
 
   .toc-preview-pane + .toc-preview-pane {
@@ -659,6 +672,10 @@ const PREVIEW_STYLES = `
 
   .toc-preview-stage {
     overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
   }
 
   .toc-preview-desktop {
@@ -666,7 +683,9 @@ const PREVIEW_STYLES = `
   }
 
   .toc-preview-float {
-    width: min(320px, 100%);
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
     max-width: 100%;
     margin-left: auto;
   }
@@ -679,15 +698,22 @@ const PREVIEW_STYLES = `
   .toc-preview-float .toc-widget {
     box-sizing: border-box;
     width: 100%;
+    max-width: none;
+    margin: 0;
   }
 
   .toc-preview-flow {
-    width: min(320px, 100%);
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
     max-width: 100%;
   }
 
   .toc-preview-mobile {
-    max-width: 320px;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    max-width: 100%;
   }
 
   @media (max-width: 900px) {
@@ -5827,11 +5853,16 @@ function getPreviewPlacementStyle(
     return undefined;
   }
 
+  const offsetTop = clampPreviewOffset(device.offsetTop);
+  const offsetRight = clampPreviewOffset(device.offsetRight);
+  const offsetBottom = clampPreviewOffset(device.offsetBottom);
+  const offsetLeft = clampPreviewOffset(device.offsetLeft);
+
   return {
-    marginTop: `${clampPreviewOffset(device.offsetTop)}px`,
-    marginRight: `${clampPreviewOffset(device.offsetRight)}px`,
-    marginBottom: `${clampPreviewOffset(device.offsetBottom)}px`,
-    marginLeft: `${clampPreviewOffset(device.offsetLeft)}px`,
+    paddingTop: `${offsetTop}px`,
+    paddingRight: `${offsetRight}px`,
+    paddingBottom: `${offsetBottom}px`,
+    paddingLeft: `${offsetLeft}px`,
   };
 }
 
