@@ -23,6 +23,7 @@
   --toc-border-color: #0000001f;
   --toc-border-width: 1px;
   --toc-border-radius: 12px;
+  --toc-shadow: none;
   --toc-background: #ffffff;
   --toc-max-width: none;
   --toc-padding-top: 16px;
@@ -49,6 +50,7 @@
   --toc-mobile-border-color: #0000001f;
   --toc-mobile-border-width: 0px;
   --toc-mobile-border-radius: 12px;
+  --toc-mobile-shadow: none;
   --toc-mobile-background: #ffffff;
   --toc-mobile-max-width: none;
   --toc-mobile-padding-top: 0px;
@@ -93,6 +95,7 @@
   --toc-active-button-border-radius: var(--toc-show-button-border-radius);
   border: var(--toc-border-width) solid var(--toc-border-color);
   border-radius: var(--toc-border-radius);
+  box-shadow: var(--toc-shadow);
   padding-top: var(--toc-padding-top);
   padding-right: var(--toc-padding-right);
   padding-bottom: var(--toc-padding-bottom);
@@ -537,6 +540,7 @@
   border-color: var(--toc-mobile-border-color);
   border-width: var(--toc-mobile-border-width);
   border-radius: var(--toc-mobile-border-radius);
+  box-shadow: var(--toc-mobile-shadow);
   padding-top: var(--toc-mobile-padding-top);
   padding-right: var(--toc-mobile-padding-right);
   padding-bottom: var(--toc-mobile-padding-bottom);

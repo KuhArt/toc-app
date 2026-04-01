@@ -26,6 +26,8 @@
     color: "#0000001f",
     width: 1,
     radius: 12,
+    shadowPreset: "none",
+    shadowColor: "#000000",
     paddingTop: 16,
     paddingBottom: 16,
     paddingLeft: 16,
@@ -77,6 +79,8 @@
     color: "#0000001f",
     width: 0,
     radius: 12,
+    shadowPreset: "none",
+    shadowColor: "#000000",
     paddingTop: 0,
     paddingBottom: 0,
     paddingLeft: 0,
@@ -898,6 +902,59 @@
       : DEFAULT_MOBILE_CONTAINER.position;
   }
 
+  function normalizeShadowPreset(value) {
+    return [
+      "none",
+      "extra-small",
+      "small",
+      "medium",
+      "large",
+      "extra-large",
+    ].includes(value)
+      ? value
+      : DEFAULT_DESKTOP_CONTAINER.shadowPreset;
+  }
+
+  function deriveLegacyShadowPreset(config, fallback) {
+    const strength =
+      typeof config.shadowStrength === "number" &&
+      Number.isFinite(config.shadowStrength)
+        ? Math.max(0, Math.min(100, config.shadowStrength))
+        : null;
+    const distance =
+      typeof config.shadowDistance === "number" &&
+      Number.isFinite(config.shadowDistance)
+        ? Math.max(0, config.shadowDistance)
+        : null;
+    const blur =
+      typeof config.shadowBlur === "number" &&
+      Number.isFinite(config.shadowBlur)
+        ? Math.max(0, config.shadowBlur)
+        : null;
+
+    if (strength === null || strength <= 0) {
+      return fallback;
+    }
+
+    if ((blur ?? 0) <= 2 && (distance ?? 0) <= 1) {
+      return "extra-small";
+    }
+
+    if ((blur ?? 0) <= 3 && (distance ?? 0) <= 1) {
+      return "small";
+    }
+
+    if ((blur ?? 0) <= 6 && (distance ?? 0) <= 4) {
+      return "medium";
+    }
+
+    if ((blur ?? 0) <= 15 && (distance ?? 0) <= 10) {
+      return "large";
+    }
+
+    return "extra-large";
+  }
+
   function normalizeDeviceConfig(value, fallback, device) {
     const config = value && typeof value === "object" ? value : {};
     const legacyJumpingMarkerSize =
@@ -905,6 +962,10 @@
       Number.isFinite(config.jumpingMarkerSize)
         ? Math.max(0, config.jumpingMarkerSize)
         : null;
+    const legacyShadowPreset = deriveLegacyShadowPreset(
+      config,
+      fallback.shadowPreset,
+    );
 
     return {
       position:
@@ -927,6 +988,14 @@
         typeof config.radius === "number" && Number.isFinite(config.radius)
           ? Math.max(0, config.radius)
           : fallback.radius,
+      shadowPreset:
+        typeof config.shadowPreset === "string"
+          ? normalizeShadowPreset(config.shadowPreset)
+          : legacyShadowPreset,
+      shadowColor:
+        typeof config.shadowColor === "string" && config.shadowColor.trim()
+          ? config.shadowColor.trim()
+          : fallback.shadowColor,
       paddingTop:
         typeof config.paddingTop === "number" &&
         Number.isFinite(config.paddingTop)
@@ -1141,6 +1210,123 @@
     };
   }
 
+  function clampShadowChannel(value) {
+    return Math.max(0, Math.min(255, value));
+  }
+
+  function clampShadowAlpha(value) {
+    return Math.max(0, Math.min(1, value));
+  }
+
+  const TAILWIND_SHADOW_LAYERS = {
+    none: [],
+    "extra-small": [{ x: 0, y: 1, blur: 2, spread: 0, alpha: 0.05 }],
+    small: [
+      { x: 0, y: 1, blur: 3, spread: 0, alpha: 0.1 },
+      { x: 0, y: 1, blur: 2, spread: -1, alpha: 0.1 },
+    ],
+    medium: [
+      { x: 0, y: 4, blur: 6, spread: -1, alpha: 0.1 },
+      { x: 0, y: 2, blur: 4, spread: -2, alpha: 0.1 },
+    ],
+    large: [
+      { x: 0, y: 10, blur: 15, spread: -3, alpha: 0.1 },
+      { x: 0, y: 4, blur: 6, spread: -4, alpha: 0.1 },
+    ],
+    "extra-large": [
+      { x: 0, y: 20, blur: 25, spread: -5, alpha: 0.1 },
+      { x: 0, y: 8, blur: 10, spread: -6, alpha: 0.1 },
+    ],
+  };
+
+  function parseShadowColorValue(value) {
+    const normalized = String(value || "").trim();
+
+    if (!normalized) {
+      return null;
+    }
+
+    if (normalized.startsWith("#")) {
+      const hex = normalized.slice(1);
+      const expanded =
+        hex.length === 3 || hex.length === 4
+          ? hex
+              .split("")
+              .map((character) => `${character}${character}`)
+              .join("")
+          : hex;
+
+      if (expanded.length !== 6 && expanded.length !== 8) {
+        return null;
+      }
+
+      const red = Number.parseInt(expanded.slice(0, 2), 16);
+      const green = Number.parseInt(expanded.slice(2, 4), 16);
+      const blue = Number.parseInt(expanded.slice(4, 6), 16);
+      const alpha =
+        expanded.length === 8
+          ? Number.parseInt(expanded.slice(6, 8), 16) / 255
+          : 1;
+
+      if ([red, green, blue, alpha].some((channel) => Number.isNaN(channel))) {
+        return null;
+      }
+
+      return { red, green, blue, alpha };
+    }
+
+    const rgbMatch = normalized.match(
+      /^rgba?\(\s*([0-9.]+%?)\s*[, ]\s*([0-9.]+%?)\s*[, ]\s*([0-9.]+%?)(?:\s*[,/]\s*([0-9.]+%?))?\s*\)$/i,
+    );
+
+    if (!rgbMatch) {
+      return null;
+    }
+
+    const [, redToken, greenToken, blueToken, alphaToken] = rgbMatch;
+    const parseChannel = (token) =>
+      token.endsWith("%")
+        ? (Number.parseFloat(token) / 100) * 255
+        : Number.parseFloat(token);
+    const parseAlpha = (token) =>
+      token.endsWith("%")
+        ? Number.parseFloat(token) / 100
+        : Number.parseFloat(token);
+    const red = parseChannel(redToken);
+    const green = parseChannel(greenToken);
+    const blue = parseChannel(blueToken);
+    const alpha = alphaToken ? parseAlpha(alphaToken) : 1;
+
+    if ([red, green, blue, alpha].some((channel) => Number.isNaN(channel))) {
+      return null;
+    }
+
+    return {
+      red: clampShadowChannel(Math.round(red)),
+      green: clampShadowChannel(Math.round(green)),
+      blue: clampShadowChannel(Math.round(blue)),
+      alpha: clampShadowAlpha(alpha),
+    };
+  }
+
+  function buildShadowValue(device) {
+    const layers = TAILWIND_SHADOW_LAYERS[device.shadowPreset];
+
+    if (!layers.length) {
+      return "none";
+    }
+    const parsedColor = parseShadowColorValue(device.shadowColor);
+    const baseColor = parsedColor || { red: 0, green: 0, blue: 0, alpha: 1 };
+
+    return layers
+      .map((layer) => {
+        const alpha = clampShadowAlpha(baseColor.alpha * layer.alpha);
+
+        return `${layer.x}px ${layer.y}px ${layer.blur}px ${layer.spread}px rgb(${baseColor.red} ${baseColor.green} ${baseColor.blue} / ${Number(alpha.toFixed(3))})`;
+      })
+      .join(", ");
+  }
+
   function applyDeviceConfig(toc, desktop, mobile) {
     toc.style.setProperty("--toc-background", desktop.background);
     toc.style.setProperty(
@@ -1150,6 +1336,7 @@
     toc.style.setProperty("--toc-border-color", desktop.color);
     toc.style.setProperty("--toc-border-width", `${desktop.width}px`);
     toc.style.setProperty("--toc-border-radius", `${desktop.radius}px`);
+    toc.style.setProperty("--toc-shadow", buildShadowValue(desktop));
     toc.style.setProperty("--toc-padding-top", `${desktop.paddingTop}px`);
     toc.style.setProperty("--toc-padding-bottom", `${desktop.paddingBottom}px`);
     toc.style.setProperty("--toc-padding-left", `${desktop.paddingLeft}px`);
@@ -1254,6 +1441,7 @@
     toc.style.setProperty("--toc-mobile-border-color", mobile.color);
     toc.style.setProperty("--toc-mobile-border-width", `${mobile.width}px`);
     toc.style.setProperty("--toc-mobile-border-radius", `${mobile.radius}px`);
+    toc.style.setProperty("--toc-mobile-shadow", buildShadowValue(mobile));
     toc.style.setProperty("--toc-mobile-background", mobile.background);
     toc.style.setProperty(
       "--toc-mobile-max-width",
