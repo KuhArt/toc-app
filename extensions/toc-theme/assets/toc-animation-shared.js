@@ -3,11 +3,12 @@
     return;
   }
 
-  const TOC_SNAKE_HEAD_OFFSET = 12;
+  const TOC_SNAKE_HEAD_OFFSET = 8;
   const TOC_SNAKE_TOP_OFFSET = 8;
   const TOC_SNAKE_CLICK_MIN_DURATION = 220;
   const TOC_SNAKE_CLICK_MAX_DURATION = 460;
-  const TOC_JUMPING_MARKER_SIZE = 6;
+  const TOC_JUMPING_MARKER_WIDTH = 6;
+  const TOC_JUMPING_MARKER_HEIGHT = 6;
   const TOC_JUMPING_MARKER_MIN_DURATION = 260;
   const TOC_JUMPING_MARKER_MAX_DURATION = 420;
 
@@ -16,7 +17,9 @@
       return fallback;
     }
 
-    const rawValue = window.getComputedStyle(element).getPropertyValue(propertyName);
+    const rawValue = window
+      .getComputedStyle(element)
+      .getPropertyValue(propertyName);
     const parsedValue = Number.parseFloat(rawValue);
 
     return Number.isFinite(parsedValue) ? parsedValue : fallback;
@@ -51,12 +54,17 @@
       crawlingSnakeWidth: readMarkerCssPixels(
         widget,
         "--toc-crawling-snake-width",
-        16,
+        10,
       ),
-      jumpingMarkerSize: readMarkerCssPixels(
+      jumpingMarkerWidth: readMarkerCssPixels(
         widget,
-        "--toc-jumping-marker-size",
-        TOC_JUMPING_MARKER_SIZE,
+        "--toc-jumping-marker-width",
+        TOC_JUMPING_MARKER_WIDTH,
+      ),
+      jumpingMarkerHeight: readMarkerCssPixels(
+        widget,
+        "--toc-jumping-marker-height",
+        TOC_JUMPING_MARKER_HEIGHT,
       ),
     };
   }
@@ -91,7 +99,11 @@
     return Math.min(Math.max(value, min), max);
   }
 
-  function createSnakeLinkMetric(listRect, link, headOffset = TOC_SNAKE_HEAD_OFFSET) {
+  function createSnakeLinkMetric(
+    listRect,
+    link,
+    headOffset = TOC_SNAKE_HEAD_OFFSET,
+  ) {
     const linkRect = link.getBoundingClientRect();
     const rowTop = linkRect.top - listRect.top;
     const rowBottom = linkRect.bottom - listRect.top;
@@ -111,9 +123,13 @@
     };
   }
 
-  function getTocMarkerBounds(listRect, markerSize = TOC_JUMPING_MARKER_SIZE) {
-    const horizontalInset = markerSize / 2 + 2;
-    const verticalInset = markerSize / 2 + 2;
+  function getTocMarkerBounds(
+    listRect,
+    markerWidth = TOC_JUMPING_MARKER_WIDTH,
+    markerHeight = TOC_JUMPING_MARKER_HEIGHT,
+  ) {
+    const horizontalInset = markerWidth / 2 + 2;
+    const verticalInset = markerHeight / 2 + 2;
 
     return {
       maxX: Math.max(horizontalInset, listRect.width - horizontalInset),
@@ -131,10 +147,7 @@
   }
 
   function getSnakeHeadPoint(metric, bounds) {
-    return clampPointToBounds(
-      { x: metric.laneX, y: metric.centerY },
-      bounds,
-    );
+    return clampPointToBounds({ x: metric.laneX, y: metric.centerY }, bounds);
   }
 
   function measureListLinkHeadPoint(listElement, link) {
@@ -147,7 +160,11 @@
 
     return getSnakeHeadPoint(
       createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
-      getTocMarkerBounds(listRect, markerSettings.jumpingMarkerSize),
+      getTocMarkerBounds(
+        listRect,
+        markerSettings.jumpingMarkerWidth,
+        markerSettings.jumpingMarkerHeight,
+      ),
     );
   }
 
@@ -286,7 +303,8 @@
     const markerSettings = getMarkerSettingsForList(listElement);
     const bounds = getTocMarkerBounds(
       listRect,
-      markerSettings.jumpingMarkerSize,
+      markerSettings.jumpingMarkerWidth,
+      markerSettings.jumpingMarkerHeight,
     );
     const targetMetric = createSnakeLinkMetric(
       listRect,
@@ -342,9 +360,7 @@
       return null;
     }
 
-    const links = Array.from(
-      listElement.querySelectorAll(".toc-widget__link"),
-    );
+    const links = Array.from(listElement.querySelectorAll(".toc-widget__link"));
     const fromIndex = links.indexOf(fromLink);
     const toIndex = links.indexOf(toLink);
 
@@ -380,7 +396,11 @@
   }
 
   function getSnakeClickFlightProgress(flight, now) {
-    const progress = clampNumber((now - flight.startTime) / flight.duration, 0, 1);
+    const progress = clampNumber(
+      (now - flight.startTime) / flight.duration,
+      0,
+      1,
+    );
 
     return flight?.timing === "linear" ? progress : easeInOutCubic(progress);
   }
@@ -393,9 +413,7 @@
       return false;
     }
 
-    const links = Array.from(
-      listElement.querySelectorAll(".toc-widget__link"),
-    );
+    const links = Array.from(listElement.querySelectorAll(".toc-widget__link"));
     const fromIndex = links.indexOf(fromLink);
     const toIndex = links.indexOf(toLink);
 
@@ -603,9 +621,7 @@
       return null;
     }
 
-    const links = Array.from(
-      listElement.querySelectorAll(".toc-widget__link"),
-    );
+    const links = Array.from(listElement.querySelectorAll(".toc-widget__link"));
     const activeIndex = links.indexOf(activeLink);
 
     if (activeIndex < 0) {
@@ -620,7 +636,9 @@
       return null;
     }
 
-    const points = buildSettledSnakePoints(allMetrics.slice(0, activeIndex + 1));
+    const points = buildSettledSnakePoints(
+      allMetrics.slice(0, activeIndex + 1),
+    );
     const nextIndex = nextLink ? links.indexOf(nextLink) : -1;
 
     if (nextIndex === activeIndex + 1 && nextIndex < allMetrics.length) {
@@ -703,9 +721,7 @@
       return null;
     }
 
-    const links = Array.from(
-      listElement.querySelectorAll(".toc-widget__link"),
-    );
+    const links = Array.from(listElement.querySelectorAll(".toc-widget__link"));
     const fromIndex = links.indexOf(fromLink);
     const toIndex = links.indexOf(toLink);
 
@@ -801,7 +817,8 @@
     const markerSettings = getMarkerSettingsForList(listElement);
     const bounds = getTocMarkerBounds(
       listRect,
-      markerSettings.jumpingMarkerSize,
+      markerSettings.jumpingMarkerWidth,
+      markerSettings.jumpingMarkerHeight,
     );
     const activeMetric = createSnakeLinkMetric(
       listRect,

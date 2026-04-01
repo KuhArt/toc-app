@@ -11,10 +11,11 @@
   --toc-crawling-snake-color: #575757cf;
   --toc-crawling-snake-rail-space: 4px;
   --toc-crawling-snake-head-offset: 8px;
-  --toc-jumping-marker-size: 6px;
-  --toc-jumping-marker-color: #575757cf;
+  --toc-jumping-marker-width: 6px;
+  --toc-jumping-marker-height: 6px;
+  --toc-jumping-marker-color: #575757CF;
   --toc-jumping-marker-rail-space: 4px;
-  --toc-jumping-marker-head-offset: 8px;
+  --toc-jumping-marker-head-offset: 9px;
   --toc-jumping-marker-border-radius: 999px;
   --toc-border-color: #0000001f;
   --toc-border-width: 1px;
@@ -227,8 +228,10 @@
   padding-right: 12px;
 }
 
-.toc-widget--animation-following-marker.toc-widget--align-center .toc-widget__list,
-.toc-widget--animation-following-marker.toc-widget--align-right .toc-widget__list {
+.toc-widget--animation-following-marker.toc-widget--align-center
+  .toc-widget__list,
+.toc-widget--animation-following-marker.toc-widget--align-right
+  .toc-widget__list {
   padding-left: calc(12px + var(--toc-following-marker-rail-space));
 }
 
@@ -267,8 +270,10 @@
   padding-left: var(--toc-jumping-marker-rail-space);
 }
 
-.toc-widget--animation-following-marker.toc-widget--align-center .toc-widget__sublist,
-.toc-widget--animation-following-marker.toc-widget--align-right .toc-widget__sublist,
+.toc-widget--animation-following-marker.toc-widget--align-center
+  .toc-widget__sublist,
+.toc-widget--animation-following-marker.toc-widget--align-right
+  .toc-widget__sublist,
 .toc-widget--animation-crawling-snake.toc-widget--align-center
   .toc-widget__sublist,
 .toc-widget--animation-crawling-snake.toc-widget--align-right
@@ -334,16 +339,14 @@
   --toc-snake-head-rotation: 0deg;
   --toc-snake-head-bend: 0deg;
   position: absolute;
-  width: var(--toc-jumping-marker-size);
-  height: var(--toc-jumping-marker-size);
+  width: var(--toc-jumping-marker-width);
+  height: var(--toc-jumping-marker-height);
   border-radius: var(--toc-jumping-marker-border-radius);
   background: var(--toc-jumping-marker-color);
   box-shadow:
     0 0 0 2px var(--toc-active-background),
     0 0 0 0 rgb(0 0 0 / 0.08);
-  transform:
-    translate(-50%, -50%)
-    rotate(var(--toc-snake-head-rotation))
+  transform: translate(-50%, -50%) rotate(var(--toc-snake-head-rotation))
     skewY(var(--toc-snake-head-bend));
   transition:
     left 220ms ease-in-out,
@@ -374,8 +377,8 @@
 }
 
 .toc-widget--animation-jumping-marker .toc-widget__snake-head {
-  width: var(--toc-jumping-marker-size);
-  height: var(--toc-jumping-marker-size);
+  width: var(--toc-jumping-marker-width);
+  height: var(--toc-jumping-marker-height);
   border-radius: var(--toc-jumping-marker-border-radius);
   background: var(--toc-jumping-marker-color);
   animation: none;
@@ -486,22 +489,16 @@
 @keyframes toc-widget-snake-head-pulse {
   0%,
   100% {
-    transform:
-      translate(-50%, -50%)
-      rotate(var(--toc-snake-head-rotation))
-      skewY(var(--toc-snake-head-bend))
-      scale(1);
+    transform: translate(-50%, -50%) rotate(var(--toc-snake-head-rotation))
+      skewY(var(--toc-snake-head-bend)) scale(1);
     box-shadow:
       0 0 0 2px var(--toc-active-background),
       0 0 0 0 rgb(0 0 0 / 0.08);
   }
 
   50% {
-    transform:
-      translate(-50%, -50%)
-      rotate(var(--toc-snake-head-rotation))
-      skewY(var(--toc-snake-head-bend))
-      scale(1.08);
+    transform: translate(-50%, -50%) rotate(var(--toc-snake-head-rotation))
+      skewY(var(--toc-snake-head-bend)) scale(1.08);
     box-shadow:
       0 0 0 2px var(--toc-active-background),
       0 0 0 5px rgb(0 0 0 / 0.04);

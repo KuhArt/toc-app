@@ -56,32 +56,50 @@ type TocBorderConfig = {
   offsetRight: number;
 };
 
-type TocDeviceConfig = TocBorderConfig & {
-  position: TocDesktopPosition | TocMobilePosition;
-  positionSelector: string;
-  background: string;
-  maxWidth: number;
-  smoothScroll: boolean;
-  scrollOffset: number;
-  showTitle: boolean;
-  headingsFontSize: number;
-  headingsFontColor: string;
-  headingsFontWeight: number;
-  titleFontSize: number;
-  titleFontColor: string;
-  titleFontWeight: number;
-  showButton: boolean;
-  showButtonHeight: number;
-  showMoreButtonText: string;
-  showLessButtonText: string;
-  showButtonFontSize: number;
-  showButtonFontColor: string;
-  showButtonFontWeight: number;
-  showButtonBorderColor: string;
-  showButtonBorderWidth: number;
-  showButtonBorderRadius: number;
-  animationType: TocAnimationType;
+type TocMarkerAnimationConfig = {
+  followingMarkerWidth: number;
+  followingMarkerHeight: number;
+  followingMarkerColor: string;
+  followingMarkerOffset: number;
+  followingMarkerBorderRadius: number;
+  crawlingSnakeWidth: number;
+  crawlingSnakeHeight: number;
+  crawlingSnakeColor: string;
+  crawlingSnakeOffset: number;
+  jumpingMarkerWidth: number;
+  jumpingMarkerHeight: number;
+  jumpingMarkerColor: string;
+  jumpingMarkerOffset: number;
+  jumpingMarkerBorderRadius: number;
 };
+
+type TocDeviceConfig = TocBorderConfig &
+  TocMarkerAnimationConfig & {
+    position: TocDesktopPosition | TocMobilePosition;
+    positionSelector: string;
+    background: string;
+    maxWidth: number;
+    smoothScroll: boolean;
+    scrollOffset: number;
+    showTitle: boolean;
+    headingsFontSize: number;
+    headingsFontColor: string;
+    headingsFontWeight: number;
+    titleFontSize: number;
+    titleFontColor: string;
+    titleFontWeight: number;
+    showButton: boolean;
+    showButtonHeight: number;
+    showMoreButtonText: string;
+    showLessButtonText: string;
+    showButtonFontSize: number;
+    showButtonFontColor: string;
+    showButtonFontWeight: number;
+    showButtonBorderColor: string;
+    showButtonBorderWidth: number;
+    showButtonBorderRadius: number;
+    animationType: TocAnimationType;
+  };
 type TocConfig = {
   title: string;
   headingLevels: number[];
@@ -137,6 +155,20 @@ const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
   offsetBottom: 0,
   offsetLeft: 0,
   offsetRight: 0,
+  followingMarkerWidth: 6,
+  followingMarkerHeight: 6,
+  followingMarkerColor: "#575757cf",
+  followingMarkerOffset: 8,
+  followingMarkerBorderRadius: 2,
+  crawlingSnakeWidth: 10,
+  crawlingSnakeHeight: 3,
+  crawlingSnakeColor: "#575757cf",
+  crawlingSnakeOffset: 8,
+  jumpingMarkerWidth: 6,
+  jumpingMarkerHeight: 6,
+  jumpingMarkerColor: "#575757CF",
+  jumpingMarkerOffset: 9,
+  jumpingMarkerBorderRadius: 999,
   background: "#ffffff",
   maxWidth: 0,
   smoothScroll: true,
@@ -158,7 +190,7 @@ const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
   showButtonBorderColor: "#575757",
   showButtonBorderWidth: 0,
   showButtonBorderRadius: 0,
-  animationType: "none",
+  animationType: "jumping-marker",
 };
 const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
   position: "before-first-heading",
@@ -174,6 +206,20 @@ const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
   offsetBottom: 0,
   offsetLeft: 0,
   offsetRight: 0,
+  followingMarkerWidth: 6,
+  followingMarkerHeight: 6,
+  followingMarkerColor: "#575757cf",
+  followingMarkerOffset: 8,
+  followingMarkerBorderRadius: 2,
+  crawlingSnakeWidth: 10,
+  crawlingSnakeHeight: 3,
+  crawlingSnakeColor: "#575757cf",
+  crawlingSnakeOffset: 8,
+  jumpingMarkerWidth: 6,
+  jumpingMarkerHeight: 6,
+  jumpingMarkerColor: "#575757CF",
+  jumpingMarkerOffset: 9,
+  jumpingMarkerBorderRadius: 999,
   background: "#00000000",
   maxWidth: 0,
   smoothScroll: true,
@@ -774,6 +820,20 @@ type TocDeviceConfigInput = {
   showButtonBorderWidth: string;
   showButtonBorderRadius: string;
   animationType: string;
+  followingMarkerWidth: string;
+  followingMarkerHeight: string;
+  followingMarkerColor: string;
+  followingMarkerOffset: string;
+  followingMarkerBorderRadius: string;
+  crawlingSnakeWidth: string;
+  crawlingSnakeHeight: string;
+  crawlingSnakeColor: string;
+  crawlingSnakeOffset: string;
+  jumpingMarkerWidth: string;
+  jumpingMarkerHeight: string;
+  jumpingMarkerColor: string;
+  jumpingMarkerOffset: string;
+  jumpingMarkerBorderRadius: string;
 };
 
 type PreviewHeading = {
@@ -820,7 +880,23 @@ const DEVICE_SECTION_FIELDS = {
     "showButtonBorderWidth",
     "showButtonBorderRadius",
   ],
-  animation: ["animationType"],
+  animation: [
+    "animationType",
+    "followingMarkerWidth",
+    "followingMarkerHeight",
+    "followingMarkerColor",
+    "followingMarkerOffset",
+    "followingMarkerBorderRadius",
+    "crawlingSnakeWidth",
+    "crawlingSnakeHeight",
+    "crawlingSnakeColor",
+    "crawlingSnakeOffset",
+    "jumpingMarkerWidth",
+    "jumpingMarkerHeight",
+    "jumpingMarkerColor",
+    "jumpingMarkerOffset",
+    "jumpingMarkerBorderRadius",
+  ],
 } as const satisfies Record<
   DeviceSectionKey,
   readonly (keyof TocDeviceConfig)[]
@@ -1180,6 +1256,46 @@ export default function Index() {
   const [desktopAnimationType, setDesktopAnimationType] = useState(
     config.desktop.animationType,
   );
+  const [desktopFollowingMarkerWidth, setDesktopFollowingMarkerWidth] =
+    useState(String(config.desktop.followingMarkerWidth));
+  const [desktopFollowingMarkerHeight, setDesktopFollowingMarkerHeight] =
+    useState(String(config.desktop.followingMarkerHeight));
+  const [desktopFollowingMarkerColor, setDesktopFollowingMarkerColor] =
+    useState(config.desktop.followingMarkerColor);
+  const [desktopFollowingMarkerOffset, setDesktopFollowingMarkerOffset] =
+    useState(String(config.desktop.followingMarkerOffset));
+  const [
+    desktopFollowingMarkerBorderRadius,
+    setDesktopFollowingMarkerBorderRadius,
+  ] = useState(String(config.desktop.followingMarkerBorderRadius));
+  const [desktopCrawlingSnakeWidth, setDesktopCrawlingSnakeWidth] = useState(
+    String(config.desktop.crawlingSnakeWidth),
+  );
+  const [desktopCrawlingSnakeHeight, setDesktopCrawlingSnakeHeight] = useState(
+    String(config.desktop.crawlingSnakeHeight),
+  );
+  const [desktopCrawlingSnakeColor, setDesktopCrawlingSnakeColor] = useState(
+    config.desktop.crawlingSnakeColor,
+  );
+  const [desktopCrawlingSnakeOffset, setDesktopCrawlingSnakeOffset] = useState(
+    String(config.desktop.crawlingSnakeOffset),
+  );
+  const [desktopJumpingMarkerWidth, setDesktopJumpingMarkerWidth] = useState(
+    String(config.desktop.jumpingMarkerWidth),
+  );
+  const [desktopJumpingMarkerHeight, setDesktopJumpingMarkerHeight] = useState(
+    String(config.desktop.jumpingMarkerHeight),
+  );
+  const [desktopJumpingMarkerColor, setDesktopJumpingMarkerColor] = useState(
+    config.desktop.jumpingMarkerColor,
+  );
+  const [desktopJumpingMarkerOffset, setDesktopJumpingMarkerOffset] = useState(
+    String(config.desktop.jumpingMarkerOffset),
+  );
+  const [
+    desktopJumpingMarkerBorderRadius,
+    setDesktopJumpingMarkerBorderRadius,
+  ] = useState(String(config.desktop.jumpingMarkerBorderRadius));
   const [desktopPreviewReplayToken, setDesktopPreviewReplayToken] = useState(0);
   const [mobilePosition, setMobilePosition] = useState(config.mobile.position);
   const [mobilePositionSelector, setMobilePositionSelector] = useState(
@@ -1281,6 +1397,46 @@ export default function Index() {
   const [mobileAnimationType, setMobileAnimationType] = useState(
     config.mobile.animationType,
   );
+  const [mobileFollowingMarkerWidth, setMobileFollowingMarkerWidth] = useState(
+    String(config.mobile.followingMarkerWidth),
+  );
+  const [mobileFollowingMarkerHeight, setMobileFollowingMarkerHeight] =
+    useState(String(config.mobile.followingMarkerHeight));
+  const [mobileFollowingMarkerColor, setMobileFollowingMarkerColor] = useState(
+    config.mobile.followingMarkerColor,
+  );
+  const [mobileFollowingMarkerOffset, setMobileFollowingMarkerOffset] =
+    useState(String(config.mobile.followingMarkerOffset));
+  const [
+    mobileFollowingMarkerBorderRadius,
+    setMobileFollowingMarkerBorderRadius,
+  ] = useState(String(config.mobile.followingMarkerBorderRadius));
+  const [mobileCrawlingSnakeWidth, setMobileCrawlingSnakeWidth] = useState(
+    String(config.mobile.crawlingSnakeWidth),
+  );
+  const [mobileCrawlingSnakeHeight, setMobileCrawlingSnakeHeight] = useState(
+    String(config.mobile.crawlingSnakeHeight),
+  );
+  const [mobileCrawlingSnakeColor, setMobileCrawlingSnakeColor] = useState(
+    config.mobile.crawlingSnakeColor,
+  );
+  const [mobileCrawlingSnakeOffset, setMobileCrawlingSnakeOffset] = useState(
+    String(config.mobile.crawlingSnakeOffset),
+  );
+  const [mobileJumpingMarkerWidth, setMobileJumpingMarkerWidth] = useState(
+    String(config.mobile.jumpingMarkerWidth),
+  );
+  const [mobileJumpingMarkerHeight, setMobileJumpingMarkerHeight] = useState(
+    String(config.mobile.jumpingMarkerHeight),
+  );
+  const [mobileJumpingMarkerColor, setMobileJumpingMarkerColor] = useState(
+    config.mobile.jumpingMarkerColor,
+  );
+  const [mobileJumpingMarkerOffset, setMobileJumpingMarkerOffset] = useState(
+    String(config.mobile.jumpingMarkerOffset),
+  );
+  const [mobileJumpingMarkerBorderRadius, setMobileJumpingMarkerBorderRadius] =
+    useState(String(config.mobile.jumpingMarkerBorderRadius));
   const [appliedSections, setAppliedSections] = useState(
     createEmptyDeviceSectionApplyState(),
   );
@@ -1292,6 +1448,12 @@ export default function Index() {
     activeTab === "desktop" ? desktopShowButton : mobileShowButton;
   const isTitleEnabled =
     activeTab === "desktop" ? desktopShowTitle : mobileShowTitle;
+  const desktopFollowingMarkerSelected =
+    desktopAnimationType === "following-marker";
+  const desktopCrawlingSnakeSelected =
+    desktopAnimationType === "crawling-snake";
+  const desktopJumpingMarkerSelected =
+    desktopAnimationType === "jumping-marker";
   const currentConfig = coerceConfig({
     title,
     headingLevels,
@@ -1338,6 +1500,20 @@ export default function Index() {
       showButtonBorderWidth: desktopShowButtonBorderWidth,
       showButtonBorderRadius: desktopShowButtonBorderRadius,
       animationType: desktopAnimationType,
+      followingMarkerWidth: desktopFollowingMarkerWidth,
+      followingMarkerHeight: desktopFollowingMarkerHeight,
+      followingMarkerColor: desktopFollowingMarkerColor,
+      followingMarkerOffset: desktopFollowingMarkerOffset,
+      followingMarkerBorderRadius: desktopFollowingMarkerBorderRadius,
+      crawlingSnakeWidth: desktopCrawlingSnakeWidth,
+      crawlingSnakeHeight: desktopCrawlingSnakeHeight,
+      crawlingSnakeColor: desktopCrawlingSnakeColor,
+      crawlingSnakeOffset: desktopCrawlingSnakeOffset,
+      jumpingMarkerWidth: desktopJumpingMarkerWidth,
+      jumpingMarkerHeight: desktopJumpingMarkerHeight,
+      jumpingMarkerColor: desktopJumpingMarkerColor,
+      jumpingMarkerOffset: desktopJumpingMarkerOffset,
+      jumpingMarkerBorderRadius: desktopJumpingMarkerBorderRadius,
     },
     mobile: {
       position: mobilePosition,
@@ -1375,6 +1551,20 @@ export default function Index() {
       showButtonBorderWidth: mobileShowButtonBorderWidth,
       showButtonBorderRadius: mobileShowButtonBorderRadius,
       animationType: mobileAnimationType,
+      followingMarkerWidth: mobileFollowingMarkerWidth,
+      followingMarkerHeight: mobileFollowingMarkerHeight,
+      followingMarkerColor: mobileFollowingMarkerColor,
+      followingMarkerOffset: mobileFollowingMarkerOffset,
+      followingMarkerBorderRadius: mobileFollowingMarkerBorderRadius,
+      crawlingSnakeWidth: mobileCrawlingSnakeWidth,
+      crawlingSnakeHeight: mobileCrawlingSnakeHeight,
+      crawlingSnakeColor: mobileCrawlingSnakeColor,
+      crawlingSnakeOffset: mobileCrawlingSnakeOffset,
+      jumpingMarkerWidth: mobileJumpingMarkerWidth,
+      jumpingMarkerHeight: mobileJumpingMarkerHeight,
+      jumpingMarkerColor: mobileJumpingMarkerColor,
+      jumpingMarkerOffset: mobileJumpingMarkerOffset,
+      jumpingMarkerBorderRadius: mobileJumpingMarkerBorderRadius,
     },
   });
   const desktopPreview = buildPreviewState(currentConfig);
@@ -1711,6 +1901,20 @@ export default function Index() {
       setDesktopShowButtonBorderWidth,
       setDesktopShowButtonBorderRadius,
       setDesktopAnimationType,
+      setDesktopFollowingMarkerWidth,
+      setDesktopFollowingMarkerHeight,
+      setDesktopFollowingMarkerColor,
+      setDesktopFollowingMarkerOffset,
+      setDesktopFollowingMarkerBorderRadius,
+      setDesktopCrawlingSnakeWidth,
+      setDesktopCrawlingSnakeHeight,
+      setDesktopCrawlingSnakeColor,
+      setDesktopCrawlingSnakeOffset,
+      setDesktopJumpingMarkerWidth,
+      setDesktopJumpingMarkerHeight,
+      setDesktopJumpingMarkerColor,
+      setDesktopJumpingMarkerOffset,
+      setDesktopJumpingMarkerBorderRadius,
       setMobilePosition,
       setMobilePositionSelector,
       setMobileBorderColor,
@@ -1746,6 +1950,20 @@ export default function Index() {
       setMobileShowButtonBorderWidth,
       setMobileShowButtonBorderRadius,
       setMobileAnimationType,
+      setMobileFollowingMarkerWidth,
+      setMobileFollowingMarkerHeight,
+      setMobileFollowingMarkerColor,
+      setMobileFollowingMarkerOffset,
+      setMobileFollowingMarkerBorderRadius,
+      setMobileCrawlingSnakeWidth,
+      setMobileCrawlingSnakeHeight,
+      setMobileCrawlingSnakeColor,
+      setMobileCrawlingSnakeOffset,
+      setMobileJumpingMarkerWidth,
+      setMobileJumpingMarkerHeight,
+      setMobileJumpingMarkerColor,
+      setMobileJumpingMarkerOffset,
+      setMobileJumpingMarkerBorderRadius,
     });
   }, [config]);
 
@@ -1966,6 +2184,20 @@ export default function Index() {
               setDesktopShowButtonBorderWidth,
               setDesktopShowButtonBorderRadius,
               setDesktopAnimationType,
+              setDesktopFollowingMarkerWidth,
+              setDesktopFollowingMarkerHeight,
+              setDesktopFollowingMarkerColor,
+              setDesktopFollowingMarkerOffset,
+              setDesktopFollowingMarkerBorderRadius,
+              setDesktopCrawlingSnakeWidth,
+              setDesktopCrawlingSnakeHeight,
+              setDesktopCrawlingSnakeColor,
+              setDesktopCrawlingSnakeOffset,
+              setDesktopJumpingMarkerWidth,
+              setDesktopJumpingMarkerHeight,
+              setDesktopJumpingMarkerColor,
+              setDesktopJumpingMarkerOffset,
+              setDesktopJumpingMarkerBorderRadius,
               setMobilePosition,
               setMobilePositionSelector,
               setMobileBorderColor,
@@ -2001,6 +2233,20 @@ export default function Index() {
               setMobileShowButtonBorderWidth,
               setMobileShowButtonBorderRadius,
               setMobileAnimationType,
+              setMobileFollowingMarkerWidth,
+              setMobileFollowingMarkerHeight,
+              setMobileFollowingMarkerColor,
+              setMobileFollowingMarkerOffset,
+              setMobileFollowingMarkerBorderRadius,
+              setMobileCrawlingSnakeWidth,
+              setMobileCrawlingSnakeHeight,
+              setMobileCrawlingSnakeColor,
+              setMobileCrawlingSnakeOffset,
+              setMobileJumpingMarkerWidth,
+              setMobileJumpingMarkerHeight,
+              setMobileJumpingMarkerColor,
+              setMobileJumpingMarkerOffset,
+              setMobileJumpingMarkerBorderRadius,
             });
             setAppliedSections(createEmptyDeviceSectionApplyState());
           }}
@@ -3339,22 +3585,292 @@ export default function Index() {
                   ? renderDeviceSection(
                       "animation",
                       "Animation",
-                      <s-select
-                        name="desktopAnimationType"
-                        label="Type"
-                        value={desktopAnimationType}
-                        onChange={(event) => {
-                          setDesktopAnimationType(
-                            normalizeAnimationType(event.currentTarget.value),
-                          );
-                        }}
-                      >
-                        {ANIMATION_TYPE_OPTIONS.map((option) => (
-                          <s-option key={option.value} value={option.value}>
-                            {option.label}
-                          </s-option>
-                        ))}
-                      </s-select>,
+                      <s-stack direction="block" gap="base">
+                        <s-select
+                          name="desktopAnimationType"
+                          label="Type"
+                          value={desktopAnimationType}
+                          onChange={(event) => {
+                            setDesktopAnimationType(
+                              normalizeAnimationType(event.currentTarget.value),
+                            );
+                          }}
+                        >
+                          {ANIMATION_TYPE_OPTIONS.map((option) => (
+                            <s-option key={option.value} value={option.value}>
+                              {option.label}
+                            </s-option>
+                          ))}
+                        </s-select>
+                        {desktopFollowingMarkerSelected ? (
+                          <>
+                            <div className="toc-compact-fields">
+                              <s-number-field
+                                name="desktopFollowingMarkerHeight"
+                                label="Width"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopFollowingMarkerHeight}
+                                onInput={(event) =>
+                                  setDesktopFollowingMarkerHeight(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopFollowingMarkerHeight(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                              <s-number-field
+                                name="desktopFollowingMarkerWidth"
+                                label="Height"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopFollowingMarkerWidth}
+                                onInput={(event) =>
+                                  setDesktopFollowingMarkerWidth(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopFollowingMarkerWidth(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                              <s-number-field
+                                name="desktopFollowingMarkerOffset"
+                                label="Offset"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopFollowingMarkerOffset}
+                                onInput={(event) =>
+                                  setDesktopFollowingMarkerOffset(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopFollowingMarkerOffset(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                            </div>
+                            <div className="toc-compact-fields-two">
+                              <s-color-field
+                                name="desktopFollowingMarkerColor"
+                                label="Color"
+                                alpha
+                                value={desktopFollowingMarkerColor}
+                                onInput={(event) =>
+                                  setDesktopFollowingMarkerColor(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopFollowingMarkerColor(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-color-field>
+                              <s-number-field
+                                name="desktopFollowingMarkerBorderRadius"
+                                label="Radius"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopFollowingMarkerBorderRadius}
+                                onInput={(event) =>
+                                  setDesktopFollowingMarkerBorderRadius(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopFollowingMarkerBorderRadius(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                            </div>
+                          </>
+                        ) : null}
+                        {desktopCrawlingSnakeSelected ? (
+                          <>
+                            <div className="toc-compact-fields">
+                              <s-number-field
+                                name="desktopCrawlingSnakeHeight"
+                                label="Width"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopCrawlingSnakeHeight}
+                                onInput={(event) =>
+                                  setDesktopCrawlingSnakeHeight(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopCrawlingSnakeHeight(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                              <s-number-field
+                                name="desktopCrawlingSnakeWidth"
+                                label="Height"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopCrawlingSnakeWidth}
+                                onInput={(event) =>
+                                  setDesktopCrawlingSnakeWidth(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopCrawlingSnakeWidth(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                              <s-number-field
+                                name="desktopCrawlingSnakeOffset"
+                                label="Offset"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopCrawlingSnakeOffset}
+                                onInput={(event) =>
+                                  setDesktopCrawlingSnakeOffset(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopCrawlingSnakeOffset(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                            </div>
+                            <s-color-field
+                              name="desktopCrawlingSnakeColor"
+                              label="Color"
+                              alpha
+                              value={desktopCrawlingSnakeColor}
+                              onInput={(event) =>
+                                setDesktopCrawlingSnakeColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                              onChange={(event) =>
+                                setDesktopCrawlingSnakeColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                            ></s-color-field>
+                          </>
+                        ) : null}
+                        {desktopJumpingMarkerSelected ? (
+                          <>
+                            <div className="toc-compact-fields">
+                              <s-number-field
+                                name="desktopJumpingMarkerWidth"
+                                label="Width"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopJumpingMarkerWidth}
+                                onInput={(event) =>
+                                  setDesktopJumpingMarkerWidth(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopJumpingMarkerWidth(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                              <s-number-field
+                                name="desktopJumpingMarkerHeight"
+                                label="Height"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopJumpingMarkerHeight}
+                                onInput={(event) =>
+                                  setDesktopJumpingMarkerHeight(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopJumpingMarkerHeight(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                              <s-number-field
+                                name="desktopJumpingMarkerOffset"
+                                label="Offset"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopJumpingMarkerOffset}
+                                onInput={(event) =>
+                                  setDesktopJumpingMarkerOffset(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopJumpingMarkerOffset(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                            </div>
+                            <div className="toc-compact-fields-two">
+                              <s-color-field
+                                name="desktopJumpingMarkerColor"
+                                label="Color"
+                                alpha
+                                value={desktopJumpingMarkerColor}
+                                onInput={(event) =>
+                                  setDesktopJumpingMarkerColor(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopJumpingMarkerColor(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-color-field>
+                              <s-number-field
+                                name="desktopJumpingMarkerBorderRadius"
+                                label="Radius"
+                                min={0}
+                                step={1}
+                                suffix="px"
+                                value={desktopJumpingMarkerBorderRadius}
+                                onInput={(event) =>
+                                  setDesktopJumpingMarkerBorderRadius(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                                onChange={(event) =>
+                                  setDesktopJumpingMarkerBorderRadius(
+                                    event.currentTarget.value,
+                                  )
+                                }
+                              ></s-number-field>
+                            </div>
+                          </>
+                        ) : null}
+                      </s-stack>,
                       { allowApplyAction: false },
                     )
                   : null}
@@ -3561,6 +4077,20 @@ function applyConfigToForm(
     setDesktopShowButtonBorderWidth: (value: string) => void;
     setDesktopShowButtonBorderRadius: (value: string) => void;
     setDesktopAnimationType: (value: TocAnimationType) => void;
+    setDesktopFollowingMarkerWidth: (value: string) => void;
+    setDesktopFollowingMarkerHeight: (value: string) => void;
+    setDesktopFollowingMarkerColor: (value: string) => void;
+    setDesktopFollowingMarkerOffset: (value: string) => void;
+    setDesktopFollowingMarkerBorderRadius: (value: string) => void;
+    setDesktopCrawlingSnakeWidth: (value: string) => void;
+    setDesktopCrawlingSnakeHeight: (value: string) => void;
+    setDesktopCrawlingSnakeColor: (value: string) => void;
+    setDesktopCrawlingSnakeOffset: (value: string) => void;
+    setDesktopJumpingMarkerWidth: (value: string) => void;
+    setDesktopJumpingMarkerHeight: (value: string) => void;
+    setDesktopJumpingMarkerColor: (value: string) => void;
+    setDesktopJumpingMarkerOffset: (value: string) => void;
+    setDesktopJumpingMarkerBorderRadius: (value: string) => void;
     setMobilePosition: (value: TocMobilePosition) => void;
     setMobilePositionSelector: (value: string) => void;
     setMobileBorderColor: (value: string) => void;
@@ -3596,6 +4126,20 @@ function applyConfigToForm(
     setMobileShowButtonBorderWidth: (value: string) => void;
     setMobileShowButtonBorderRadius: (value: string) => void;
     setMobileAnimationType: (value: TocAnimationType) => void;
+    setMobileFollowingMarkerWidth: (value: string) => void;
+    setMobileFollowingMarkerHeight: (value: string) => void;
+    setMobileFollowingMarkerColor: (value: string) => void;
+    setMobileFollowingMarkerOffset: (value: string) => void;
+    setMobileFollowingMarkerBorderRadius: (value: string) => void;
+    setMobileCrawlingSnakeWidth: (value: string) => void;
+    setMobileCrawlingSnakeHeight: (value: string) => void;
+    setMobileCrawlingSnakeColor: (value: string) => void;
+    setMobileCrawlingSnakeOffset: (value: string) => void;
+    setMobileJumpingMarkerWidth: (value: string) => void;
+    setMobileJumpingMarkerHeight: (value: string) => void;
+    setMobileJumpingMarkerColor: (value: string) => void;
+    setMobileJumpingMarkerOffset: (value: string) => void;
+    setMobileJumpingMarkerBorderRadius: (value: string) => void;
   },
 ) {
   controls.setTitle(config.title);
@@ -3656,6 +4200,42 @@ function applyConfigToForm(
     String(config.desktop.showButtonBorderRadius),
   );
   controls.setDesktopAnimationType(config.desktop.animationType);
+  controls.setDesktopFollowingMarkerWidth(
+    String(config.desktop.followingMarkerWidth),
+  );
+  controls.setDesktopFollowingMarkerHeight(
+    String(config.desktop.followingMarkerHeight),
+  );
+  controls.setDesktopFollowingMarkerColor(config.desktop.followingMarkerColor);
+  controls.setDesktopFollowingMarkerOffset(
+    String(config.desktop.followingMarkerOffset),
+  );
+  controls.setDesktopFollowingMarkerBorderRadius(
+    String(config.desktop.followingMarkerBorderRadius),
+  );
+  controls.setDesktopCrawlingSnakeWidth(
+    String(config.desktop.crawlingSnakeWidth),
+  );
+  controls.setDesktopCrawlingSnakeHeight(
+    String(config.desktop.crawlingSnakeHeight),
+  );
+  controls.setDesktopCrawlingSnakeColor(config.desktop.crawlingSnakeColor);
+  controls.setDesktopCrawlingSnakeOffset(
+    String(config.desktop.crawlingSnakeOffset),
+  );
+  controls.setDesktopJumpingMarkerWidth(
+    String(config.desktop.jumpingMarkerWidth),
+  );
+  controls.setDesktopJumpingMarkerHeight(
+    String(config.desktop.jumpingMarkerHeight),
+  );
+  controls.setDesktopJumpingMarkerColor(config.desktop.jumpingMarkerColor);
+  controls.setDesktopJumpingMarkerOffset(
+    String(config.desktop.jumpingMarkerOffset),
+  );
+  controls.setDesktopJumpingMarkerBorderRadius(
+    String(config.desktop.jumpingMarkerBorderRadius),
+  );
   controls.setMobilePosition(normalizeMobilePosition(config.mobile.position));
   controls.setMobilePositionSelector(config.mobile.positionSelector);
   controls.setMobileBorderColor(config.mobile.color);
@@ -3701,6 +4281,42 @@ function applyConfigToForm(
     String(config.mobile.showButtonBorderRadius),
   );
   controls.setMobileAnimationType(config.mobile.animationType);
+  controls.setMobileFollowingMarkerWidth(
+    String(config.mobile.followingMarkerWidth),
+  );
+  controls.setMobileFollowingMarkerHeight(
+    String(config.mobile.followingMarkerHeight),
+  );
+  controls.setMobileFollowingMarkerColor(config.mobile.followingMarkerColor);
+  controls.setMobileFollowingMarkerOffset(
+    String(config.mobile.followingMarkerOffset),
+  );
+  controls.setMobileFollowingMarkerBorderRadius(
+    String(config.mobile.followingMarkerBorderRadius),
+  );
+  controls.setMobileCrawlingSnakeWidth(
+    String(config.mobile.crawlingSnakeWidth),
+  );
+  controls.setMobileCrawlingSnakeHeight(
+    String(config.mobile.crawlingSnakeHeight),
+  );
+  controls.setMobileCrawlingSnakeColor(config.mobile.crawlingSnakeColor);
+  controls.setMobileCrawlingSnakeOffset(
+    String(config.mobile.crawlingSnakeOffset),
+  );
+  controls.setMobileJumpingMarkerWidth(
+    String(config.mobile.jumpingMarkerWidth),
+  );
+  controls.setMobileJumpingMarkerHeight(
+    String(config.mobile.jumpingMarkerHeight),
+  );
+  controls.setMobileJumpingMarkerColor(config.mobile.jumpingMarkerColor);
+  controls.setMobileJumpingMarkerOffset(
+    String(config.mobile.jumpingMarkerOffset),
+  );
+  controls.setMobileJumpingMarkerBorderRadius(
+    String(config.mobile.jumpingMarkerBorderRadius),
+  );
 }
 
 function configsEqual(left: TocConfig, right: TocConfig) {
@@ -3751,6 +4367,24 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.desktop.showButtonBorderRadius ===
       right.desktop.showButtonBorderRadius &&
     left.desktop.animationType === right.desktop.animationType &&
+    left.desktop.followingMarkerWidth === right.desktop.followingMarkerWidth &&
+    left.desktop.followingMarkerHeight ===
+      right.desktop.followingMarkerHeight &&
+    left.desktop.followingMarkerColor === right.desktop.followingMarkerColor &&
+    left.desktop.followingMarkerOffset ===
+      right.desktop.followingMarkerOffset &&
+    left.desktop.followingMarkerBorderRadius ===
+      right.desktop.followingMarkerBorderRadius &&
+    left.desktop.crawlingSnakeWidth === right.desktop.crawlingSnakeWidth &&
+    left.desktop.crawlingSnakeHeight === right.desktop.crawlingSnakeHeight &&
+    left.desktop.crawlingSnakeColor === right.desktop.crawlingSnakeColor &&
+    left.desktop.crawlingSnakeOffset === right.desktop.crawlingSnakeOffset &&
+    left.desktop.jumpingMarkerWidth === right.desktop.jumpingMarkerWidth &&
+    left.desktop.jumpingMarkerHeight === right.desktop.jumpingMarkerHeight &&
+    left.desktop.jumpingMarkerColor === right.desktop.jumpingMarkerColor &&
+    left.desktop.jumpingMarkerOffset === right.desktop.jumpingMarkerOffset &&
+    left.desktop.jumpingMarkerBorderRadius ===
+      right.desktop.jumpingMarkerBorderRadius &&
     left.mobile.position === right.mobile.position &&
     left.mobile.positionSelector === right.mobile.positionSelector &&
     left.mobile.color === right.mobile.color &&
@@ -3787,6 +4421,22 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.mobile.showButtonBorderRadius ===
       right.mobile.showButtonBorderRadius &&
     left.mobile.animationType === right.mobile.animationType &&
+    left.mobile.followingMarkerWidth === right.mobile.followingMarkerWidth &&
+    left.mobile.followingMarkerHeight === right.mobile.followingMarkerHeight &&
+    left.mobile.followingMarkerColor === right.mobile.followingMarkerColor &&
+    left.mobile.followingMarkerOffset === right.mobile.followingMarkerOffset &&
+    left.mobile.followingMarkerBorderRadius ===
+      right.mobile.followingMarkerBorderRadius &&
+    left.mobile.crawlingSnakeWidth === right.mobile.crawlingSnakeWidth &&
+    left.mobile.crawlingSnakeHeight === right.mobile.crawlingSnakeHeight &&
+    left.mobile.crawlingSnakeColor === right.mobile.crawlingSnakeColor &&
+    left.mobile.crawlingSnakeOffset === right.mobile.crawlingSnakeOffset &&
+    left.mobile.jumpingMarkerWidth === right.mobile.jumpingMarkerWidth &&
+    left.mobile.jumpingMarkerHeight === right.mobile.jumpingMarkerHeight &&
+    left.mobile.jumpingMarkerColor === right.mobile.jumpingMarkerColor &&
+    left.mobile.jumpingMarkerOffset === right.mobile.jumpingMarkerOffset &&
+    left.mobile.jumpingMarkerBorderRadius ===
+      right.mobile.jumpingMarkerBorderRadius &&
     left.headingLevels.length === right.headingLevels.length &&
     left.headingLevels.every(
       (level, index) => level === right.headingLevels[index],
@@ -4069,6 +4719,76 @@ function HiddenDeviceFields({
         name={`${prefix}AnimationType`}
         value={config.animationType}
       />
+      <input
+        type="hidden"
+        name={`${prefix}FollowingMarkerWidth`}
+        value={String(config.followingMarkerWidth)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}FollowingMarkerHeight`}
+        value={String(config.followingMarkerHeight)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}FollowingMarkerColor`}
+        value={config.followingMarkerColor}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}FollowingMarkerOffset`}
+        value={String(config.followingMarkerOffset)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}FollowingMarkerBorderRadius`}
+        value={String(config.followingMarkerBorderRadius)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}CrawlingSnakeWidth`}
+        value={String(config.crawlingSnakeWidth)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}CrawlingSnakeHeight`}
+        value={String(config.crawlingSnakeHeight)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}CrawlingSnakeColor`}
+        value={config.crawlingSnakeColor}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}CrawlingSnakeOffset`}
+        value={String(config.crawlingSnakeOffset)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}JumpingMarkerWidth`}
+        value={String(config.jumpingMarkerWidth)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}JumpingMarkerHeight`}
+        value={String(config.jumpingMarkerHeight)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}JumpingMarkerColor`}
+        value={config.jumpingMarkerColor}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}JumpingMarkerOffset`}
+        value={String(config.jumpingMarkerOffset)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}JumpingMarkerBorderRadius`}
+        value={String(config.jumpingMarkerBorderRadius)}
+      />
     </>
   );
 }
@@ -4196,6 +4916,51 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
         formData.get("desktopAnimationType") ||
           DEFAULT_CONFIG.desktop.animationType,
       ),
+      followingMarkerWidth: String(
+        formData.get("desktopFollowingMarkerWidth") || "",
+      ),
+      followingMarkerHeight: String(
+        formData.get("desktopFollowingMarkerHeight") || "",
+      ),
+      followingMarkerColor: String(
+        formData.get("desktopFollowingMarkerColor") ||
+          DEFAULT_CONFIG.desktop.followingMarkerColor,
+      ),
+      followingMarkerOffset: String(
+        formData.get("desktopFollowingMarkerOffset") || "",
+      ),
+      followingMarkerBorderRadius: String(
+        formData.get("desktopFollowingMarkerBorderRadius") || "",
+      ),
+      crawlingSnakeWidth: String(
+        formData.get("desktopCrawlingSnakeWidth") || "",
+      ),
+      crawlingSnakeHeight: String(
+        formData.get("desktopCrawlingSnakeHeight") || "",
+      ),
+      crawlingSnakeColor: String(
+        formData.get("desktopCrawlingSnakeColor") ||
+          DEFAULT_CONFIG.desktop.crawlingSnakeColor,
+      ),
+      crawlingSnakeOffset: String(
+        formData.get("desktopCrawlingSnakeOffset") || "",
+      ),
+      jumpingMarkerWidth: String(
+        formData.get("desktopJumpingMarkerWidth") || "",
+      ),
+      jumpingMarkerHeight: String(
+        formData.get("desktopJumpingMarkerHeight") || "",
+      ),
+      jumpingMarkerColor: String(
+        formData.get("desktopJumpingMarkerColor") ||
+          DEFAULT_CONFIG.desktop.jumpingMarkerColor,
+      ),
+      jumpingMarkerOffset: String(
+        formData.get("desktopJumpingMarkerOffset") || "",
+      ),
+      jumpingMarkerBorderRadius: String(
+        formData.get("desktopJumpingMarkerBorderRadius") || "",
+      ),
     },
     mobile: {
       position: String(
@@ -4267,6 +5032,51 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       animationType: String(
         formData.get("mobileAnimationType") ||
           DEFAULT_CONFIG.mobile.animationType,
+      ),
+      followingMarkerWidth: String(
+        formData.get("mobileFollowingMarkerWidth") || "",
+      ),
+      followingMarkerHeight: String(
+        formData.get("mobileFollowingMarkerHeight") || "",
+      ),
+      followingMarkerColor: String(
+        formData.get("mobileFollowingMarkerColor") ||
+          DEFAULT_CONFIG.mobile.followingMarkerColor,
+      ),
+      followingMarkerOffset: String(
+        formData.get("mobileFollowingMarkerOffset") || "",
+      ),
+      followingMarkerBorderRadius: String(
+        formData.get("mobileFollowingMarkerBorderRadius") || "",
+      ),
+      crawlingSnakeWidth: String(
+        formData.get("mobileCrawlingSnakeWidth") || "",
+      ),
+      crawlingSnakeHeight: String(
+        formData.get("mobileCrawlingSnakeHeight") || "",
+      ),
+      crawlingSnakeColor: String(
+        formData.get("mobileCrawlingSnakeColor") ||
+          DEFAULT_CONFIG.mobile.crawlingSnakeColor,
+      ),
+      crawlingSnakeOffset: String(
+        formData.get("mobileCrawlingSnakeOffset") || "",
+      ),
+      jumpingMarkerWidth: String(
+        formData.get("mobileJumpingMarkerWidth") || "",
+      ),
+      jumpingMarkerHeight: String(
+        formData.get("mobileJumpingMarkerHeight") || "",
+      ),
+      jumpingMarkerColor: String(
+        formData.get("mobileJumpingMarkerColor") ||
+          DEFAULT_CONFIG.mobile.jumpingMarkerColor,
+      ),
+      jumpingMarkerOffset: String(
+        formData.get("mobileJumpingMarkerOffset") || "",
+      ),
+      jumpingMarkerBorderRadius: String(
+        formData.get("mobileJumpingMarkerBorderRadius") || "",
       ),
     },
   });
@@ -4485,6 +5295,17 @@ function normalizeDeviceConfig(
   if (!value || typeof value !== "object") return { ...fallback };
 
   const config = value as Partial<TocDeviceConfig>;
+  const legacyJumpingMarkerSize =
+    typeof (config as { jumpingMarkerSize?: unknown }).jumpingMarkerSize ===
+      "number" &&
+    Number.isFinite(
+      (config as { jumpingMarkerSize?: number }).jumpingMarkerSize,
+    )
+      ? Math.max(
+          0,
+          (config as { jumpingMarkerSize?: number }).jumpingMarkerSize ?? 0,
+        )
+      : null;
 
   return {
     position:
@@ -4546,6 +5367,76 @@ function normalizeDeviceConfig(
       Number.isFinite(config.offsetRight)
         ? config.offsetRight
         : fallback.offsetRight,
+    followingMarkerWidth:
+      typeof config.followingMarkerWidth === "number" &&
+      Number.isFinite(config.followingMarkerWidth)
+        ? Math.max(0, config.followingMarkerWidth)
+        : fallback.followingMarkerWidth,
+    followingMarkerHeight:
+      typeof config.followingMarkerHeight === "number" &&
+      Number.isFinite(config.followingMarkerHeight)
+        ? Math.max(0, config.followingMarkerHeight)
+        : fallback.followingMarkerHeight,
+    followingMarkerColor:
+      typeof config.followingMarkerColor === "string" &&
+      config.followingMarkerColor.trim()
+        ? config.followingMarkerColor.trim()
+        : fallback.followingMarkerColor,
+    followingMarkerOffset:
+      typeof config.followingMarkerOffset === "number" &&
+      Number.isFinite(config.followingMarkerOffset)
+        ? Math.max(0, config.followingMarkerOffset)
+        : fallback.followingMarkerOffset,
+    followingMarkerBorderRadius:
+      typeof config.followingMarkerBorderRadius === "number" &&
+      Number.isFinite(config.followingMarkerBorderRadius)
+        ? Math.max(0, config.followingMarkerBorderRadius)
+        : fallback.followingMarkerBorderRadius,
+    crawlingSnakeWidth:
+      typeof config.crawlingSnakeWidth === "number" &&
+      Number.isFinite(config.crawlingSnakeWidth)
+        ? Math.max(0, config.crawlingSnakeWidth)
+        : fallback.crawlingSnakeWidth,
+    crawlingSnakeHeight:
+      typeof config.crawlingSnakeHeight === "number" &&
+      Number.isFinite(config.crawlingSnakeHeight)
+        ? Math.max(0, config.crawlingSnakeHeight)
+        : fallback.crawlingSnakeHeight,
+    crawlingSnakeColor:
+      typeof config.crawlingSnakeColor === "string" &&
+      config.crawlingSnakeColor.trim()
+        ? config.crawlingSnakeColor.trim()
+        : fallback.crawlingSnakeColor,
+    crawlingSnakeOffset:
+      typeof config.crawlingSnakeOffset === "number" &&
+      Number.isFinite(config.crawlingSnakeOffset)
+        ? Math.max(0, config.crawlingSnakeOffset)
+        : fallback.crawlingSnakeOffset,
+    jumpingMarkerWidth:
+      typeof config.jumpingMarkerWidth === "number" &&
+      Number.isFinite(config.jumpingMarkerWidth)
+        ? Math.max(0, config.jumpingMarkerWidth)
+        : (legacyJumpingMarkerSize ?? fallback.jumpingMarkerWidth),
+    jumpingMarkerHeight:
+      typeof config.jumpingMarkerHeight === "number" &&
+      Number.isFinite(config.jumpingMarkerHeight)
+        ? Math.max(0, config.jumpingMarkerHeight)
+        : (legacyJumpingMarkerSize ?? fallback.jumpingMarkerHeight),
+    jumpingMarkerColor:
+      typeof config.jumpingMarkerColor === "string" &&
+      config.jumpingMarkerColor.trim()
+        ? config.jumpingMarkerColor.trim()
+        : fallback.jumpingMarkerColor,
+    jumpingMarkerOffset:
+      typeof config.jumpingMarkerOffset === "number" &&
+      Number.isFinite(config.jumpingMarkerOffset)
+        ? Math.max(0, config.jumpingMarkerOffset)
+        : fallback.jumpingMarkerOffset,
+    jumpingMarkerBorderRadius:
+      typeof config.jumpingMarkerBorderRadius === "number" &&
+      Number.isFinite(config.jumpingMarkerBorderRadius)
+        ? Math.max(0, config.jumpingMarkerBorderRadius)
+        : fallback.jumpingMarkerBorderRadius,
     background:
       typeof config.background === "string" && config.background.trim()
         ? config.background.trim()
@@ -4664,6 +5555,39 @@ function coerceDeviceConfig(
   const offsetBottom = parseIntegerInput(input.offsetBottom);
   const offsetLeft = parseIntegerInput(input.offsetLeft);
   const offsetRight = parseIntegerInput(input.offsetRight);
+  const followingMarkerWidth = parseNonNegativeIntegerInput(
+    input.followingMarkerWidth,
+  );
+  const followingMarkerHeight = parseNonNegativeIntegerInput(
+    input.followingMarkerHeight,
+  );
+  const followingMarkerOffset = parseNonNegativeIntegerInput(
+    input.followingMarkerOffset,
+  );
+  const followingMarkerBorderRadius = parseNonNegativeIntegerInput(
+    input.followingMarkerBorderRadius,
+  );
+  const crawlingSnakeWidth = parseNonNegativeIntegerInput(
+    input.crawlingSnakeWidth,
+  );
+  const crawlingSnakeHeight = parseNonNegativeIntegerInput(
+    input.crawlingSnakeHeight,
+  );
+  const crawlingSnakeOffset = parseNonNegativeIntegerInput(
+    input.crawlingSnakeOffset,
+  );
+  const jumpingMarkerWidth = parseNonNegativeIntegerInput(
+    input.jumpingMarkerWidth,
+  );
+  const jumpingMarkerHeight = parseNonNegativeIntegerInput(
+    input.jumpingMarkerHeight,
+  );
+  const jumpingMarkerOffset = parseNonNegativeIntegerInput(
+    input.jumpingMarkerOffset,
+  );
+  const jumpingMarkerBorderRadius = parseNonNegativeIntegerInput(
+    input.jumpingMarkerBorderRadius,
+  );
   const maxWidth = parseNonNegativeIntegerInput(input.maxWidth);
   const scrollOffset = parseNonNegativeIntegerInput(input.scrollOffset);
   const headingsFontSize = parseNonNegativeIntegerInput(input.headingsFontSize);
@@ -4713,6 +5637,45 @@ function coerceDeviceConfig(
     offsetRight: Number.isFinite(offsetRight)
       ? offsetRight
       : fallback.offsetRight,
+    followingMarkerWidth: Number.isFinite(followingMarkerWidth)
+      ? followingMarkerWidth
+      : fallback.followingMarkerWidth,
+    followingMarkerHeight: Number.isFinite(followingMarkerHeight)
+      ? followingMarkerHeight
+      : fallback.followingMarkerHeight,
+    followingMarkerColor:
+      input.followingMarkerColor.trim() || fallback.followingMarkerColor,
+    followingMarkerOffset: Number.isFinite(followingMarkerOffset)
+      ? followingMarkerOffset
+      : fallback.followingMarkerOffset,
+    followingMarkerBorderRadius: Number.isFinite(followingMarkerBorderRadius)
+      ? followingMarkerBorderRadius
+      : fallback.followingMarkerBorderRadius,
+    crawlingSnakeWidth: Number.isFinite(crawlingSnakeWidth)
+      ? crawlingSnakeWidth
+      : fallback.crawlingSnakeWidth,
+    crawlingSnakeHeight: Number.isFinite(crawlingSnakeHeight)
+      ? crawlingSnakeHeight
+      : fallback.crawlingSnakeHeight,
+    crawlingSnakeColor:
+      input.crawlingSnakeColor.trim() || fallback.crawlingSnakeColor,
+    crawlingSnakeOffset: Number.isFinite(crawlingSnakeOffset)
+      ? crawlingSnakeOffset
+      : fallback.crawlingSnakeOffset,
+    jumpingMarkerWidth: Number.isFinite(jumpingMarkerWidth)
+      ? jumpingMarkerWidth
+      : fallback.jumpingMarkerWidth,
+    jumpingMarkerHeight: Number.isFinite(jumpingMarkerHeight)
+      ? jumpingMarkerHeight
+      : fallback.jumpingMarkerHeight,
+    jumpingMarkerColor:
+      input.jumpingMarkerColor.trim() || fallback.jumpingMarkerColor,
+    jumpingMarkerOffset: Number.isFinite(jumpingMarkerOffset)
+      ? jumpingMarkerOffset
+      : fallback.jumpingMarkerOffset,
+    jumpingMarkerBorderRadius: Number.isFinite(jumpingMarkerBorderRadius)
+      ? jumpingMarkerBorderRadius
+      : fallback.jumpingMarkerBorderRadius,
     background: input.background.trim() || fallback.background,
     maxWidth: Number.isFinite(maxWidth) ? maxWidth : fallback.maxWidth,
     smoothScroll: input.smoothScroll,
@@ -4782,6 +5745,20 @@ function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
     "--toc-offset-bottom": `${clampPreviewOffset(device.offsetBottom)}px`,
     "--toc-offset-left": `${clampPreviewOffset(device.offsetLeft)}px`,
     "--toc-offset-right": `${clampPreviewOffset(device.offsetRight)}px`,
+    "--toc-following-marker-width": `${device.followingMarkerWidth}px`,
+    "--toc-following-marker-height": `${device.followingMarkerHeight}px`,
+    "--toc-following-marker-color": device.followingMarkerColor,
+    "--toc-following-marker-head-offset": `${device.followingMarkerOffset}px`,
+    "--toc-following-marker-border-radius": `${device.followingMarkerBorderRadius}px`,
+    "--toc-crawling-snake-width": `${device.crawlingSnakeWidth}px`,
+    "--toc-crawling-snake-height": `${device.crawlingSnakeHeight}px`,
+    "--toc-crawling-snake-color": device.crawlingSnakeColor,
+    "--toc-crawling-snake-head-offset": `${device.crawlingSnakeOffset}px`,
+    "--toc-jumping-marker-width": `${device.jumpingMarkerWidth}px`,
+    "--toc-jumping-marker-height": `${device.jumpingMarkerHeight}px`,
+    "--toc-jumping-marker-color": device.jumpingMarkerColor,
+    "--toc-jumping-marker-head-offset": `${device.jumpingMarkerOffset}px`,
+    "--toc-jumping-marker-border-radius": `${device.jumpingMarkerBorderRadius}px`,
     "--toc-title-font-size": `${device.titleFontSize}px`,
     "--toc-title-font-color": device.titleFontColor,
     "--toc-title-font-weight": String(device.titleFontWeight),
@@ -4915,16 +5892,17 @@ type TocSnakeClickFlight = {
 type TocMarkerSettings = {
   headOffset: number;
   crawlingSnakeWidth: number;
-  jumpingMarkerSize: number;
+  jumpingMarkerWidth: number;
+  jumpingMarkerHeight: number;
 };
 
-const TOC_SNAKE_HEAD_OFFSET = 12;
+const TOC_SNAKE_HEAD_OFFSET = 8;
 const TOC_SNAKE_TOP_OFFSET = 8;
-const TOC_CRAWLING_SNAKE_VISIBLE_LENGTH = 24;
+const TOC_CRAWLING_SNAKE_VISIBLE_LENGTH = 10;
 const TOC_SNAKE_CLICK_MIN_DURATION = 200;
 const TOC_SNAKE_CLICK_MAX_DURATION = 400;
-const TOC_FOLLOWING_MARKER_WIDTH = 12;
-const TOC_JUMPING_MARKER_SIZE = TOC_FOLLOWING_MARKER_WIDTH;
+const TOC_JUMPING_MARKER_WIDTH = 6;
+const TOC_JUMPING_MARKER_HEIGHT = 6;
 const TOC_JUMPING_MARKER_MIN_DURATION = 220;
 const TOC_JUMPING_MARKER_MAX_DURATION = 360;
 const TOC_PREVIEW_REPLAY_STEP_GAP = 50;
@@ -4938,7 +5916,9 @@ function readMarkerCssPixels(
     return fallback;
   }
 
-  const rawValue = window.getComputedStyle(element).getPropertyValue(propertyName);
+  const rawValue = window
+    .getComputedStyle(element)
+    .getPropertyValue(propertyName);
   const parsedValue = Number.parseFloat(rawValue);
 
   return Number.isFinite(parsedValue) ? parsedValue : fallback;
@@ -4975,10 +5955,15 @@ function getMarkerSettingsForList(list: HTMLUListElement): TocMarkerSettings {
       "--toc-crawling-snake-width",
       TOC_CRAWLING_SNAKE_VISIBLE_LENGTH,
     ),
-    jumpingMarkerSize: readMarkerCssPixels(
+    jumpingMarkerWidth: readMarkerCssPixels(
       widget,
-      "--toc-jumping-marker-size",
-      TOC_JUMPING_MARKER_SIZE,
+      "--toc-jumping-marker-width",
+      TOC_JUMPING_MARKER_WIDTH,
+    ),
+    jumpingMarkerHeight: readMarkerCssPixels(
+      widget,
+      "--toc-jumping-marker-height",
+      TOC_JUMPING_MARKER_HEIGHT,
     ),
   };
 }
@@ -5021,7 +6006,10 @@ function getPreviewReplayStepDelay(animationType: TocAnimationType) {
 }
 
 function flattenPreviewItemIds(items: PreviewTocItem[]): string[] {
-  return items.flatMap((item) => [item.id, ...flattenPreviewItemIds(item.children)]);
+  return items.flatMap((item) => [
+    item.id,
+    ...flattenPreviewItemIds(item.children),
+  ]);
 }
 
 function buildPreviewReplaySequence(itemIds: string[], maxDepth: number) {
@@ -5096,10 +6084,11 @@ function createSnakeLinkMetric(
 
 function getTocMarkerBounds(
   listRect: DOMRect,
-  markerSize = TOC_JUMPING_MARKER_SIZE,
+  markerWidth = TOC_JUMPING_MARKER_WIDTH,
+  markerHeight = TOC_JUMPING_MARKER_HEIGHT,
 ): TocMarkerBounds {
-  const horizontalInset = markerSize / 2 + 2;
-  const verticalInset = markerSize / 2 + 2;
+  const horizontalInset = markerWidth / 2 + 2;
+  const verticalInset = markerHeight / 2 + 2;
 
   return {
     maxX: Math.max(horizontalInset, listRect.width - horizontalInset),
@@ -5109,7 +6098,10 @@ function getTocMarkerBounds(
   };
 }
 
-function clampPointToBounds(point: TocPoint, bounds: TocMarkerBounds): TocPoint {
+function clampPointToBounds(
+  point: TocPoint,
+  bounds: TocMarkerBounds,
+): TocPoint {
   return {
     x: clampNumber(point.x, bounds.minX, bounds.maxX),
     y: clampNumber(point.y, bounds.minY, bounds.maxY),
@@ -5120,10 +6112,7 @@ function getSnakeHeadPoint(
   metric: TocSnakeLinkMetric,
   bounds: TocMarkerBounds,
 ): TocPoint {
-  return clampPointToBounds(
-    { x: metric.laneX, y: metric.centerY },
-    bounds,
-  );
+  return clampPointToBounds({ x: metric.laneX, y: metric.centerY }, bounds);
 }
 
 function measureListLinkHeadPoint(
@@ -5139,7 +6128,11 @@ function measureListLinkHeadPoint(
 
   return getSnakeHeadPoint(
     createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
-    getTocMarkerBounds(listRect, markerSettings.jumpingMarkerSize),
+    getTocMarkerBounds(
+      listRect,
+      markerSettings.jumpingMarkerWidth,
+      markerSettings.jumpingMarkerHeight,
+    ),
   );
 }
 
@@ -5216,16 +6209,15 @@ function chooseParabolaControlPoint(
     preferredDirection,
     bounds,
   );
-  const fallbackRoom = measureRayToBounds(
-    midpoint,
-    fallbackDirection,
-    bounds,
-  );
+  const fallbackRoom = measureRayToBounds(midpoint, fallbackDirection, bounds);
   const chosenDirection =
     preferredRoom > 0 ? preferredDirection : fallbackDirection;
   const availableRoom = preferredRoom > 0 ? preferredRoom : fallbackRoom;
 
-  const amplitude = Math.min(preferredHeight, Math.max(availableRoom * 0.92, 0));
+  const amplitude = Math.min(
+    preferredHeight,
+    Math.max(availableRoom * 0.92, 0),
+  );
 
   if (amplitude < 6) {
     return midpoint;
@@ -5286,7 +6278,11 @@ function buildJumpingMarkerFlight(
   }
 
   const markerSettings = getMarkerSettingsForList(list);
-  const bounds = getTocMarkerBounds(listRect, markerSettings.jumpingMarkerSize);
+  const bounds = getTocMarkerBounds(
+    listRect,
+    markerSettings.jumpingMarkerWidth,
+    markerSettings.jumpingMarkerHeight,
+  );
   const targetMetric = createSnakeLinkMetric(
     listRect,
     targetLink,
@@ -5301,7 +6297,11 @@ function buildJumpingMarkerFlight(
   }
 
   return {
-    controlPoint: chooseParabolaControlPoint(boundedStartPoint, endPoint, bounds),
+    controlPoint: chooseParabolaControlPoint(
+      boundedStartPoint,
+      endPoint,
+      bounds,
+    ),
     duration: clampNumber(
       220 + distance * 0.45,
       TOC_JUMPING_MARKER_MIN_DURATION,
@@ -5315,10 +6315,7 @@ function buildJumpingMarkerFlight(
   };
 }
 
-function getJumpingMarkerProgress(
-  flight: TocJumpingMarkerFlight,
-  now: number,
-) {
+function getJumpingMarkerProgress(flight: TocJumpingMarkerFlight, now: number) {
   return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
 }
 
@@ -5358,8 +6355,7 @@ function measureSnakePathLength(points: Array<{ x: number; y: number }>) {
     const previousPoint = points[index];
 
     return (
-      total +
-      Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y)
+      total + Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y)
     );
   }, 0);
 }
@@ -5544,7 +6540,10 @@ function getSnakeHeadState(points: Array<{ x: number; y: number }>) {
   if (segmentAngles.length > 1) {
     headBend = Math.max(
       -18,
-      Math.min(18, normalizeAngleDelta(segmentAngles[0] - segmentAngles[1]) * 0.22),
+      Math.min(
+        18,
+        normalizeAngleDelta(segmentAngles[0] - segmentAngles[1]) * 0.22,
+      ),
     );
   }
 
@@ -5637,7 +6636,11 @@ function measureTocJumpingMarkerGeometry(
   }
 
   const markerSettings = getMarkerSettingsForList(list);
-  const bounds = getTocMarkerBounds(listRect, markerSettings.jumpingMarkerSize);
+  const bounds = getTocMarkerBounds(
+    listRect,
+    markerSettings.jumpingMarkerWidth,
+    markerSettings.jumpingMarkerHeight,
+  );
   const activeMetric = createSnakeLinkMetric(
     listRect,
     activeLink,
@@ -5658,7 +6661,8 @@ function measureTocJumpingMarkerGeometry(
       : settledPoint;
   const rotation =
     flight && flightProgress < 1
-      ? flight.startRotation + flight.rotationDelta * easeInOutCubic(flightProgress)
+      ? flight.startRotation +
+        flight.rotationDelta * easeInOutCubic(flightProgress)
       : settledRotation;
 
   return {
@@ -5726,7 +6730,11 @@ function buildSnakeClickFlight(
 }
 
 function getSnakeClickFlightProgress(flight: TocSnakeClickFlight, now: number) {
-  const progress = clampNumber((now - flight.startTime) / flight.duration, 0, 1);
+  const progress = clampNumber(
+    (now - flight.startTime) / flight.duration,
+    0,
+    1,
+  );
 
   return flight.timing === "linear" ? progress : easeInOutCubic(progress);
 }
@@ -5775,7 +6783,8 @@ function getSnakeFlightCurrentLinkId(
     index += step
   ) {
     const partialRoute = buildSnakeRoutePoints(metrics, fromIndex, index);
-    const partialProgress = measureSnakePathLength(partialRoute) / fullRouteLength;
+    const partialProgress =
+      measureSnakePathLength(partialRoute) / fullRouteLength;
 
     if (progress + 0.001 < partialProgress) {
       break;
@@ -5912,7 +6921,10 @@ function TocPreview({
   const jumpingMarkerFlightRef = useRef<TocJumpingMarkerFlight | null>(null);
   const jumpingMarkerRotationRef = useRef(0);
   const previewItemIds = flattenPreviewItemIds(preview.items);
-  const markerActive = isDesktopMarkerAnimation(previewDevice, device.animationType);
+  const markerActive = isDesktopMarkerAnimation(
+    previewDevice,
+    device.animationType,
+  );
   const followingMarkerActive =
     markerActive && isFollowingMarkerAnimation(device.animationType);
   const crawlingSnakeActive =
@@ -5920,12 +6932,15 @@ function TocPreview({
   const jumpingMarkerActive =
     markerActive && isJumpingMarkerAnimation(device.animationType);
 
-  const commitSnakeGeometry = useCallback((nextGeometry: TocSnakeGeometry | null) => {
-    snakeGeometryRef.current = nextGeometry;
-    setSnakeGeometry((current) =>
-      snakeGeometryEqual(current, nextGeometry) ? current : nextGeometry,
-    );
-  }, []);
+  const commitSnakeGeometry = useCallback(
+    (nextGeometry: TocSnakeGeometry | null) => {
+      snakeGeometryRef.current = nextGeometry;
+      setSnakeGeometry((current) =>
+        snakeGeometryEqual(current, nextGeometry) ? current : nextGeometry,
+      );
+    },
+    [],
+  );
 
   const cancelReplay = useCallback(() => {
     replayNonceRef.current += 1;
@@ -5955,30 +6970,34 @@ function TocPreview({
     }
   }, []);
 
-  const keepPreviewLinkVisible = useCallback((link: HTMLAnchorElement | null) => {
-    const list = listRef.current;
+  const keepPreviewLinkVisible = useCallback(
+    (link: HTMLAnchorElement | null) => {
+      const list = listRef.current;
 
-    if (!list || !link || list.scrollHeight <= list.clientHeight) return;
+      if (!list || !link || list.scrollHeight <= list.clientHeight) return;
 
-    const containerRect = list.getBoundingClientRect();
-    const linkRect = link.getBoundingClientRect();
-    const padding = 8;
+      const containerRect = list.getBoundingClientRect();
+      const linkRect = link.getBoundingClientRect();
+      const padding = 8;
 
-    if (linkRect.top < containerRect.top + padding) {
-      list.scrollTop -= containerRect.top + padding - linkRect.top;
-      return;
-    }
+      if (linkRect.top < containerRect.top + padding) {
+        list.scrollTop -= containerRect.top + padding - linkRect.top;
+        return;
+      }
 
-    if (linkRect.bottom > containerRect.bottom - padding) {
-      list.scrollTop += linkRect.bottom - (containerRect.bottom - padding);
-    }
-  }, []);
+      if (linkRect.bottom > containerRect.bottom - padding) {
+        list.scrollTop += linkRect.bottom - (containerRect.bottom - padding);
+      }
+    },
+    [],
+  );
 
   const findPreviewLinkById = useCallback(
     (list: HTMLUListElement, itemId: string) =>
-      Array.from(list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link")).find(
-        (link) => (link.getAttribute("href") || "").slice(1) === itemId,
-      ) || null,
+      Array.from(
+        list.querySelectorAll<HTMLAnchorElement>(".toc-widget__link"),
+      ).find((link) => (link.getAttribute("href") || "").slice(1) === itemId) ||
+      null,
     [],
   );
 
@@ -6019,10 +7038,7 @@ function TocPreview({
           );
           jumpingMarkerFlightRef.current = null;
         }
-      } else if (
-        crawlingSnakeActive &&
-        crawlingSnakeClickFlightRef.current
-      ) {
+      } else if (crawlingSnakeActive && crawlingSnakeClickFlightRef.current) {
         const progress = getSnakeClickFlightProgress(
           crawlingSnakeClickFlightRef.current,
           performance.now(),
@@ -6145,7 +7161,12 @@ function TocPreview({
 
     const progress = getSnakeClickFlightProgress(flight, performance.now());
     const replayHighlightId = crawlingSnakeReplayCompletionIdRef.current
-      ? getSnakeFlightCurrentLinkId(list, flight.fromLink, flight.toLink, progress)
+      ? getSnakeFlightCurrentLinkId(
+          list,
+          flight.fromLink,
+          flight.toLink,
+          progress,
+        )
       : null;
 
     if (replayHighlightId) {
@@ -6185,7 +7206,7 @@ function TocPreview({
     crawlingSnakeClickFrameRef.current = requestAnimationFrame(
       runCrawlingSnakeClickFlight,
     );
-  }, [commitSnakeGeometry, measureSnake, scheduleSnakeMeasurement]);
+  }, [commitSnakeGeometry, measureSnake, resetReplayMarker]);
 
   const replayFromTop = useCallback(() => {
     if (!markerActive || !previewItemIds.length) {
@@ -6258,7 +7279,10 @@ function TocPreview({
         return;
       }
 
-      const previousLink = findPreviewLinkById(list, previousActiveIdRef.current);
+      const previousLink = findPreviewLinkById(
+        list,
+        previousActiveIdRef.current,
+      );
       const currentGeometry = snakeGeometryRef.current;
       const fallbackStartPoint =
         (previousLink && measureListLinkHeadPoint(list, previousLink)) ||
@@ -6314,7 +7338,10 @@ function TocPreview({
       }
 
       const targetLink = findPreviewLinkById(list, targetId);
-      const previousLink = findPreviewLinkById(list, previousActiveIdRef.current);
+      const previousLink = findPreviewLinkById(
+        list,
+        previousActiveIdRef.current,
+      );
 
       const nextFlight = buildSnakeClickFlight(
         list,

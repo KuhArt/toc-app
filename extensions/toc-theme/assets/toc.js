@@ -34,6 +34,20 @@
     offsetBottom: 0,
     offsetLeft: 0,
     offsetRight: 0,
+    followingMarkerWidth: 6,
+    followingMarkerHeight: 6,
+    followingMarkerColor: "#575757cf",
+    followingMarkerOffset: 8,
+    followingMarkerBorderRadius: 2,
+    crawlingSnakeWidth: 10,
+    crawlingSnakeHeight: 3,
+    crawlingSnakeColor: "#575757cf",
+    crawlingSnakeOffset: 8,
+    jumpingMarkerWidth: 6,
+    jumpingMarkerHeight: 6,
+    jumpingMarkerColor: "#575757CF",
+    jumpingMarkerOffset: 9,
+    jumpingMarkerBorderRadius: 999,
     background: "#ffffff",
     maxWidth: 0,
     smoothScroll: true,
@@ -55,7 +69,7 @@
     showButtonBorderColor: "#575757",
     showButtonBorderWidth: 0,
     showButtonBorderRadius: 0,
-    animationType: "none",
+    animationType: "jumping-marker",
   };
   const DEFAULT_MOBILE_CONTAINER = {
     position: "before-first-heading",
@@ -71,6 +85,20 @@
     offsetBottom: 0,
     offsetLeft: 0,
     offsetRight: 0,
+    followingMarkerWidth: 6,
+    followingMarkerHeight: 6,
+    followingMarkerColor: "#575757cf",
+    followingMarkerOffset: 8,
+    followingMarkerBorderRadius: 2,
+    crawlingSnakeWidth: 10,
+    crawlingSnakeHeight: 3,
+    crawlingSnakeColor: "#575757cf",
+    crawlingSnakeOffset: 8,
+    jumpingMarkerWidth: 6,
+    jumpingMarkerHeight: 6,
+    jumpingMarkerColor: "#575757CF",
+    jumpingMarkerOffset: 9,
+    jumpingMarkerBorderRadius: 999,
     background: "#00000000",
     maxWidth: 0,
     smoothScroll: true,
@@ -220,8 +248,7 @@
 
   // 4) Ensure each heading has a stable TOC anchor marker.
   headings.forEach((h, i) => {
-    const anchorId =
-      h.id.trim() || `toc-${i}-${slugify(h.textContent || "")}`;
+    const anchorId = h.id.trim() || `toc-${i}-${slugify(h.textContent || "")}`;
 
     h.setAttribute(TOC_HEADING_ID_ATTRIBUTE, anchorId);
 
@@ -398,13 +425,10 @@
         }
 
         pendingAnimationType = "";
-        console.error(
-          `${DEBUG_PREFIX} Failed to load animation controller`,
-          {
-            animationType: requestedType,
-            error,
-          },
-        );
+        console.error(`${DEBUG_PREFIX} Failed to load animation controller`, {
+          animationType: requestedType,
+          error,
+        });
         replaceAnimationController(
           createNullAnimationController(createAnimationContext()),
           "none",
@@ -519,7 +543,10 @@
     if (target.kind === "float-left" || target.kind === "float-right") {
       floatHost = floatHost || document.createElement("div");
       floatHost.className = `toc-widget-float toc-widget-float--${target.kind.replace("float-", "")}`;
-      floatHost.style.setProperty("--toc-offset-top", `${activeConfig.offsetTop}px`);
+      floatHost.style.setProperty(
+        "--toc-offset-top",
+        `${activeConfig.offsetTop}px`,
+      );
       floatHost.style.setProperty(
         "--toc-offset-bottom",
         `${activeConfig.offsetBottom}px`,
@@ -561,7 +588,7 @@
     title: cfg.title || "Contents",
   });
 
-  let applyResponsiveState = () => { };
+  let applyResponsiveState = () => {};
   requestAnimationFrame(() => {
     const needsToggle = (activeConfig) => {
       const toggleHeight = Math.max(0, activeConfig.showButtonHeight || 0);
@@ -676,7 +703,10 @@
     ) {
       const currentHeading = headings[currentIndex];
       const nextHeading = headings[currentIndex + 1];
-      const span = Math.max(nextHeading.offsetTop - currentHeading.offsetTop, 1);
+      const span = Math.max(
+        nextHeading.offsetTop - currentHeading.offsetTop,
+        1,
+      );
 
       markerTransitionProgress = Math.min(
         Math.max((scrollY - currentHeading.offsetTop) / span, 0),
@@ -800,7 +830,12 @@
   }
 
   function normalizeAnimationType(value) {
-    return ["none", "following-marker", "crawling-snake", "jumping-marker"].includes(value)
+    return [
+      "none",
+      "following-marker",
+      "crawling-snake",
+      "jumping-marker",
+    ].includes(value)
       ? value
       : "none";
   }
@@ -865,6 +900,11 @@
 
   function normalizeDeviceConfig(value, fallback, device) {
     const config = value && typeof value === "object" ? value : {};
+    const legacyJumpingMarkerSize =
+      typeof config.jumpingMarkerSize === "number" &&
+      Number.isFinite(config.jumpingMarkerSize)
+        ? Math.max(0, config.jumpingMarkerSize)
+        : null;
 
     return {
       position:
@@ -889,43 +929,114 @@
           : fallback.radius,
       paddingTop:
         typeof config.paddingTop === "number" &&
-          Number.isFinite(config.paddingTop)
+        Number.isFinite(config.paddingTop)
           ? Math.max(0, config.paddingTop)
           : fallback.paddingTop,
       paddingBottom:
         typeof config.paddingBottom === "number" &&
-          Number.isFinite(config.paddingBottom)
+        Number.isFinite(config.paddingBottom)
           ? Math.max(0, config.paddingBottom)
           : fallback.paddingBottom,
       paddingLeft:
         typeof config.paddingLeft === "number" &&
-          Number.isFinite(config.paddingLeft)
+        Number.isFinite(config.paddingLeft)
           ? Math.max(0, config.paddingLeft)
           : fallback.paddingLeft,
       paddingRight:
         typeof config.paddingRight === "number" &&
-          Number.isFinite(config.paddingRight)
+        Number.isFinite(config.paddingRight)
           ? Math.max(0, config.paddingRight)
           : fallback.paddingRight,
       offsetTop:
-        typeof config.offsetTop === "number" && Number.isFinite(config.offsetTop)
+        typeof config.offsetTop === "number" &&
+        Number.isFinite(config.offsetTop)
           ? config.offsetTop
           : fallback.offsetTop,
       offsetBottom:
         typeof config.offsetBottom === "number" &&
-          Number.isFinite(config.offsetBottom)
+        Number.isFinite(config.offsetBottom)
           ? config.offsetBottom
           : fallback.offsetBottom,
       offsetLeft:
         typeof config.offsetLeft === "number" &&
-          Number.isFinite(config.offsetLeft)
+        Number.isFinite(config.offsetLeft)
           ? config.offsetLeft
           : fallback.offsetLeft,
       offsetRight:
         typeof config.offsetRight === "number" &&
-          Number.isFinite(config.offsetRight)
+        Number.isFinite(config.offsetRight)
           ? config.offsetRight
           : fallback.offsetRight,
+      followingMarkerWidth:
+        typeof config.followingMarkerWidth === "number" &&
+        Number.isFinite(config.followingMarkerWidth)
+          ? Math.max(0, config.followingMarkerWidth)
+          : fallback.followingMarkerWidth,
+      followingMarkerHeight:
+        typeof config.followingMarkerHeight === "number" &&
+        Number.isFinite(config.followingMarkerHeight)
+          ? Math.max(0, config.followingMarkerHeight)
+          : fallback.followingMarkerHeight,
+      followingMarkerColor:
+        typeof config.followingMarkerColor === "string" &&
+        config.followingMarkerColor.trim()
+          ? config.followingMarkerColor.trim()
+          : fallback.followingMarkerColor,
+      followingMarkerOffset:
+        typeof config.followingMarkerOffset === "number" &&
+        Number.isFinite(config.followingMarkerOffset)
+          ? Math.max(0, config.followingMarkerOffset)
+          : fallback.followingMarkerOffset,
+      followingMarkerBorderRadius:
+        typeof config.followingMarkerBorderRadius === "number" &&
+        Number.isFinite(config.followingMarkerBorderRadius)
+          ? Math.max(0, config.followingMarkerBorderRadius)
+          : fallback.followingMarkerBorderRadius,
+      crawlingSnakeWidth:
+        typeof config.crawlingSnakeWidth === "number" &&
+        Number.isFinite(config.crawlingSnakeWidth)
+          ? Math.max(0, config.crawlingSnakeWidth)
+          : fallback.crawlingSnakeWidth,
+      crawlingSnakeHeight:
+        typeof config.crawlingSnakeHeight === "number" &&
+        Number.isFinite(config.crawlingSnakeHeight)
+          ? Math.max(0, config.crawlingSnakeHeight)
+          : fallback.crawlingSnakeHeight,
+      crawlingSnakeColor:
+        typeof config.crawlingSnakeColor === "string" &&
+        config.crawlingSnakeColor.trim()
+          ? config.crawlingSnakeColor.trim()
+          : fallback.crawlingSnakeColor,
+      crawlingSnakeOffset:
+        typeof config.crawlingSnakeOffset === "number" &&
+        Number.isFinite(config.crawlingSnakeOffset)
+          ? Math.max(0, config.crawlingSnakeOffset)
+          : fallback.crawlingSnakeOffset,
+      jumpingMarkerWidth:
+        typeof config.jumpingMarkerWidth === "number" &&
+        Number.isFinite(config.jumpingMarkerWidth)
+          ? Math.max(0, config.jumpingMarkerWidth)
+          : (legacyJumpingMarkerSize ?? fallback.jumpingMarkerWidth),
+      jumpingMarkerHeight:
+        typeof config.jumpingMarkerHeight === "number" &&
+        Number.isFinite(config.jumpingMarkerHeight)
+          ? Math.max(0, config.jumpingMarkerHeight)
+          : (legacyJumpingMarkerSize ?? fallback.jumpingMarkerHeight),
+      jumpingMarkerColor:
+        typeof config.jumpingMarkerColor === "string" &&
+        config.jumpingMarkerColor.trim()
+          ? config.jumpingMarkerColor.trim()
+          : fallback.jumpingMarkerColor,
+      jumpingMarkerOffset:
+        typeof config.jumpingMarkerOffset === "number" &&
+        Number.isFinite(config.jumpingMarkerOffset)
+          ? Math.max(0, config.jumpingMarkerOffset)
+          : fallback.jumpingMarkerOffset,
+      jumpingMarkerBorderRadius:
+        typeof config.jumpingMarkerBorderRadius === "number" &&
+        Number.isFinite(config.jumpingMarkerBorderRadius)
+          ? Math.max(0, config.jumpingMarkerBorderRadius)
+          : fallback.jumpingMarkerBorderRadius,
       background:
         typeof config.background === "string" && config.background.trim()
           ? config.background.trim()
@@ -940,7 +1051,7 @@
           : fallback.smoothScroll,
       scrollOffset:
         typeof config.scrollOffset === "number" &&
-          Number.isFinite(config.scrollOffset)
+        Number.isFinite(config.scrollOffset)
           ? Math.max(0, config.scrollOffset)
           : fallback.scrollOffset,
       showTitle:
@@ -949,32 +1060,32 @@
           : fallback.showTitle,
       headingsFontSize:
         typeof config.headingsFontSize === "number" &&
-          Number.isFinite(config.headingsFontSize)
+        Number.isFinite(config.headingsFontSize)
           ? Math.max(0, config.headingsFontSize)
           : fallback.headingsFontSize,
       headingsFontColor:
         typeof config.headingsFontColor === "string" &&
-          config.headingsFontColor.trim()
+        config.headingsFontColor.trim()
           ? config.headingsFontColor.trim()
           : fallback.headingsFontColor,
       headingsFontWeight:
         typeof config.headingsFontWeight === "number" &&
-          Number.isFinite(config.headingsFontWeight)
+        Number.isFinite(config.headingsFontWeight)
           ? Math.max(0, config.headingsFontWeight)
           : fallback.headingsFontWeight,
       titleFontSize:
         typeof config.titleFontSize === "number" &&
-          Number.isFinite(config.titleFontSize)
+        Number.isFinite(config.titleFontSize)
           ? Math.max(0, config.titleFontSize)
           : fallback.titleFontSize,
       titleFontColor:
         typeof config.titleFontColor === "string" &&
-          config.titleFontColor.trim()
+        config.titleFontColor.trim()
           ? config.titleFontColor.trim()
           : fallback.titleFontColor,
       titleFontWeight:
         typeof config.titleFontWeight === "number" &&
-          Number.isFinite(config.titleFontWeight)
+        Number.isFinite(config.titleFontWeight)
           ? Math.max(0, config.titleFontWeight)
           : fallback.titleFontWeight,
       showButton:
@@ -983,47 +1094,47 @@
           : fallback.showButton,
       showButtonHeight:
         typeof config.showButtonHeight === "number" &&
-          Number.isFinite(config.showButtonHeight)
+        Number.isFinite(config.showButtonHeight)
           ? Math.max(0, config.showButtonHeight)
           : fallback.showButtonHeight,
       showMoreButtonText:
         typeof config.showMoreButtonText === "string" &&
-          config.showMoreButtonText.trim()
+        config.showMoreButtonText.trim()
           ? config.showMoreButtonText.trim()
           : fallback.showMoreButtonText,
       showLessButtonText:
         typeof config.showLessButtonText === "string" &&
-          config.showLessButtonText.trim()
+        config.showLessButtonText.trim()
           ? config.showLessButtonText.trim()
           : fallback.showLessButtonText,
       showButtonFontSize:
         typeof config.showButtonFontSize === "number" &&
-          Number.isFinite(config.showButtonFontSize)
+        Number.isFinite(config.showButtonFontSize)
           ? Math.max(0, config.showButtonFontSize)
           : fallback.showButtonFontSize,
       showButtonFontColor:
         typeof config.showButtonFontColor === "string" &&
-          config.showButtonFontColor.trim()
+        config.showButtonFontColor.trim()
           ? config.showButtonFontColor.trim()
           : fallback.showButtonFontColor,
       showButtonFontWeight:
         typeof config.showButtonFontWeight === "number" &&
-          Number.isFinite(config.showButtonFontWeight)
+        Number.isFinite(config.showButtonFontWeight)
           ? Math.max(0, config.showButtonFontWeight)
           : fallback.showButtonFontWeight,
       showButtonBorderColor:
         typeof config.showButtonBorderColor === "string" &&
-          config.showButtonBorderColor.trim()
+        config.showButtonBorderColor.trim()
           ? config.showButtonBorderColor.trim()
           : fallback.showButtonBorderColor,
       showButtonBorderWidth:
         typeof config.showButtonBorderWidth === "number" &&
-          Number.isFinite(config.showButtonBorderWidth)
+        Number.isFinite(config.showButtonBorderWidth)
           ? Math.max(0, config.showButtonBorderWidth)
           : fallback.showButtonBorderWidth,
       showButtonBorderRadius:
         typeof config.showButtonBorderRadius === "number" &&
-          Number.isFinite(config.showButtonBorderRadius)
+        Number.isFinite(config.showButtonBorderRadius)
           ? Math.max(0, config.showButtonBorderRadius)
           : fallback.showButtonBorderRadius,
       animationType: normalizeAnimationType(config.animationType),
@@ -1047,6 +1158,62 @@
     toc.style.setProperty("--toc-offset-bottom", `${desktop.offsetBottom}px`);
     toc.style.setProperty("--toc-offset-left", `${desktop.offsetLeft}px`);
     toc.style.setProperty("--toc-offset-right", `${desktop.offsetRight}px`);
+    toc.style.setProperty(
+      "--toc-following-marker-width",
+      `${desktop.followingMarkerWidth}px`,
+    );
+    toc.style.setProperty(
+      "--toc-following-marker-height",
+      `${desktop.followingMarkerHeight}px`,
+    );
+    toc.style.setProperty(
+      "--toc-following-marker-color",
+      desktop.followingMarkerColor,
+    );
+    toc.style.setProperty(
+      "--toc-following-marker-head-offset",
+      `${desktop.followingMarkerOffset}px`,
+    );
+    toc.style.setProperty(
+      "--toc-following-marker-border-radius",
+      `${desktop.followingMarkerBorderRadius}px`,
+    );
+    toc.style.setProperty(
+      "--toc-crawling-snake-width",
+      `${desktop.crawlingSnakeWidth}px`,
+    );
+    toc.style.setProperty(
+      "--toc-crawling-snake-height",
+      `${desktop.crawlingSnakeHeight}px`,
+    );
+    toc.style.setProperty(
+      "--toc-crawling-snake-color",
+      desktop.crawlingSnakeColor,
+    );
+    toc.style.setProperty(
+      "--toc-crawling-snake-head-offset",
+      `${desktop.crawlingSnakeOffset}px`,
+    );
+    toc.style.setProperty(
+      "--toc-jumping-marker-width",
+      `${desktop.jumpingMarkerWidth}px`,
+    );
+    toc.style.setProperty(
+      "--toc-jumping-marker-height",
+      `${desktop.jumpingMarkerHeight}px`,
+    );
+    toc.style.setProperty(
+      "--toc-jumping-marker-color",
+      desktop.jumpingMarkerColor,
+    );
+    toc.style.setProperty(
+      "--toc-jumping-marker-head-offset",
+      `${desktop.jumpingMarkerOffset}px`,
+    );
+    toc.style.setProperty(
+      "--toc-jumping-marker-border-radius",
+      `${desktop.jumpingMarkerBorderRadius}px`,
+    );
     toc.style.setProperty(
       "--toc-title-font-size",
       `${desktop.titleFontSize}px`,
@@ -1249,7 +1416,10 @@
       return;
     }
 
-    overlay.svg.setAttribute("viewBox", `0 0 ${geometry.width} ${geometry.height}`);
+    overlay.svg.setAttribute(
+      "viewBox",
+      `0 0 ${geometry.width} ${geometry.height}`,
+    );
     overlay.svg.setAttribute("width", String(geometry.width));
     overlay.svg.setAttribute("height", String(geometry.height));
     overlay.path.setAttribute("d", geometry.path);
@@ -1340,7 +1510,9 @@
         const factory = getTocAnimationRegistry()[animationType];
 
         if (typeof factory !== "function") {
-          throw new Error(`Animation factory ${animationType} did not register`);
+          throw new Error(
+            `Animation factory ${animationType} did not register`,
+          );
         }
 
         return factory;
@@ -1359,7 +1531,10 @@
     const promise = new Promise((resolve, reject) => {
       let script = Array.from(
         document.querySelectorAll(`script[${TOC_ANIMATION_SCRIPT_ATTRIBUTE}]`),
-      ).find((element) => element.getAttribute(TOC_ANIMATION_SCRIPT_ATTRIBUTE) === url);
+      ).find(
+        (element) =>
+          element.getAttribute(TOC_ANIMATION_SCRIPT_ATTRIBUTE) === url,
+      );
 
       const handleLoad = () => {
         script?.setAttribute("data-shopify-toc-animation-loaded", "true");
@@ -1384,9 +1559,7 @@
         document.head.appendChild(script);
       }
 
-      if (
-        script.getAttribute("data-shopify-toc-animation-loaded") === "true"
-      ) {
+      if (script.getAttribute("data-shopify-toc-animation-loaded") === "true") {
         cleanup();
         resolve();
         return;
