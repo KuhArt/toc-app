@@ -662,10 +662,10 @@ const PREVIEW_STYLES = `
 
   .toc-preview-heading {
     margin: 0;
-    color: rgb(48, 48, 48);
-    font-size: 17px;
-    font-weight: 650;
-    line-height: 24px;
+    color: #303030;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 16px;
   }
 
   .toc-preview-pane {
