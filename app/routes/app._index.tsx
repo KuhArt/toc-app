@@ -5025,6 +5025,18 @@ function flattenPreviewItemIds(items: PreviewTocItem[]): string[] {
   return items.flatMap((item) => [item.id, ...flattenPreviewItemIds(item.children)]);
 }
 
+function buildPreviewReplaySequence(itemIds: string[], maxDepth: number) {
+  if (itemIds.length < 2 || maxDepth <= 0) {
+    return [];
+  }
+
+  const maxIndex = Math.min(maxDepth, itemIds.length - 1);
+  const down = itemIds.slice(1, maxIndex + 1);
+  const up = itemIds.slice(0, maxIndex).reverse();
+
+  return [...down, ...up];
+}
+
 function getPreviewLinkId(link: HTMLAnchorElement | null) {
   return (link?.getAttribute("href") || "").slice(1);
 }
@@ -6178,51 +6190,12 @@ function TocPreview({
     const replayNonce = replayNonceRef.current;
     const [firstId] = previewItemIds;
     const stepDelay = getPreviewReplayStepDelay(device.animationType);
+    const replaySequence = buildPreviewReplaySequence(previewItemIds, 2);
 
     resetPreviewFlights(firstId);
     resetReplayMarker(firstId);
 
-    if (snakeRectBendActive && previewItemIds.length > 1) {
-      const list = listRef.current;
-
-      if (!list) {
-        return;
-      }
-
-      const lastId = previewItemIds[previewItemIds.length - 1];
-      const firstLink = findPreviewLinkById(list, firstId);
-      const lastLink = findPreviewLinkById(list, lastId);
-      const replayFlight = buildSnakeClickFlight(
-        list,
-        firstLink,
-        lastLink,
-        "linear",
-      );
-
-      if (!replayFlight) {
-        return;
-      }
-
-      replayFlight.duration = clampNumber(
-        replayFlight.duration * 12,
-        TOC_SNAKE_BENT_REPLAY_MIN_DURATION,
-        TOC_SNAKE_BENT_REPLAY_MAX_DURATION,
-      );
-
-      bentClickTargetIdRef.current = lastId;
-      bentReplayCompletionIdRef.current = lastId;
-      bentReplayResetIdRef.current = firstId;
-      bentClickFlightRef.current = replayFlight;
-
-      if (bentClickFrameRef.current !== null) {
-        cancelAnimationFrame(bentClickFrameRef.current);
-      }
-
-      bentClickFrameRef.current = requestAnimationFrame(runBentClickFlight);
-      return;
-    }
-
-    if (previewItemIds.length < 2 || stepDelay <= 0) {
+    if (!replaySequence.length || stepDelay <= 0) {
       return;
     }
 
@@ -6232,7 +6205,7 @@ function TocPreview({
           return;
         }
 
-        const nextId = previewItemIds[index];
+        const nextId = replaySequence[index];
 
         if (!nextId) {
           replayStepTimeoutRef.current = null;
@@ -6243,34 +6216,23 @@ function TocPreview({
         setActiveId(nextId);
         setHighlightedId(nextId);
 
-        if (index + 1 < previewItemIds.length) {
+        if (index + 1 < replaySequence.length) {
           queueReplayStep(index + 1);
           return;
         }
 
-        replayStepTimeoutRef.current = window.setTimeout(() => {
-          if (replayNonceRef.current !== replayNonce) {
-            return;
-          }
-
-          replayStepTimeoutRef.current = null;
-          resetReplayMarker(firstId);
-        }, stepDelay);
+        replayStepTimeoutRef.current = null;
       }, stepDelay);
     };
 
-    queueReplayStep(1);
+    queueReplayStep(0);
   }, [
     cancelReplay,
     device.animationType,
-    findPreviewLinkById,
     markerActive,
     previewItemIds,
     resetReplayMarker,
     resetPreviewFlights,
-    scheduleSnakeMeasurement,
-    snakeRectBendActive,
-    runBentClickFlight,
   ]);
 
   const startSquareParabolaFlight = useCallback(
