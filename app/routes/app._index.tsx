@@ -1186,13 +1186,18 @@ export default function Index() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const shopify = useAppBridge();
+  const initialHeadingLevels = normalizeHeadingLevels(config.headingLevels);
+  const initialHeadingLevelsKey = initialHeadingLevels.join(",");
 
   const [savedConfig, setSavedConfig] = useState(config);
   const [activeTab, setActiveTab] = useState<EditorTab>("general");
   const [title, setTitle] = useState(config.title);
-  const [headingLevels, setHeadingLevels] = useState(
-    normalizeHeadingLevels(config.headingLevels),
+  const [headingLevels, setHeadingLevels] = useState(initialHeadingLevels);
+  const [previewHeadingShuffleSeed, setPreviewHeadingShuffleSeed] = useState(
+    () => createPreviewShuffleSeed(initialHeadingLevelsKey),
   );
+  const previousHeadingLevelsKeyRef = useRef(initialHeadingLevelsKey);
+  const headingLevelsKey = headingLevels.join(",");
   const [indentation, setIndentation] = useState(config.indentation);
   const [textAlignment, setTextAlignment] = useState(config.textAlignment);
   const [markerFormat, setMarkerFormat] = useState(config.markerFormat);
@@ -1630,8 +1635,23 @@ export default function Index() {
       jumpingMarkerBorderRadius: mobileJumpingMarkerBorderRadius,
     },
   });
-  const desktopPreview = buildPreviewState(currentConfig);
-  const mobilePreview = buildPreviewState(currentConfig);
+  useEffect(() => {
+    if (previousHeadingLevelsKeyRef.current === headingLevelsKey) {
+      return;
+    }
+
+    previousHeadingLevelsKeyRef.current = headingLevelsKey;
+    setPreviewHeadingShuffleSeed(createPreviewShuffleSeed(headingLevelsKey));
+  }, [headingLevelsKey]);
+
+  const desktopPreview = buildPreviewState(
+    currentConfig,
+    previewHeadingShuffleSeed,
+  );
+  const mobilePreview = buildPreviewState(
+    currentConfig,
+    previewHeadingShuffleSeed,
+  );
   const isDirty = !configsEqual(savedConfig, currentConfig);
   const isSaving = navigation.state === "submitting";
   const desktopPreviewReplayAvailable =
@@ -8142,8 +8162,8 @@ function PreviewTocListItem({
   );
 }
 
-function buildPreviewState(config: TocConfig) {
-  const headings = buildPreviewHeadings(config.headingLevels);
+function buildPreviewState(config: TocConfig, shuffleSeed: number | string = 0) {
+  const headings = buildPreviewHeadings(config.headingLevels, shuffleSeed);
 
   return {
     activeId: headings[0]?.id || "",
@@ -8153,7 +8173,10 @@ function buildPreviewState(config: TocConfig) {
   };
 }
 
-function buildPreviewHeadings(levels: number[]): PreviewHeading[] {
+function buildPreviewHeadings(
+  levels: number[],
+  shuffleSeed: number | string,
+): PreviewHeading[] {
   const normalizedLevels = normalizeLevels(levels);
   const titles = [
     "Overview",
@@ -8170,10 +8193,14 @@ function buildPreviewHeadings(levels: number[]): PreviewHeading[] {
     "Theme compatibility",
     "Support",
   ];
+  const levelPattern = buildPreviewLevelPattern(
+    normalizedLevels.length,
+    titles.length,
+    shuffleSeed,
+  );
 
   return titles.map((title, index) => {
-    const depth = index % normalizedLevels.length;
-    const level = normalizedLevels[depth];
+    const level = normalizedLevels[levelPattern[index] ?? 0];
 
     return {
       id: `preview-${index}`,
@@ -8186,6 +8213,76 @@ function buildPreviewHeadings(levels: number[]): PreviewHeading[] {
 function normalizeLevels(levels: number[]) {
   const uniqueLevels = [...new Set(levels)].sort((left, right) => left - right);
   return uniqueLevels.length ? uniqueLevels : DEFAULT_CONFIG.headingLevels;
+}
+
+function createPreviewShuffleSeed(source: string) {
+  return `${source}-${Date.now()}-${Math.random()}`;
+}
+
+function buildPreviewLevelPattern(
+  levelCount: number,
+  titleCount: number,
+  shuffleSeed: number | string,
+) {
+  if (levelCount <= 1) {
+    return Array.from({ length: titleCount }, () => 0);
+  }
+
+  const branch = [
+    ...Array.from({ length: levelCount }, (_, index) => index),
+    ...Array.from(
+      { length: Math.max(levelCount - 2, 0) },
+      (_, index) => levelCount - 2 - index,
+    ),
+  ];
+  const rootDepth = branch[0] ?? 0;
+  const pattern = [rootDepth];
+
+  while (pattern.length < titleCount) {
+    pattern.push(
+      ...shufflePreviewDepths(
+        branch.slice(1),
+        `${shuffleSeed}-${pattern.length}`,
+      ),
+    );
+  }
+
+  return pattern.slice(0, titleCount);
+}
+
+function shufflePreviewDepths(depths: number[], shuffleSeed: number | string) {
+  const shuffledDepths = [...depths];
+  const nextRandom = createSeededRandom(shuffleSeed);
+
+  for (let index = shuffledDepths.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(nextRandom() * (index + 1));
+    const currentDepth = shuffledDepths[index];
+    shuffledDepths[index] = shuffledDepths[swapIndex];
+    shuffledDepths[swapIndex] = currentDepth;
+  }
+
+  return shuffledDepths;
+}
+
+function createSeededRandom(seed: number | string) {
+  let state = hashPreviewSeed(seed);
+
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function hashPreviewSeed(seed: number | string) {
+  const serializedSeed = String(seed);
+  let hash = 2166136261;
+
+  for (const character of serializedSeed) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
 }
 
 function buildPreviewTocItems(headings: PreviewHeading[]): PreviewTocItem[] {
