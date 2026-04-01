@@ -29,9 +29,9 @@ type TocTextAlignment = "left" | "center" | "right";
 type TocMarkerFormat = "none" | "bullet" | "numeric";
 type TocAnimationType =
   | "none"
-  | "snake-rect"
-  | "snake-rect-bend"
-  | "square-parabola";
+  | "following-marker"
+  | "crawling-snake"
+  | "jumping-marker";
 type TocDesktopPosition =
   | "float-right"
   | "float-left"
@@ -101,9 +101,9 @@ const CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN = "{{mobileBreakpoint}}";
 const CUSTOM_CSS_EDITOR_EXTENSIONS = [cssLanguage()];
 const CUSTOM_CSS_REFERENCE_SELECTORS = [
   ".toc-widget",
-  ".toc-widget--animation-snake-rect",
-  ".toc-widget--animation-snake-rect-bend",
-  ".toc-widget--animation-square-parabola",
+  ".toc-widget--animation-following-marker",
+  ".toc-widget--animation-crawling-snake",
+  ".toc-widget--animation-jumping-marker",
   ".toc-widget__title",
   ".toc-widget__list-shell",
   ".toc-widget__list",
@@ -225,9 +225,9 @@ const MARKER_FORMAT_OPTIONS = [
 ] as const;
 const ANIMATION_TYPE_OPTIONS = [
   { label: "None", value: "none" },
-  { label: "Snake rectangle", value: "snake-rect" },
-  { label: "Snake bent rectangle", value: "snake-rect-bend" },
-  { label: "Square parabola", value: "square-parabola" },
+  { label: "Following marker", value: "following-marker" },
+  { label: "Crawling snake", value: "crawling-snake" },
+  { label: "Jumping marker", value: "jumping-marker" },
 ] as const;
 const FONT_WEIGHT_OPTIONS = [
   { label: "Thin", value: "100" },
@@ -4894,7 +4894,7 @@ type TocMarkerBounds = {
   minY: number;
 };
 
-type TocSquareParabolaFlight = {
+type TocJumpingMarkerFlight = {
   controlPoint: TocPoint;
   duration: number;
   endPoint: TocPoint;
@@ -4914,22 +4914,19 @@ type TocSnakeClickFlight = {
 
 type TocMarkerSettings = {
   headOffset: number;
-  snakeRectBendWidth: number;
-  squareParabolaSize: number;
+  crawlingSnakeWidth: number;
+  jumpingMarkerSize: number;
 };
 
 const TOC_SNAKE_HEAD_OFFSET = 12;
 const TOC_SNAKE_TOP_OFFSET = 8;
-const TOC_SNAKE_BENT_VISIBLE_LENGTH = 24;
+const TOC_CRAWLING_SNAKE_VISIBLE_LENGTH = 24;
 const TOC_SNAKE_CLICK_MIN_DURATION = 200;
 const TOC_SNAKE_CLICK_MAX_DURATION = 400;
-const TOC_SNAKE_BENT_REPLAY_MIN_DURATION = 950;
-const TOC_SNAKE_BENT_REPLAY_MAX_DURATION = 1650;
-const TOC_SNAKE_RECT_WIDTH = 12;
-const TOC_SNAKE_RECT_HEIGHT = 6;
-const TOC_SQUARE_PARABOLA_SIZE = TOC_SNAKE_RECT_WIDTH;
-const TOC_SQUARE_PARABOLA_MIN_DURATION = 220;
-const TOC_SQUARE_PARABOLA_MAX_DURATION = 360;
+const TOC_FOLLOWING_MARKER_WIDTH = 12;
+const TOC_JUMPING_MARKER_SIZE = TOC_FOLLOWING_MARKER_WIDTH;
+const TOC_JUMPING_MARKER_MIN_DURATION = 220;
+const TOC_JUMPING_MARKER_MAX_DURATION = 360;
 const TOC_PREVIEW_REPLAY_STEP_GAP = 50;
 const TOC_PREVIEW_REPLAY_SNAKE_STEP_DURATION = 220;
 function readMarkerCssPixels(
@@ -4953,18 +4950,18 @@ function getMarkerWidget(list: HTMLUListElement) {
 
 function getMarkerSettingsForList(list: HTMLUListElement): TocMarkerSettings {
   const widget = getMarkerWidget(list);
-  let headOffsetPropertyName = "--toc-square-parabola-head-offset";
+  let headOffsetPropertyName = "--toc-jumping-marker-head-offset";
 
-  if (widget?.classList.contains("toc-widget--animation-snake-rect")) {
-    headOffsetPropertyName = "--toc-snake-rect-head-offset";
+  if (widget?.classList.contains("toc-widget--animation-following-marker")) {
+    headOffsetPropertyName = "--toc-following-marker-head-offset";
   } else if (
-    widget?.classList.contains("toc-widget--animation-snake-rect-bend")
+    widget?.classList.contains("toc-widget--animation-crawling-snake")
   ) {
-    headOffsetPropertyName = "--toc-snake-rect-bend-head-offset";
+    headOffsetPropertyName = "--toc-crawling-snake-head-offset";
   } else if (
-    widget?.classList.contains("toc-widget--animation-square-parabola")
+    widget?.classList.contains("toc-widget--animation-jumping-marker")
   ) {
-    headOffsetPropertyName = "--toc-square-parabola-head-offset";
+    headOffsetPropertyName = "--toc-jumping-marker-head-offset";
   }
 
   return {
@@ -4973,15 +4970,15 @@ function getMarkerSettingsForList(list: HTMLUListElement): TocMarkerSettings {
       headOffsetPropertyName,
       TOC_SNAKE_HEAD_OFFSET,
     ),
-    snakeRectBendWidth: readMarkerCssPixels(
+    crawlingSnakeWidth: readMarkerCssPixels(
       widget,
-      "--toc-snake-rect-bend-width",
-      TOC_SNAKE_BENT_VISIBLE_LENGTH,
+      "--toc-crawling-snake-width",
+      TOC_CRAWLING_SNAKE_VISIBLE_LENGTH,
     ),
-    squareParabolaSize: readMarkerCssPixels(
+    jumpingMarkerSize: readMarkerCssPixels(
       widget,
-      "--toc-square-parabola-size",
-      TOC_SQUARE_PARABOLA_SIZE,
+      "--toc-jumping-marker-size",
+      TOC_JUMPING_MARKER_SIZE,
     ),
   };
 }
@@ -4992,30 +4989,32 @@ function isDesktopMarkerAnimation(
 ) {
   return (
     previewDevice === "desktop" &&
-    ["snake-rect", "snake-rect-bend", "square-parabola"].includes(animationType)
+    ["following-marker", "crawling-snake", "jumping-marker"].includes(
+      animationType,
+    )
   );
 }
 
-function isSnakeRectAnimation(animationType: TocAnimationType) {
-  return animationType === "snake-rect";
+function isFollowingMarkerAnimation(animationType: TocAnimationType) {
+  return animationType === "following-marker";
 }
 
-function isSnakeRectBendAnimation(animationType: TocAnimationType) {
-  return animationType === "snake-rect-bend";
+function isCrawlingSnakeAnimation(animationType: TocAnimationType) {
+  return animationType === "crawling-snake";
 }
 
-function isSquareParabolaAnimation(animationType: TocAnimationType) {
-  return animationType === "square-parabola";
+function isJumpingMarkerAnimation(animationType: TocAnimationType) {
+  return animationType === "jumping-marker";
 }
 
 function getPreviewReplayStepDelay(animationType: TocAnimationType) {
   switch (animationType) {
-    case "snake-rect":
+    case "following-marker":
       return TOC_PREVIEW_REPLAY_SNAKE_STEP_DURATION;
-    case "snake-rect-bend":
+    case "crawling-snake":
       return TOC_SNAKE_CLICK_MAX_DURATION + TOC_PREVIEW_REPLAY_STEP_GAP;
-    case "square-parabola":
-      return TOC_SQUARE_PARABOLA_MAX_DURATION + TOC_PREVIEW_REPLAY_STEP_GAP;
+    case "jumping-marker":
+      return TOC_JUMPING_MARKER_MAX_DURATION + TOC_PREVIEW_REPLAY_STEP_GAP;
     default:
       return 0;
   }
@@ -5097,7 +5096,7 @@ function createSnakeLinkMetric(
 
 function getTocMarkerBounds(
   listRect: DOMRect,
-  markerSize = TOC_SQUARE_PARABOLA_SIZE,
+  markerSize = TOC_JUMPING_MARKER_SIZE,
 ): TocMarkerBounds {
   const horizontalInset = markerSize / 2 + 2;
   const verticalInset = markerSize / 2 + 2;
@@ -5140,7 +5139,7 @@ function measureListLinkHeadPoint(
 
   return getSnakeHeadPoint(
     createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
-    getTocMarkerBounds(listRect, markerSettings.squareParabolaSize),
+    getTocMarkerBounds(listRect, markerSettings.jumpingMarkerSize),
   );
 }
 
@@ -5271,12 +5270,12 @@ function getQuadraticPoint(
   };
 }
 
-function buildSquareParabolaFlight(
+function buildJumpingMarkerFlight(
   list: HTMLUListElement,
   startPoint: TocPoint,
   startRotation: number,
   targetLink: HTMLAnchorElement | null,
-): TocSquareParabolaFlight | null {
+): TocJumpingMarkerFlight | null {
   if (!targetLink) {
     return null;
   }
@@ -5287,7 +5286,7 @@ function buildSquareParabolaFlight(
   }
 
   const markerSettings = getMarkerSettingsForList(list);
-  const bounds = getTocMarkerBounds(listRect, markerSettings.squareParabolaSize);
+  const bounds = getTocMarkerBounds(listRect, markerSettings.jumpingMarkerSize);
   const targetMetric = createSnakeLinkMetric(
     listRect,
     targetLink,
@@ -5305,8 +5304,8 @@ function buildSquareParabolaFlight(
     controlPoint: chooseParabolaControlPoint(boundedStartPoint, endPoint, bounds),
     duration: clampNumber(
       220 + distance * 0.45,
-      TOC_SQUARE_PARABOLA_MIN_DURATION,
-      TOC_SQUARE_PARABOLA_MAX_DURATION,
+      TOC_JUMPING_MARKER_MIN_DURATION,
+      TOC_JUMPING_MARKER_MAX_DURATION,
     ),
     endPoint,
     rotationDelta: endPoint.y > boundedStartPoint.y ? -90 : 90,
@@ -5316,8 +5315,8 @@ function buildSquareParabolaFlight(
   };
 }
 
-function getSquareParabolaProgress(
-  flight: TocSquareParabolaFlight,
+function getJumpingMarkerProgress(
+  flight: TocJumpingMarkerFlight,
   now: number,
 ) {
   return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
@@ -5465,7 +5464,7 @@ function appendSnakeTransitionPoints(
   );
 }
 
-function appendCenteredBentMarkerTail(
+function appendCenteredCrawlingSnakeTail(
   points: Array<{ x: number; y: number }>,
   activeMetric: TocSnakeLinkMetric,
   listHeight: number,
@@ -5557,7 +5556,7 @@ function measureTocSnakeGeometry(
   activeLink: HTMLAnchorElement | null,
   nextLink?: HTMLAnchorElement | null,
   nextProgress = 0,
-  centerBentMarker = false,
+  centerCrawlingSnake = false,
 ): TocSnakeGeometry | null {
   if (!activeLink) {
     return null;
@@ -5598,12 +5597,12 @@ function measureTocSnakeGeometry(
     );
   }
 
-  if (centerBentMarker) {
-    appendCenteredBentMarkerTail(
+  if (centerCrawlingSnake) {
+    appendCenteredCrawlingSnakeTail(
       points,
       allMetrics[activeIndex],
       listRect.height,
-      markerSettings.snakeRectBendWidth,
+      markerSettings.crawlingSnakeWidth,
     );
   }
 
@@ -5621,11 +5620,11 @@ function measureTocSnakeGeometry(
   };
 }
 
-function measureTocSquareParabolaGeometry(
+function measureTocJumpingMarkerGeometry(
   list: HTMLUListElement,
   activeLink: HTMLAnchorElement | null,
   settledRotation: number,
-  flight?: TocSquareParabolaFlight | null,
+  flight?: TocJumpingMarkerFlight | null,
   flightProgress = 1,
 ): TocSnakeGeometry | null {
   if (!activeLink) {
@@ -5638,7 +5637,7 @@ function measureTocSquareParabolaGeometry(
   }
 
   const markerSettings = getMarkerSettingsForList(list);
-  const bounds = getTocMarkerBounds(listRect, markerSettings.squareParabolaSize);
+  const bounds = getTocMarkerBounds(listRect, markerSettings.jumpingMarkerSize);
   const activeMetric = createSnakeLinkMetric(
     listRect,
     activeLink,
@@ -5898,27 +5897,28 @@ function TocPreview({
   );
   const listRef = useRef<HTMLUListElement | null>(null);
   const snakeFrameRef = useRef<number | null>(null);
-  const bentClickFrameRef = useRef<number | null>(null);
+  const crawlingSnakeClickFrameRef = useRef<number | null>(null);
   const replayStepTimeoutRef = useRef<number | null>(null);
   const replayNonceRef = useRef(0);
-  const squareParabolaFrameRef = useRef<number | null>(null);
+  const jumpingMarkerFrameRef = useRef<number | null>(null);
   const snakeGeometryRef = useRef<TocSnakeGeometry | null>(null);
-  const bentClickTargetIdRef = useRef<string | null>(null);
-  const bentClickFlightRef = useRef<TocSnakeClickFlight | null>(null);
-  const bentReplayCompletionIdRef = useRef<string | null>(null);
-  const bentReplayResetIdRef = useRef<string | null>(null);
+  const crawlingSnakeTargetIdRef = useRef<string | null>(null);
+  const crawlingSnakeClickFlightRef = useRef<TocSnakeClickFlight | null>(null);
+  const crawlingSnakeReplayCompletionIdRef = useRef<string | null>(null);
+  const crawlingSnakeReplayResetIdRef = useRef<string | null>(null);
   const previousActiveIdRef = useRef(preview.activeId);
   const previousAnimationTypeRef = useRef(device.animationType);
   const previousReplayTokenRef = useRef(replayToken);
-  const squareParabolaFlightRef = useRef<TocSquareParabolaFlight | null>(null);
-  const squareParabolaRotationRef = useRef(0);
+  const jumpingMarkerFlightRef = useRef<TocJumpingMarkerFlight | null>(null);
+  const jumpingMarkerRotationRef = useRef(0);
   const previewItemIds = flattenPreviewItemIds(preview.items);
   const markerActive = isDesktopMarkerAnimation(previewDevice, device.animationType);
-  const snakeRectActive = markerActive && isSnakeRectAnimation(device.animationType);
-  const snakeRectBendActive =
-    markerActive && isSnakeRectBendAnimation(device.animationType);
-  const squareParabolaActive =
-    markerActive && isSquareParabolaAnimation(device.animationType);
+  const followingMarkerActive =
+    markerActive && isFollowingMarkerAnimation(device.animationType);
+  const crawlingSnakeActive =
+    markerActive && isCrawlingSnakeAnimation(device.animationType);
+  const jumpingMarkerActive =
+    markerActive && isJumpingMarkerAnimation(device.animationType);
 
   const commitSnakeGeometry = useCallback((nextGeometry: TocSnakeGeometry | null) => {
     snakeGeometryRef.current = nextGeometry;
@@ -5937,21 +5937,21 @@ function TocPreview({
   }, []);
 
   const resetPreviewFlights = useCallback((targetId: string | null) => {
-    bentClickTargetIdRef.current = targetId;
-    bentClickFlightRef.current = null;
-    bentReplayCompletionIdRef.current = null;
-    bentReplayResetIdRef.current = null;
-    squareParabolaFlightRef.current = null;
-    squareParabolaRotationRef.current = 0;
+    crawlingSnakeTargetIdRef.current = targetId;
+    crawlingSnakeClickFlightRef.current = null;
+    crawlingSnakeReplayCompletionIdRef.current = null;
+    crawlingSnakeReplayResetIdRef.current = null;
+    jumpingMarkerFlightRef.current = null;
+    jumpingMarkerRotationRef.current = 0;
 
-    if (bentClickFrameRef.current !== null) {
-      cancelAnimationFrame(bentClickFrameRef.current);
-      bentClickFrameRef.current = null;
+    if (crawlingSnakeClickFrameRef.current !== null) {
+      cancelAnimationFrame(crawlingSnakeClickFrameRef.current);
+      crawlingSnakeClickFrameRef.current = null;
     }
 
-    if (squareParabolaFrameRef.current !== null) {
-      cancelAnimationFrame(squareParabolaFrameRef.current);
-      squareParabolaFrameRef.current = null;
+    if (jumpingMarkerFrameRef.current !== null) {
+      cancelAnimationFrame(jumpingMarkerFrameRef.current);
+      jumpingMarkerFrameRef.current = null;
     }
   }, []);
 
@@ -5984,8 +5984,8 @@ function TocPreview({
 
   const measureSnake = useCallback(() => {
     if (!markerActive) {
-      bentClickFlightRef.current = null;
-      squareParabolaFlightRef.current = null;
+      crawlingSnakeClickFlightRef.current = null;
+      jumpingMarkerFlightRef.current = null;
       commitSnakeGeometry(null);
       return;
     }
@@ -5994,46 +5994,49 @@ function TocPreview({
     const activeLink = list?.querySelector<HTMLAnchorElement>(
       ".toc-widget__link--current",
     );
-    const centerBentMarker =
-      snakeRectBendActive && bentClickTargetIdRef.current === activeId;
+    const centerCrawlingSnake =
+      crawlingSnakeActive && crawlingSnakeTargetIdRef.current === activeId;
     let nextGeometry: TocSnakeGeometry | null = null;
 
     if (list && activeLink) {
-      if (squareParabolaActive) {
-        const flight = squareParabolaFlightRef.current;
+      if (jumpingMarkerActive) {
+        const flight = jumpingMarkerFlightRef.current;
         const progress = flight
-          ? getSquareParabolaProgress(flight, performance.now())
+          ? getJumpingMarkerProgress(flight, performance.now())
           : 1;
 
-        nextGeometry = measureTocSquareParabolaGeometry(
+        nextGeometry = measureTocJumpingMarkerGeometry(
           list,
           activeLink,
-          squareParabolaRotationRef.current,
+          jumpingMarkerRotationRef.current,
           flight,
           progress,
         );
 
         if (flight && progress >= 1) {
-          squareParabolaRotationRef.current = snapRotationToQuarterTurn(
+          jumpingMarkerRotationRef.current = snapRotationToQuarterTurn(
             flight.startRotation + flight.rotationDelta,
           );
-          squareParabolaFlightRef.current = null;
+          jumpingMarkerFlightRef.current = null;
         }
-      } else if (snakeRectBendActive && bentClickFlightRef.current) {
+      } else if (
+        crawlingSnakeActive &&
+        crawlingSnakeClickFlightRef.current
+      ) {
         const progress = getSnakeClickFlightProgress(
-          bentClickFlightRef.current,
+          crawlingSnakeClickFlightRef.current,
           performance.now(),
         );
 
         nextGeometry = measureTocSnakeClickFlightGeometry(
           list,
-          bentClickFlightRef.current.fromLink,
-          bentClickFlightRef.current.toLink,
+          crawlingSnakeClickFlightRef.current.fromLink,
+          crawlingSnakeClickFlightRef.current.toLink,
           progress,
         );
 
         if (progress >= 1) {
-          bentClickFlightRef.current = null;
+          crawlingSnakeClickFlightRef.current = null;
         }
       } else {
         nextGeometry = measureTocSnakeGeometry(
@@ -6041,7 +6044,7 @@ function TocPreview({
           activeLink,
           null,
           0,
-          centerBentMarker,
+          centerCrawlingSnake,
         );
       }
     }
@@ -6051,8 +6054,8 @@ function TocPreview({
     activeId,
     commitSnakeGeometry,
     markerActive,
-    snakeRectBendActive,
-    squareParabolaActive,
+    crawlingSnakeActive,
+    jumpingMarkerActive,
   ]);
 
   const scheduleSnakeMeasurement = useCallback(() => {
@@ -6068,19 +6071,19 @@ function TocPreview({
 
   const resetReplayMarker = useCallback(
     (itemId: string) => {
-      bentClickTargetIdRef.current = snakeRectBendActive ? itemId : null;
+      crawlingSnakeTargetIdRef.current = crawlingSnakeActive ? itemId : null;
       previousActiveIdRef.current = itemId;
       setActiveId(itemId);
       setHighlightedId(itemId);
       scheduleSnakeMeasurement();
     },
-    [scheduleSnakeMeasurement, snakeRectBendActive],
+    [scheduleSnakeMeasurement, crawlingSnakeActive],
   );
 
   const handleItemSelect = useCallback(
     (itemId: string) => {
       cancelReplay();
-      bentClickTargetIdRef.current = itemId;
+      crawlingSnakeTargetIdRef.current = itemId;
       setActiveId(itemId);
       setHighlightedId(itemId);
 
@@ -6091,55 +6094,57 @@ function TocPreview({
     [activeId, cancelReplay, scheduleSnakeMeasurement],
   );
 
-  const runSquareParabolaFlight = useCallback(() => {
+  const runJumpingMarkerFlight = useCallback(() => {
     const list = listRef.current;
     const activeLink = list?.querySelector<HTMLAnchorElement>(
       ".toc-widget__link--current",
     );
-    const flight = squareParabolaFlightRef.current;
+    const flight = jumpingMarkerFlightRef.current;
 
     if (!list || !activeLink || !flight) {
-      squareParabolaFrameRef.current = null;
+      jumpingMarkerFrameRef.current = null;
       measureSnake();
       return;
     }
 
-    const progress = getSquareParabolaProgress(flight, performance.now());
+    const progress = getJumpingMarkerProgress(flight, performance.now());
     commitSnakeGeometry(
-      measureTocSquareParabolaGeometry(
+      measureTocJumpingMarkerGeometry(
         list,
         activeLink,
-        squareParabolaRotationRef.current,
+        jumpingMarkerRotationRef.current,
         flight,
         progress,
       ),
     );
 
     if (progress >= 1) {
-      squareParabolaRotationRef.current = snapRotationToQuarterTurn(
+      jumpingMarkerRotationRef.current = snapRotationToQuarterTurn(
         flight.startRotation + flight.rotationDelta,
       );
-      squareParabolaFlightRef.current = null;
-      squareParabolaFrameRef.current = null;
+      jumpingMarkerFlightRef.current = null;
+      jumpingMarkerFrameRef.current = null;
       measureSnake();
       return;
     }
 
-    squareParabolaFrameRef.current = requestAnimationFrame(runSquareParabolaFlight);
+    jumpingMarkerFrameRef.current = requestAnimationFrame(
+      runJumpingMarkerFlight,
+    );
   }, [commitSnakeGeometry, measureSnake]);
 
-  const runBentClickFlight = useCallback(() => {
+  const runCrawlingSnakeClickFlight = useCallback(() => {
     const list = listRef.current;
-    const flight = bentClickFlightRef.current;
+    const flight = crawlingSnakeClickFlightRef.current;
 
     if (!list || !flight) {
-      bentClickFrameRef.current = null;
+      crawlingSnakeClickFrameRef.current = null;
       measureSnake();
       return;
     }
 
     const progress = getSnakeClickFlightProgress(flight, performance.now());
-    const replayHighlightId = bentReplayCompletionIdRef.current
+    const replayHighlightId = crawlingSnakeReplayCompletionIdRef.current
       ? getSnakeFlightCurrentLinkId(list, flight.fromLink, flight.toLink, progress)
       : null;
 
@@ -6159,15 +6164,16 @@ function TocPreview({
     );
 
     if (progress >= 1) {
-      bentClickFlightRef.current = null;
-      bentClickFrameRef.current = null;
+      crawlingSnakeClickFlightRef.current = null;
+      crawlingSnakeClickFrameRef.current = null;
 
-      if (bentReplayCompletionIdRef.current) {
+      if (crawlingSnakeReplayCompletionIdRef.current) {
         const resetId =
-          bentReplayResetIdRef.current || bentReplayCompletionIdRef.current;
+          crawlingSnakeReplayResetIdRef.current ||
+          crawlingSnakeReplayCompletionIdRef.current;
 
-        bentReplayCompletionIdRef.current = null;
-        bentReplayResetIdRef.current = null;
+        crawlingSnakeReplayCompletionIdRef.current = null;
+        crawlingSnakeReplayResetIdRef.current = null;
         resetReplayMarker(resetId);
         return;
       }
@@ -6176,7 +6182,9 @@ function TocPreview({
       return;
     }
 
-    bentClickFrameRef.current = requestAnimationFrame(runBentClickFlight);
+    crawlingSnakeClickFrameRef.current = requestAnimationFrame(
+      runCrawlingSnakeClickFlight,
+    );
   }, [commitSnakeGeometry, measureSnake, scheduleSnakeMeasurement]);
 
   const replayFromTop = useCallback(() => {
@@ -6212,7 +6220,7 @@ function TocPreview({
           return;
         }
 
-        bentClickTargetIdRef.current = nextId;
+        crawlingSnakeTargetIdRef.current = nextId;
         setActiveId(nextId);
         setHighlightedId(nextId);
 
@@ -6235,7 +6243,7 @@ function TocPreview({
     resetPreviewFlights,
   ]);
 
-  const startSquareParabolaFlight = useCallback(
+  const startJumpingMarkerFlight = useCallback(
     (targetId: string) => {
       const list = listRef.current;
 
@@ -6245,7 +6253,7 @@ function TocPreview({
 
       const targetLink = findPreviewLinkById(list, targetId);
       if (!targetLink) {
-        squareParabolaFlightRef.current = null;
+        jumpingMarkerFlightRef.current = null;
         measureSnake();
         return;
       }
@@ -6257,7 +6265,7 @@ function TocPreview({
         measureListLinkHeadPoint(list, targetLink);
 
       if (!fallbackStartPoint) {
-        squareParabolaFlightRef.current = null;
+        jumpingMarkerFlightRef.current = null;
         measureSnake();
         return;
       }
@@ -6266,9 +6274,9 @@ function TocPreview({
         ? { x: currentGeometry.headX, y: currentGeometry.headY }
         : fallbackStartPoint;
       const startRotation =
-        currentGeometry?.headAngle ?? squareParabolaRotationRef.current;
+        currentGeometry?.headAngle ?? jumpingMarkerRotationRef.current;
       const snappedStartRotation = snapRotationToQuarterTurn(startRotation);
-      const nextFlight = buildSquareParabolaFlight(
+      const nextFlight = buildJumpingMarkerFlight(
         list,
         startPoint,
         snappedStartRotation,
@@ -6276,29 +6284,31 @@ function TocPreview({
       );
 
       if (!nextFlight) {
-        squareParabolaRotationRef.current = snappedStartRotation;
-        squareParabolaFlightRef.current = null;
+        jumpingMarkerRotationRef.current = snappedStartRotation;
+        jumpingMarkerFlightRef.current = null;
         measureSnake();
         return;
       }
 
-      squareParabolaFlightRef.current = nextFlight;
+      jumpingMarkerFlightRef.current = nextFlight;
 
-      if (squareParabolaFrameRef.current !== null) {
-        cancelAnimationFrame(squareParabolaFrameRef.current);
+      if (jumpingMarkerFrameRef.current !== null) {
+        cancelAnimationFrame(jumpingMarkerFrameRef.current);
       }
 
-      squareParabolaFrameRef.current = requestAnimationFrame(runSquareParabolaFlight);
+      jumpingMarkerFrameRef.current = requestAnimationFrame(
+        runJumpingMarkerFlight,
+      );
     },
-    [findPreviewLinkById, measureSnake, runSquareParabolaFlight],
+    [findPreviewLinkById, measureSnake, runJumpingMarkerFlight],
   );
 
-  const startBentClickFlight = useCallback(
+  const startCrawlingSnakeClickFlight = useCallback(
     (targetId: string) => {
       const list = listRef.current;
 
-      if (!list || !snakeRectBendActive) {
-        bentClickFlightRef.current = null;
+      if (!list || !crawlingSnakeActive) {
+        crawlingSnakeClickFlightRef.current = null;
         measureSnake();
         return;
       }
@@ -6314,20 +6324,27 @@ function TocPreview({
       );
 
       if (!nextFlight) {
-        bentClickFlightRef.current = null;
+        crawlingSnakeClickFlightRef.current = null;
         measureSnake();
         return;
       }
 
-      bentClickFlightRef.current = nextFlight;
+      crawlingSnakeClickFlightRef.current = nextFlight;
 
-      if (bentClickFrameRef.current !== null) {
-        cancelAnimationFrame(bentClickFrameRef.current);
+      if (crawlingSnakeClickFrameRef.current !== null) {
+        cancelAnimationFrame(crawlingSnakeClickFrameRef.current);
       }
 
-      bentClickFrameRef.current = requestAnimationFrame(runBentClickFlight);
+      crawlingSnakeClickFrameRef.current = requestAnimationFrame(
+        runCrawlingSnakeClickFlight,
+      );
     },
-    [findPreviewLinkById, measureSnake, runBentClickFlight, snakeRectBendActive],
+    [
+      findPreviewLinkById,
+      measureSnake,
+      runCrawlingSnakeClickFlight,
+      crawlingSnakeActive,
+    ],
   );
 
   const refreshFades = useCallback(() => {
@@ -6352,7 +6369,7 @@ function TocPreview({
 
   useEffect(() => {
     cancelReplay();
-    resetPreviewFlights(snakeRectBendActive ? preview.activeId : null);
+    resetPreviewFlights(crawlingSnakeActive ? preview.activeId : null);
     previousActiveIdRef.current = preview.activeId;
     setActiveId(preview.activeId);
     setHighlightedId(preview.activeId);
@@ -6361,7 +6378,7 @@ function TocPreview({
     preview.activeId,
     preview.items,
     resetPreviewFlights,
-    snakeRectBendActive,
+    crawlingSnakeActive,
   ]);
 
   useEffect(() => {
@@ -6376,11 +6393,11 @@ function TocPreview({
       if (snakeFrameRef.current !== null) {
         cancelAnimationFrame(snakeFrameRef.current);
       }
-      if (bentClickFrameRef.current !== null) {
-        cancelAnimationFrame(bentClickFrameRef.current);
+      if (crawlingSnakeClickFrameRef.current !== null) {
+        cancelAnimationFrame(crawlingSnakeClickFrameRef.current);
       }
-      if (squareParabolaFrameRef.current !== null) {
-        cancelAnimationFrame(squareParabolaFrameRef.current);
+      if (jumpingMarkerFrameRef.current !== null) {
+        cancelAnimationFrame(jumpingMarkerFrameRef.current);
       }
     };
   }, [cancelReplay]);
@@ -6438,9 +6455,9 @@ function TocPreview({
 
     keepPreviewLinkVisible(currentLink);
 
-    if (!squareParabolaActive) {
-      if (snakeRectBendActive && previousActiveIdRef.current !== activeId) {
-        startBentClickFlight(activeId);
+    if (!jumpingMarkerActive) {
+      if (crawlingSnakeActive && previousActiveIdRef.current !== activeId) {
+        startCrawlingSnakeClickFlight(activeId);
         previousActiveIdRef.current = activeId;
         return;
       }
@@ -6455,7 +6472,7 @@ function TocPreview({
       return;
     }
 
-    startSquareParabolaFlight(activeId);
+    startJumpingMarkerFlight(activeId);
     previousActiveIdRef.current = activeId;
   }, [
     activeId,
@@ -6463,23 +6480,23 @@ function TocPreview({
     highlightedId,
     keepPreviewLinkVisible,
     scheduleSnakeMeasurement,
-    snakeRectBendActive,
-    squareParabolaActive,
-    startBentClickFlight,
-    startSquareParabolaFlight,
+    crawlingSnakeActive,
+    jumpingMarkerActive,
+    startCrawlingSnakeClickFlight,
+    startJumpingMarkerFlight,
   ]);
 
   useEffect(() => {
-    if (!squareParabolaActive) {
-      squareParabolaFlightRef.current = null;
-      squareParabolaRotationRef.current = 0;
+    if (!jumpingMarkerActive) {
+      jumpingMarkerFlightRef.current = null;
+      jumpingMarkerRotationRef.current = 0;
     }
 
-    if (!snakeRectBendActive) {
-      bentClickFlightRef.current = null;
-      if (bentClickFrameRef.current !== null) {
-        cancelAnimationFrame(bentClickFrameRef.current);
-        bentClickFrameRef.current = null;
+    if (!crawlingSnakeActive) {
+      crawlingSnakeClickFlightRef.current = null;
+      if (crawlingSnakeClickFrameRef.current !== null) {
+        cancelAnimationFrame(crawlingSnakeClickFrameRef.current);
+        crawlingSnakeClickFrameRef.current = null;
       }
     }
 
@@ -6496,8 +6513,8 @@ function TocPreview({
     preview.title,
     preview.showToc,
     scheduleSnakeMeasurement,
-    snakeRectBendActive,
-    squareParabolaActive,
+    crawlingSnakeActive,
+    jumpingMarkerActive,
     textAlignment,
   ]);
 
@@ -6547,21 +6564,21 @@ function TocPreview({
   if (!preview.showToc) return null;
 
   const showToggle = device.showButton && needsToggle;
-  const bentVisibleLength =
-    snakeRectBendActive && listRef.current
-      ? getMarkerSettingsForList(listRef.current).snakeRectBendWidth
-      : TOC_SNAKE_BENT_VISIBLE_LENGTH;
-  const bentPathStyle =
-    snakeRectBendActive && snakeGeometry
+  const crawlingSnakeVisibleLength =
+    crawlingSnakeActive && listRef.current
+      ? getMarkerSettingsForList(listRef.current).crawlingSnakeWidth
+      : TOC_CRAWLING_SNAKE_VISIBLE_LENGTH;
+  const crawlingSnakePathStyle =
+    crawlingSnakeActive && snakeGeometry
       ? ({
-          strokeDasharray: `${Math.min(bentVisibleLength, snakeGeometry.pathLength)} ${Math.max(snakeGeometry.pathLength, 1)}`,
-          strokeDashoffset: `-${Math.max(snakeGeometry.pathLength - bentVisibleLength, 0)}`,
+          strokeDasharray: `${Math.min(crawlingSnakeVisibleLength, snakeGeometry.pathLength)} ${Math.max(snakeGeometry.pathLength, 1)}`,
+          strokeDashoffset: `-${Math.max(snakeGeometry.pathLength - crawlingSnakeVisibleLength, 0)}`,
         } as CSSProperties)
       : undefined;
 
   const nav = (
     <nav
-      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${snakeRectActive ? " toc-widget--animation-snake-rect" : ""}${snakeRectBendActive ? " toc-widget--animation-snake-rect-bend" : ""}${squareParabolaActive ? " toc-widget--animation-square-parabola" : ""}`}
+      className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${followingMarkerActive ? " toc-widget--animation-following-marker" : ""}${crawlingSnakeActive ? " toc-widget--animation-crawling-snake" : ""}${jumpingMarkerActive ? " toc-widget--animation-jumping-marker" : ""}`}
       aria-label="Table of contents preview"
       data-device={previewDevice}
       style={getPreviewContainerStyle(device)}
@@ -6591,11 +6608,11 @@ function TocPreview({
                 <path
                   className="toc-widget__snake-path"
                   d={snakeGeometry.path}
-                  style={bentPathStyle}
+                  style={crawlingSnakePathStyle}
                 />
               ) : null}
             </svg>
-            {snakeGeometry && !snakeRectBendActive ? (
+            {snakeGeometry && !crawlingSnakeActive ? (
               <span
                 className="toc-widget__snake-head"
                 style={

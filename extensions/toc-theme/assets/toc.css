@@ -1,21 +1,21 @@
 .toc-widget {
   --spacing: 4px;
-  --toc-snake-rect-width: 6px;
-  --toc-snake-rect-height: 6px;
-  --toc-snake-rect-color: #575757cf;
-  --toc-snake-rect-rail-space: 4px;
-  --toc-snake-rect-head-offset: 8px;
-  --toc-snake-rect-border-radius: 2px;
-  --toc-snake-rect-bend-height: 3px;
-  --toc-snake-rect-bend-width: 10px;
-  --toc-snake-rect-bend-color: #575757cf;
-  --toc-snake-rect-bend-rail-space: 4px;
-  --toc-snake-rect-bend-head-offset: 8px;
-  --toc-square-parabola-size: 6px;
-  --toc-square-parabola-color: #575757cf;
-  --toc-square-parabola-rail-space: 4px;
-  --toc-square-parabola-head-offset: 8px;
-  --toc-square-parabola-border-radius: 999px;
+  --toc-following-marker-width: 6px;
+  --toc-following-marker-height: 6px;
+  --toc-following-marker-color: #575757cf;
+  --toc-following-marker-rail-space: 4px;
+  --toc-following-marker-head-offset: 8px;
+  --toc-following-marker-border-radius: 2px;
+  --toc-crawling-snake-height: 3px;
+  --toc-crawling-snake-width: 10px;
+  --toc-crawling-snake-color: #575757cf;
+  --toc-crawling-snake-rail-space: 4px;
+  --toc-crawling-snake-head-offset: 8px;
+  --toc-jumping-marker-size: 6px;
+  --toc-jumping-marker-color: #575757cf;
+  --toc-jumping-marker-rail-space: 4px;
+  --toc-jumping-marker-head-offset: 8px;
+  --toc-jumping-marker-border-radius: 999px;
   --toc-border-color: #0000001f;
   --toc-border-width: 1px;
   --toc-border-radius: 12px;
@@ -169,33 +169,33 @@
   padding-right: 0;
 }
 
-.toc-widget--animation-snake-rect .toc-widget__list {
-  padding-left: calc(12px + var(--toc-snake-rect-rail-space));
+.toc-widget--animation-following-marker .toc-widget__list {
+  padding-left: calc(12px + var(--toc-following-marker-rail-space));
 }
 
-.toc-widget--animation-snake-rect-bend .toc-widget__list {
-  padding-left: calc(12px + var(--toc-snake-rect-bend-rail-space));
+.toc-widget--animation-crawling-snake .toc-widget__list {
+  padding-left: calc(12px + var(--toc-crawling-snake-rail-space));
 }
 
-.toc-widget--animation-square-parabola .toc-widget__list {
-  padding-left: calc(12px + var(--toc-square-parabola-rail-space));
+.toc-widget--animation-jumping-marker .toc-widget__list {
+  padding-left: calc(12px + var(--toc-jumping-marker-rail-space));
 }
 
-.toc-widget--animation-snake-rect.toc-widget--flat .toc-widget__list {
-  padding-left: var(--toc-snake-rect-rail-space);
+.toc-widget--animation-following-marker.toc-widget--flat .toc-widget__list {
+  padding-left: var(--toc-following-marker-rail-space);
 }
 
-.toc-widget--animation-snake-rect-bend.toc-widget--flat .toc-widget__list {
-  padding-left: var(--toc-snake-rect-bend-rail-space);
+.toc-widget--animation-crawling-snake.toc-widget--flat .toc-widget__list {
+  padding-left: var(--toc-crawling-snake-rail-space);
 }
 
-.toc-widget--animation-square-parabola.toc-widget--flat .toc-widget__list {
-  padding-left: var(--toc-square-parabola-rail-space);
+.toc-widget--animation-jumping-marker.toc-widget--flat .toc-widget__list {
+  padding-left: var(--toc-jumping-marker-rail-space);
 }
 
-.toc-widget--animation-snake-rect .toc-widget__sublist,
-.toc-widget--animation-snake-rect-bend .toc-widget__sublist,
-.toc-widget--animation-square-parabola .toc-widget__sublist {
+.toc-widget--animation-following-marker .toc-widget__sublist,
+.toc-widget--animation-crawling-snake .toc-widget__sublist,
+.toc-widget--animation-jumping-marker .toc-widget__sublist {
   padding-left: calc(12px + 8px);
 }
 
@@ -227,55 +227,55 @@
   padding-right: 12px;
 }
 
-.toc-widget--animation-snake-rect.toc-widget--align-center .toc-widget__list,
-.toc-widget--animation-snake-rect.toc-widget--align-right .toc-widget__list {
-  padding-left: calc(12px + var(--toc-snake-rect-rail-space));
+.toc-widget--animation-following-marker.toc-widget--align-center .toc-widget__list,
+.toc-widget--animation-following-marker.toc-widget--align-right .toc-widget__list {
+  padding-left: calc(12px + var(--toc-following-marker-rail-space));
 }
 
-.toc-widget--animation-snake-rect-bend.toc-widget--align-center
+.toc-widget--animation-crawling-snake.toc-widget--align-center
   .toc-widget__list,
-.toc-widget--animation-snake-rect-bend.toc-widget--align-right
+.toc-widget--animation-crawling-snake.toc-widget--align-right
   .toc-widget__list {
-  padding-left: calc(12px + var(--toc-snake-rect-bend-rail-space));
+  padding-left: calc(12px + var(--toc-crawling-snake-rail-space));
 }
 
-.toc-widget--animation-square-parabola.toc-widget--align-center
+.toc-widget--animation-jumping-marker.toc-widget--align-center
   .toc-widget__list,
-.toc-widget--animation-square-parabola.toc-widget--align-right
+.toc-widget--animation-jumping-marker.toc-widget--align-right
   .toc-widget__list {
-  padding-left: calc(12px + var(--toc-square-parabola-rail-space));
+  padding-left: calc(12px + var(--toc-jumping-marker-rail-space));
 }
 
-.toc-widget--animation-snake-rect.toc-widget--align-center.toc-widget--flat
+.toc-widget--animation-following-marker.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
-.toc-widget--animation-snake-rect.toc-widget--align-right.toc-widget--flat
+.toc-widget--animation-following-marker.toc-widget--align-right.toc-widget--flat
   .toc-widget__list {
-  padding-left: var(--toc-snake-rect-rail-space);
+  padding-left: var(--toc-following-marker-rail-space);
 }
 
-.toc-widget--animation-snake-rect-bend.toc-widget--align-center.toc-widget--flat
+.toc-widget--animation-crawling-snake.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
-.toc-widget--animation-snake-rect-bend.toc-widget--align-right.toc-widget--flat
+.toc-widget--animation-crawling-snake.toc-widget--align-right.toc-widget--flat
   .toc-widget__list {
-  padding-left: var(--toc-snake-rect-bend-rail-space);
+  padding-left: var(--toc-crawling-snake-rail-space);
 }
 
-.toc-widget--animation-square-parabola.toc-widget--align-center.toc-widget--flat
+.toc-widget--animation-jumping-marker.toc-widget--align-center.toc-widget--flat
   .toc-widget__list,
-.toc-widget--animation-square-parabola.toc-widget--align-right.toc-widget--flat
+.toc-widget--animation-jumping-marker.toc-widget--align-right.toc-widget--flat
   .toc-widget__list {
-  padding-left: var(--toc-square-parabola-rail-space);
+  padding-left: var(--toc-jumping-marker-rail-space);
 }
 
-.toc-widget--animation-snake-rect.toc-widget--align-center .toc-widget__sublist,
-.toc-widget--animation-snake-rect.toc-widget--align-right .toc-widget__sublist,
-.toc-widget--animation-snake-rect-bend.toc-widget--align-center
+.toc-widget--animation-following-marker.toc-widget--align-center .toc-widget__sublist,
+.toc-widget--animation-following-marker.toc-widget--align-right .toc-widget__sublist,
+.toc-widget--animation-crawling-snake.toc-widget--align-center
   .toc-widget__sublist,
-.toc-widget--animation-snake-rect-bend.toc-widget--align-right
+.toc-widget--animation-crawling-snake.toc-widget--align-right
   .toc-widget__sublist,
-.toc-widget--animation-square-parabola.toc-widget--align-center
+.toc-widget--animation-jumping-marker.toc-widget--align-center
   .toc-widget__sublist,
-.toc-widget--animation-square-parabola.toc-widget--align-right
+.toc-widget--animation-jumping-marker.toc-widget--align-right
   .toc-widget__sublist {
   padding-left: calc(12px + 8px);
 }
@@ -334,10 +334,10 @@
   --toc-snake-head-rotation: 0deg;
   --toc-snake-head-bend: 0deg;
   position: absolute;
-  width: var(--toc-square-parabola-size);
-  height: var(--toc-square-parabola-size);
-  border-radius: var(--toc-square-parabola-border-radius);
-  background: var(--toc-square-parabola-color);
+  width: var(--toc-jumping-marker-size);
+  height: var(--toc-jumping-marker-size);
+  border-radius: var(--toc-jumping-marker-border-radius);
+  background: var(--toc-jumping-marker-color);
   box-shadow:
     0 0 0 2px var(--toc-active-background),
     0 0 0 0 rgb(0 0 0 / 0.08);
@@ -356,43 +356,43 @@
   transition: none;
 }
 
-.toc-widget--animation-snake-rect .toc-widget__snake-path {
+.toc-widget--animation-following-marker .toc-widget__snake-path {
   opacity: 0;
   animation: none;
 }
 
-.toc-widget--animation-snake-rect .toc-widget__snake-head {
-  width: var(--toc-snake-rect-width);
-  height: var(--toc-snake-rect-height);
-  border-radius: var(--toc-snake-rect-border-radius);
-  background: var(--toc-snake-rect-color);
+.toc-widget--animation-following-marker .toc-widget__snake-head {
+  width: var(--toc-following-marker-width);
+  height: var(--toc-following-marker-height);
+  border-radius: var(--toc-following-marker-border-radius);
+  background: var(--toc-following-marker-color);
 }
 
-.toc-widget--animation-square-parabola .toc-widget__snake-path {
+.toc-widget--animation-jumping-marker .toc-widget__snake-path {
   opacity: 0;
   animation: none;
 }
 
-.toc-widget--animation-square-parabola .toc-widget__snake-head {
-  width: var(--toc-square-parabola-size);
-  height: var(--toc-square-parabola-size);
-  border-radius: var(--toc-square-parabola-border-radius);
-  background: var(--toc-square-parabola-color);
+.toc-widget--animation-jumping-marker .toc-widget__snake-head {
+  width: var(--toc-jumping-marker-size);
+  height: var(--toc-jumping-marker-size);
+  border-radius: var(--toc-jumping-marker-border-radius);
+  background: var(--toc-jumping-marker-color);
   animation: none;
   transition: none;
   will-change: left, top, transform;
 }
 
-.toc-widget--animation-snake-rect-bend .toc-widget__snake-path {
+.toc-widget--animation-crawling-snake .toc-widget__snake-path {
   opacity: 1;
   animation: none;
-  stroke: var(--toc-snake-rect-bend-color);
-  stroke-width: var(--toc-snake-rect-bend-height);
+  stroke: var(--toc-crawling-snake-color);
+  stroke-width: var(--toc-crawling-snake-height);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.toc-widget--animation-snake-rect-bend .toc-widget__snake-head {
+.toc-widget--animation-crawling-snake .toc-widget__snake-head {
   display: none;
 }
 

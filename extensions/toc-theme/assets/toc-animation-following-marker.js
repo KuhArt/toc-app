@@ -7,7 +7,9 @@
     throw new Error("Missing shared TOC animation helpers");
   }
 
-  registry["snake-rect"] = function createSnakeRectController(context) {
+  registry["following-marker"] = function createFollowingMarkerController(
+    context,
+  ) {
     let lastGeometry = null;
     let snakeClickFlight = null;
     let snakeClickFrame = null;

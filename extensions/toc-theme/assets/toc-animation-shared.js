@@ -7,9 +7,9 @@
   const TOC_SNAKE_TOP_OFFSET = 8;
   const TOC_SNAKE_CLICK_MIN_DURATION = 220;
   const TOC_SNAKE_CLICK_MAX_DURATION = 460;
-  const TOC_SQUARE_PARABOLA_SIZE = 6;
-  const TOC_SQUARE_PARABOLA_MIN_DURATION = 260;
-  const TOC_SQUARE_PARABOLA_MAX_DURATION = 420;
+  const TOC_JUMPING_MARKER_SIZE = 6;
+  const TOC_JUMPING_MARKER_MIN_DURATION = 260;
+  const TOC_JUMPING_MARKER_MAX_DURATION = 420;
 
   function readMarkerCssPixels(element, propertyName, fallback) {
     if (!(element instanceof Element)) {
@@ -28,18 +28,18 @@
 
   function getMarkerSettingsForList(listElement) {
     const widget = getMarkerWidget(listElement);
-    let headOffsetPropertyName = "--toc-square-parabola-head-offset";
+    let headOffsetPropertyName = "--toc-jumping-marker-head-offset";
 
-    if (widget?.classList.contains("toc-widget--animation-snake-rect")) {
-      headOffsetPropertyName = "--toc-snake-rect-head-offset";
+    if (widget?.classList.contains("toc-widget--animation-following-marker")) {
+      headOffsetPropertyName = "--toc-following-marker-head-offset";
     } else if (
-      widget?.classList.contains("toc-widget--animation-snake-rect-bend")
+      widget?.classList.contains("toc-widget--animation-crawling-snake")
     ) {
-      headOffsetPropertyName = "--toc-snake-rect-bend-head-offset";
+      headOffsetPropertyName = "--toc-crawling-snake-head-offset";
     } else if (
-      widget?.classList.contains("toc-widget--animation-square-parabola")
+      widget?.classList.contains("toc-widget--animation-jumping-marker")
     ) {
-      headOffsetPropertyName = "--toc-square-parabola-head-offset";
+      headOffsetPropertyName = "--toc-jumping-marker-head-offset";
     }
 
     return {
@@ -48,15 +48,15 @@
         headOffsetPropertyName,
         TOC_SNAKE_HEAD_OFFSET,
       ),
-      snakeRectBendWidth: readMarkerCssPixels(
+      crawlingSnakeWidth: readMarkerCssPixels(
         widget,
-        "--toc-snake-rect-bend-width",
+        "--toc-crawling-snake-width",
         16,
       ),
-      squareParabolaSize: readMarkerCssPixels(
+      jumpingMarkerSize: readMarkerCssPixels(
         widget,
-        "--toc-square-parabola-size",
-        TOC_SQUARE_PARABOLA_SIZE,
+        "--toc-jumping-marker-size",
+        TOC_JUMPING_MARKER_SIZE,
       ),
     };
   }
@@ -111,7 +111,7 @@
     };
   }
 
-  function getTocMarkerBounds(listRect, markerSize = TOC_SQUARE_PARABOLA_SIZE) {
+  function getTocMarkerBounds(listRect, markerSize = TOC_JUMPING_MARKER_SIZE) {
     const horizontalInset = markerSize / 2 + 2;
     const verticalInset = markerSize / 2 + 2;
 
@@ -147,7 +147,7 @@
 
     return getSnakeHeadPoint(
       createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
-      getTocMarkerBounds(listRect, markerSettings.squareParabolaSize),
+      getTocMarkerBounds(listRect, markerSettings.jumpingMarkerSize),
     );
   }
 
@@ -268,7 +268,7 @@
     };
   }
 
-  function buildSquareParabolaFlight(
+  function buildJumpingMarkerFlight(
     listElement,
     startPoint,
     startRotation,
@@ -286,7 +286,7 @@
     const markerSettings = getMarkerSettingsForList(listElement);
     const bounds = getTocMarkerBounds(
       listRect,
-      markerSettings.squareParabolaSize,
+      markerSettings.jumpingMarkerSize,
     );
     const targetMetric = createSnakeLinkMetric(
       listRect,
@@ -309,8 +309,8 @@
       ),
       duration: clampNumber(
         220 + distance * 0.45,
-        TOC_SQUARE_PARABOLA_MIN_DURATION,
-        TOC_SQUARE_PARABOLA_MAX_DURATION,
+        TOC_JUMPING_MARKER_MIN_DURATION,
+        TOC_JUMPING_MARKER_MAX_DURATION,
       ),
       endPoint,
       rotationDelta: endPoint.y > boundedStartPoint.y ? -90 : 90,
@@ -320,7 +320,7 @@
     };
   }
 
-  function getSquareParabolaProgress(flight, now) {
+  function getJumpingMarkerProgress(flight, now) {
     return clampNumber((now - flight.startTime) / flight.duration, 0, 1);
   }
 
@@ -570,7 +570,7 @@
     );
   }
 
-  function appendCenteredBentMarkerTail(
+  function appendCenteredCrawlingSnakeTail(
     points,
     activeMetric,
     listHeight,
@@ -592,7 +592,7 @@
     activeLink,
     nextLink = null,
     nextProgress = 0,
-    centerBentMarker = false,
+    centerCrawlingSnake = false,
   ) {
     if (!(activeLink instanceof HTMLAnchorElement)) {
       return null;
@@ -632,12 +632,12 @@
       );
     }
 
-    if (centerBentMarker) {
-      appendCenteredBentMarkerTail(
+    if (centerCrawlingSnake) {
+      appendCenteredCrawlingSnakeTail(
         points,
         allMetrics[activeIndex],
         listRect.height,
-        markerSettings.snakeRectBendWidth,
+        markerSettings.crawlingSnakeWidth,
       );
     }
 
@@ -782,7 +782,7 @@
     };
   }
 
-  function measureTocSquareParabolaGeometry(
+  function measureTocJumpingMarkerGeometry(
     listElement,
     activeLink,
     settledRotation,
@@ -801,7 +801,7 @@
     const markerSettings = getMarkerSettingsForList(listElement);
     const bounds = getTocMarkerBounds(
       listRect,
-      markerSettings.squareParabolaSize,
+      markerSettings.jumpingMarkerSize,
     );
     const activeMetric = createSnakeLinkMetric(
       listRect,
@@ -841,15 +841,15 @@
 
   window.__shopifyTocAnimationShared = {
     buildSnakeClickFlight,
-    buildSquareParabolaFlight,
+    buildJumpingMarkerFlight,
     clampNumber,
     getSnakeClickFlightProgress,
-    getSquareParabolaProgress,
+    getJumpingMarkerProgress,
     isSnakeLinkMovingUp,
     measureListLinkHeadPoint,
     measureTocSnakeClickFlightGeometry,
     measureTocSnakeGeometry,
-    measureTocSquareParabolaGeometry,
+    measureTocJumpingMarkerGeometry,
     snapRotationToQuarterTurn,
   };
 })();

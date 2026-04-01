@@ -7,16 +7,16 @@
     throw new Error("Missing shared TOC animation helpers");
   }
 
-  registry["square-parabola"] = function createSquareParabolaController(
+  registry["jumping-marker"] = function createJumpingMarkerController(
     context,
   ) {
     let lastGeometry = null;
     let pendingScrollTargetId = "";
     let pendingScrollTargetLink = null;
     let pendingScrollTargetDeadline = 0;
-    let squareParabolaFlight = null;
-    let squareParabolaFrame = null;
-    let squareParabolaRotation = 0;
+    let jumpingMarkerFlight = null;
+    let jumpingMarkerFrame = null;
+    let jumpingMarkerRotation = 0;
 
     function clearPendingScrollTarget() {
       pendingScrollTargetId = "";
@@ -40,22 +40,22 @@
       context.renderGeometry(geometry);
     }
 
-    function clearSquareParabolaFlight() {
-      squareParabolaFlight = null;
-      if (squareParabolaFrame !== null) {
-        cancelAnimationFrame(squareParabolaFrame);
-        squareParabolaFrame = null;
+    function clearJumpingMarkerFlight() {
+      jumpingMarkerFlight = null;
+      if (jumpingMarkerFrame !== null) {
+        cancelAnimationFrame(jumpingMarkerFrame);
+        jumpingMarkerFrame = null;
       }
       context.setAnimating(false);
     }
 
-    function startSquareParabolaFlight(fromLink, toLink) {
+    function startJumpingMarkerFlight(fromLink, toLink) {
       const fallbackStartPoint =
         (fromLink && shared.measureListLinkHeadPoint(context.list, fromLink)) ||
         (toLink && shared.measureListLinkHeadPoint(context.list, toLink));
 
       if (!fallbackStartPoint || !(toLink instanceof HTMLAnchorElement)) {
-        clearSquareParabolaFlight();
+        clearJumpingMarkerFlight();
         context.requestSync();
         return;
       }
@@ -65,11 +65,11 @@
         : fallbackStartPoint;
       const startRotation = lastGeometry
         ? lastGeometry.headAngle
-        : squareParabolaRotation;
+        : jumpingMarkerRotation;
       const snappedStartRotation = shared.snapRotationToQuarterTurn(
         startRotation,
       );
-      const nextFlight = shared.buildSquareParabolaFlight(
+      const nextFlight = shared.buildJumpingMarkerFlight(
         context.list,
         startPoint,
         snappedStartRotation,
@@ -77,64 +77,64 @@
       );
 
       if (!nextFlight) {
-        squareParabolaRotation = snappedStartRotation;
-        clearSquareParabolaFlight();
+        jumpingMarkerRotation = snappedStartRotation;
+        clearJumpingMarkerFlight();
         context.requestSync();
         return;
       }
 
-      squareParabolaFlight = nextFlight;
+      jumpingMarkerFlight = nextFlight;
       context.setAnimating(true);
 
-      if (squareParabolaFrame !== null) {
-        cancelAnimationFrame(squareParabolaFrame);
+      if (jumpingMarkerFrame !== null) {
+        cancelAnimationFrame(jumpingMarkerFrame);
       }
 
-      squareParabolaFrame = requestAnimationFrame(runSquareParabolaFlight);
+      jumpingMarkerFrame = requestAnimationFrame(runJumpingMarkerFlight);
     }
 
-    function runSquareParabolaFlight() {
+    function runJumpingMarkerFlight() {
       const activeLink = context.getCurrentLink();
 
-      if (!(activeLink instanceof HTMLAnchorElement) || !squareParabolaFlight) {
-        squareParabolaFrame = null;
+      if (!(activeLink instanceof HTMLAnchorElement) || !jumpingMarkerFlight) {
+        jumpingMarkerFrame = null;
         context.requestSync();
         return;
       }
 
-      const progress = shared.getSquareParabolaProgress(
-        squareParabolaFlight,
+      const progress = shared.getJumpingMarkerProgress(
+        jumpingMarkerFlight,
         context.now(),
       );
 
       renderGeometry(
-        shared.measureTocSquareParabolaGeometry(
+        shared.measureTocJumpingMarkerGeometry(
           context.list,
           activeLink,
-          squareParabolaRotation,
-          squareParabolaFlight,
+          jumpingMarkerRotation,
+          jumpingMarkerFlight,
           progress,
         ),
       );
 
       if (progress >= 1) {
-        squareParabolaRotation = shared.snapRotationToQuarterTurn(
-          squareParabolaFlight.startRotation +
-            squareParabolaFlight.rotationDelta,
+        jumpingMarkerRotation = shared.snapRotationToQuarterTurn(
+          jumpingMarkerFlight.startRotation +
+            jumpingMarkerFlight.rotationDelta,
         );
-        clearSquareParabolaFlight();
+        clearJumpingMarkerFlight();
         context.requestSync();
         return;
       }
 
-      squareParabolaFrame = requestAnimationFrame(runSquareParabolaFlight);
+      jumpingMarkerFrame = requestAnimationFrame(runJumpingMarkerFlight);
     }
 
     function clearState(resetRotation) {
       clearPendingScrollTarget();
-      clearSquareParabolaFlight();
+      clearJumpingMarkerFlight();
       if (resetRotation) {
-        squareParabolaRotation = 0;
+        jumpingMarkerRotation = 0;
       }
       renderGeometry(null);
     }
@@ -148,7 +148,7 @@
       },
       handleCurrentLinkChange({ nextLink, previousLink }) {
         if (nextLink !== previousLink) {
-          startSquareParabolaFlight(previousLink, nextLink);
+          startJumpingMarkerFlight(previousLink, nextLink);
         }
       },
       handleLinkClick({
@@ -164,7 +164,7 @@
         }
 
         setPendingScrollTarget(targetId, targetLink, targetHeading);
-        startSquareParabolaFlight(previousLink, targetLink);
+        startJumpingMarkerFlight(previousLink, targetLink);
         return { nextCurrentLink: targetLink };
       },
       resolveTrackedLink({ currentId, detectedLink }) {
@@ -194,27 +194,27 @@
           return;
         }
 
-        const progress = squareParabolaFlight
-          ? shared.getSquareParabolaProgress(squareParabolaFlight, context.now())
+        const progress = jumpingMarkerFlight
+          ? shared.getJumpingMarkerProgress(jumpingMarkerFlight, context.now())
           : 1;
 
         renderGeometry(
-          shared.measureTocSquareParabolaGeometry(
+          shared.measureTocJumpingMarkerGeometry(
             context.list,
             activeLink,
-            squareParabolaRotation,
-            squareParabolaFlight,
+            jumpingMarkerRotation,
+            jumpingMarkerFlight,
             progress,
           ),
         );
 
-        if (squareParabolaFlight && progress >= 1) {
-          squareParabolaRotation = shared.snapRotationToQuarterTurn(
-            squareParabolaFlight.startRotation +
-              squareParabolaFlight.rotationDelta,
+        if (jumpingMarkerFlight && progress >= 1) {
+          jumpingMarkerRotation = shared.snapRotationToQuarterTurn(
+            jumpingMarkerFlight.startRotation +
+              jumpingMarkerFlight.rotationDelta,
           );
-          squareParabolaFlight = null;
-          squareParabolaFrame = null;
+          jumpingMarkerFlight = null;
+          jumpingMarkerFrame = null;
           context.setAnimating(false);
         }
       },

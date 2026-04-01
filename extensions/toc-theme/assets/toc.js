@@ -6,16 +6,16 @@
   const DEBUG_PREFIX = "[TOC]";
   const TOC_HEADING_ID_ATTRIBUTE = "data-shopify-toc-id";
   const TOC_GENERATED_ID_ATTRIBUTE = "data-shopify-toc-generated-id";
-  const TOC_SNAKE_BENT_VISIBLE_LENGTH = 16;
+  const TOC_CRAWLING_SNAKE_VISIBLE_LENGTH = 16;
   const TOC_MARKER_ANIMATION_TYPES = [
-    "snake-rect",
-    "snake-rect-bend",
-    "square-parabola",
+    "following-marker",
+    "crawling-snake",
+    "jumping-marker",
   ];
   const TOC_MARKER_ANIMATION_CLASS_NAMES = {
-    "snake-rect": "toc-widget--animation-snake-rect",
-    "snake-rect-bend": "toc-widget--animation-snake-rect-bend",
-    "square-parabola": "toc-widget--animation-square-parabola",
+    "following-marker": "toc-widget--animation-following-marker",
+    "crawling-snake": "toc-widget--animation-crawling-snake",
+    "jumping-marker": "toc-widget--animation-jumping-marker",
   };
   const TOC_ANIMATION_REGISTRY_KEY = "__shopifyTocAnimations";
   const TOC_ANIMATION_SCRIPT_ATTRIBUTE = "data-shopify-toc-animation-src";
@@ -800,7 +800,7 @@
   }
 
   function normalizeAnimationType(value) {
-    return ["none", "snake-rect", "snake-rect-bend", "square-parabola"].includes(value)
+    return ["none", "following-marker", "crawling-snake", "jumping-marker"].includes(value)
       ? value
       : "none";
   }
@@ -1253,19 +1253,19 @@
     overlay.svg.setAttribute("width", String(geometry.width));
     overlay.svg.setAttribute("height", String(geometry.height));
     overlay.path.setAttribute("d", geometry.path);
-    if (animationType === "snake-rect-bend") {
-      const bentVisibleLength = readOverlayWidgetCssPixels(
+    if (animationType === "crawling-snake") {
+      const crawlingSnakeVisibleLength = readOverlayWidgetCssPixels(
         overlay.root,
-        "--toc-snake-rect-bend-width",
-        TOC_SNAKE_BENT_VISIBLE_LENGTH,
+        "--toc-crawling-snake-width",
+        TOC_CRAWLING_SNAKE_VISIBLE_LENGTH,
       );
       overlay.path.style.setProperty(
         "stroke-dasharray",
-        `${Math.min(bentVisibleLength, geometry.pathLength)} ${Math.max(geometry.pathLength, 1)}`,
+        `${Math.min(crawlingSnakeVisibleLength, geometry.pathLength)} ${Math.max(geometry.pathLength, 1)}`,
       );
       overlay.path.style.setProperty(
         "stroke-dashoffset",
-        `-${Math.max(geometry.pathLength - bentVisibleLength, 0)}`,
+        `-${Math.max(geometry.pathLength - crawlingSnakeVisibleLength, 0)}`,
       );
     } else {
       overlay.path.style.removeProperty("stroke-dasharray");
