@@ -779,10 +779,10 @@ const PREVIEW_STYLES = `
     margin-right: auto;
   }
 
-  .toc-preview-float .toc-widget {
+  .toc-preview-float .toc-widget,
+  .toc-preview-flow .toc-widget {
     box-sizing: border-box;
     width: 100%;
-    max-width: none;
     margin: 0;
   }
 
@@ -6433,20 +6433,7 @@ function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
 
 function getPreviewPlacementClass(
   previewDevice: "desktop" | "mobile",
-  position: TocDeviceConfig["position"],
 ) {
-  if (previewDevice !== "desktop") {
-    return "toc-preview-flow";
-  }
-
-  if (position === "float-left") {
-    return "toc-preview-float toc-preview-float--left";
-  }
-
-  if (position === "float-right") {
-    return "toc-preview-float";
-  }
-
   return "toc-preview-flow";
 }
 
@@ -6455,10 +6442,6 @@ function getPreviewPlacementStyle(
   device: TocDeviceConfig,
 ): CSSProperties | undefined {
   if (previewDevice !== "desktop") {
-    return undefined;
-  }
-
-  if (device.position !== "float-left" && device.position !== "float-right") {
     return undefined;
   }
 
@@ -8319,7 +8302,7 @@ function TocPreview({
   );
   return (
     <div
-      className={getPreviewPlacementClass(previewDevice, device.position)}
+      className={getPreviewPlacementClass(previewDevice)}
       style={getPreviewPlacementStyle(previewDevice, device)}
     >
       {nav}
