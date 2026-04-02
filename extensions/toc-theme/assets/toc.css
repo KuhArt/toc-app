@@ -44,6 +44,10 @@
   --toc-show-button-border-color: #575757;
   --toc-show-button-border-width: 0px;
   --toc-show-button-border-radius: 0px;
+  --toc-show-button-padding-top: 0px;
+  --toc-show-button-padding-bottom: 0px;
+  --toc-show-button-padding-left: 0px;
+  --toc-show-button-padding-right: 0px;
   --toc-mobile-border-color: #0000001f;
   --toc-mobile-border-width: 0px;
   --toc-mobile-border-radius: 12px;
@@ -71,6 +75,10 @@
   --toc-mobile-show-button-border-color: #575757;
   --toc-mobile-show-button-border-width: 0px;
   --toc-mobile-show-button-border-radius: 0px;
+  --toc-mobile-show-button-padding-top: 0px;
+  --toc-mobile-show-button-padding-bottom: 0px;
+  --toc-mobile-show-button-padding-left: 0px;
+  --toc-mobile-show-button-padding-right: 0px;
   --toc-active-title-font-size: var(--toc-title-font-size);
   --toc-active-title-font-color: var(--toc-title-font-color);
   --toc-active-title-font-weight: var(--toc-title-font-weight);
@@ -90,6 +98,10 @@
   --toc-active-button-border-color: var(--toc-show-button-border-color);
   --toc-active-button-border-width: var(--toc-show-button-border-width);
   --toc-active-button-border-radius: var(--toc-show-button-border-radius);
+  --toc-active-button-padding-top: var(--toc-show-button-padding-top);
+  --toc-active-button-padding-bottom: var(--toc-show-button-padding-bottom);
+  --toc-active-button-padding-left: var(--toc-show-button-padding-left);
+  --toc-active-button-padding-right: var(--toc-show-button-padding-right);
   border: var(--toc-border-width) solid var(--toc-border-color);
   border-radius: var(--toc-border-radius);
   box-shadow: var(--toc-shadow);
@@ -423,8 +435,10 @@
     var(--toc-active-button-border-color);
   border-radius: var(--toc-active-button-border-radius);
   background: transparent;
-  padding: calc(var(--toc-active-button-border-width) * 2)
-    calc(var(--toc-active-button-border-width) * 6);
+  padding-top: var(--toc-active-button-padding-top);
+  padding-right: var(--toc-active-button-padding-right);
+  padding-bottom: var(--toc-active-button-padding-bottom);
+  padding-left: var(--toc-active-button-padding-left);
   font-size: var(--toc-active-button-font-size);
   font-weight: var(--toc-active-button-font-weight);
   color: var(--toc-active-button-font-color);
@@ -566,6 +580,14 @@
   --toc-active-button-border-width: var(--toc-mobile-show-button-border-width);
   --toc-active-button-border-radius: var(
     --toc-mobile-show-button-border-radius
+  );
+  --toc-active-button-padding-top: var(--toc-mobile-show-button-padding-top);
+  --toc-active-button-padding-bottom: var(
+    --toc-mobile-show-button-padding-bottom
+  );
+  --toc-active-button-padding-left: var(--toc-mobile-show-button-padding-left);
+  --toc-active-button-padding-right: var(
+    --toc-mobile-show-button-padding-right
   );
 }
 

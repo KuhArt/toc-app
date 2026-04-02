@@ -71,6 +71,10 @@
     showButtonBorderColor: "#575757",
     showButtonBorderWidth: 0,
     showButtonBorderRadius: 0,
+    showButtonPaddingTop: 0,
+    showButtonPaddingBottom: 0,
+    showButtonPaddingLeft: 0,
+    showButtonPaddingRight: 0,
     animationType: "jumping-marker",
   };
   const DEFAULT_MOBILE_CONTAINER = {
@@ -124,6 +128,10 @@
     showButtonBorderColor: "#575757",
     showButtonBorderWidth: 0,
     showButtonBorderRadius: 0,
+    showButtonPaddingTop: 0,
+    showButtonPaddingBottom: 0,
+    showButtonPaddingLeft: 0,
+    showButtonPaddingRight: 0,
     animationType: "none",
   };
 
@@ -955,6 +963,10 @@
     return "extra-large";
   }
 
+  function getLegacyShowButtonPaddingValue(borderWidth, side) {
+    return borderWidth * (side === "left" || side === "right" ? 6 : 2);
+  }
+
   function normalizeDeviceConfig(value, fallback, device) {
     const config = value && typeof value === "object" ? value : {};
     const legacyJumpingMarkerSize =
@@ -966,6 +978,11 @@
       config,
       fallback.shadowPreset,
     );
+    const normalizedShowButtonBorderWidth =
+      typeof config.showButtonBorderWidth === "number" &&
+      Number.isFinite(config.showButtonBorderWidth)
+        ? Math.max(0, config.showButtonBorderWidth)
+        : fallback.showButtonBorderWidth;
 
     return {
       position:
@@ -1196,16 +1213,44 @@
         config.showButtonBorderColor.trim()
           ? config.showButtonBorderColor.trim()
           : fallback.showButtonBorderColor,
-      showButtonBorderWidth:
-        typeof config.showButtonBorderWidth === "number" &&
-        Number.isFinite(config.showButtonBorderWidth)
-          ? Math.max(0, config.showButtonBorderWidth)
-          : fallback.showButtonBorderWidth,
+      showButtonBorderWidth: normalizedShowButtonBorderWidth,
       showButtonBorderRadius:
         typeof config.showButtonBorderRadius === "number" &&
         Number.isFinite(config.showButtonBorderRadius)
           ? Math.max(0, config.showButtonBorderRadius)
           : fallback.showButtonBorderRadius,
+      showButtonPaddingTop:
+        typeof config.showButtonPaddingTop === "number" &&
+        Number.isFinite(config.showButtonPaddingTop)
+          ? Math.max(0, config.showButtonPaddingTop)
+          : getLegacyShowButtonPaddingValue(
+              normalizedShowButtonBorderWidth,
+              "top",
+            ),
+      showButtonPaddingBottom:
+        typeof config.showButtonPaddingBottom === "number" &&
+        Number.isFinite(config.showButtonPaddingBottom)
+          ? Math.max(0, config.showButtonPaddingBottom)
+          : getLegacyShowButtonPaddingValue(
+              normalizedShowButtonBorderWidth,
+              "bottom",
+            ),
+      showButtonPaddingLeft:
+        typeof config.showButtonPaddingLeft === "number" &&
+        Number.isFinite(config.showButtonPaddingLeft)
+          ? Math.max(0, config.showButtonPaddingLeft)
+          : getLegacyShowButtonPaddingValue(
+              normalizedShowButtonBorderWidth,
+              "left",
+            ),
+      showButtonPaddingRight:
+        typeof config.showButtonPaddingRight === "number" &&
+        Number.isFinite(config.showButtonPaddingRight)
+          ? Math.max(0, config.showButtonPaddingRight)
+          : getLegacyShowButtonPaddingValue(
+              normalizedShowButtonBorderWidth,
+              "right",
+            ),
       animationType: normalizeAnimationType(config.animationType),
     };
   }
@@ -1438,6 +1483,22 @@
       "--toc-show-button-border-radius",
       `${desktop.showButtonBorderRadius}px`,
     );
+    toc.style.setProperty(
+      "--toc-show-button-padding-top",
+      `${desktop.showButtonPaddingTop}px`,
+    );
+    toc.style.setProperty(
+      "--toc-show-button-padding-bottom",
+      `${desktop.showButtonPaddingBottom}px`,
+    );
+    toc.style.setProperty(
+      "--toc-show-button-padding-left",
+      `${desktop.showButtonPaddingLeft}px`,
+    );
+    toc.style.setProperty(
+      "--toc-show-button-padding-right",
+      `${desktop.showButtonPaddingRight}px`,
+    );
     toc.style.setProperty("--toc-mobile-border-color", mobile.color);
     toc.style.setProperty("--toc-mobile-border-width", `${mobile.width}px`);
     toc.style.setProperty("--toc-mobile-border-radius", `${mobile.radius}px`);
@@ -1533,6 +1594,22 @@
     toc.style.setProperty(
       "--toc-mobile-show-button-border-radius",
       `${mobile.showButtonBorderRadius}px`,
+    );
+    toc.style.setProperty(
+      "--toc-mobile-show-button-padding-top",
+      `${mobile.showButtonPaddingTop}px`,
+    );
+    toc.style.setProperty(
+      "--toc-mobile-show-button-padding-bottom",
+      `${mobile.showButtonPaddingBottom}px`,
+    );
+    toc.style.setProperty(
+      "--toc-mobile-show-button-padding-left",
+      `${mobile.showButtonPaddingLeft}px`,
+    );
+    toc.style.setProperty(
+      "--toc-mobile-show-button-padding-right",
+      `${mobile.showButtonPaddingRight}px`,
     );
   }
 

@@ -113,6 +113,10 @@ type TocDeviceConfig = TocBorderConfig &
     showButtonBorderColor: string;
     showButtonBorderWidth: number;
     showButtonBorderRadius: number;
+    showButtonPaddingTop: number;
+    showButtonPaddingBottom: number;
+    showButtonPaddingLeft: number;
+    showButtonPaddingRight: number;
     animationType: TocAnimationType;
   };
 type TocConfig = {
@@ -208,6 +212,10 @@ const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
   showButtonBorderColor: "#575757",
   showButtonBorderWidth: 0,
   showButtonBorderRadius: 0,
+  showButtonPaddingTop: 0,
+  showButtonPaddingBottom: 0,
+  showButtonPaddingLeft: 0,
+  showButtonPaddingRight: 0,
   animationType: "jumping-marker",
 };
 const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
@@ -261,6 +269,10 @@ const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
   showButtonBorderColor: "#575757",
   showButtonBorderWidth: 0,
   showButtonBorderRadius: 0,
+  showButtonPaddingTop: 0,
+  showButtonPaddingBottom: 0,
+  showButtonPaddingLeft: 0,
+  showButtonPaddingRight: 0,
   animationType: "none",
 };
 
@@ -916,6 +928,10 @@ type TocDeviceConfigInput = {
   showButtonBorderColor: string;
   showButtonBorderWidth: string;
   showButtonBorderRadius: string;
+  showButtonPaddingTop: string;
+  showButtonPaddingBottom: string;
+  showButtonPaddingLeft: string;
+  showButtonPaddingRight: string;
   animationType: string;
   followingMarkerWidth: string;
   followingMarkerHeight: string;
@@ -977,6 +993,10 @@ const DEVICE_SECTION_FIELDS = {
     "showButtonBorderColor",
     "showButtonBorderWidth",
     "showButtonBorderRadius",
+    "showButtonPaddingTop",
+    "showButtonPaddingBottom",
+    "showButtonPaddingLeft",
+    "showButtonPaddingRight",
   ],
   animation: [
     "animationType",
@@ -1493,6 +1513,14 @@ export default function Index() {
     useState(String(config.desktop.showButtonBorderWidth));
   const [desktopShowButtonBorderRadius, setDesktopShowButtonBorderRadius] =
     useState(String(config.desktop.showButtonBorderRadius));
+  const [desktopShowButtonPaddingTop, setDesktopShowButtonPaddingTop] =
+    useState(String(config.desktop.showButtonPaddingTop));
+  const [desktopShowButtonPaddingBottom, setDesktopShowButtonPaddingBottom] =
+    useState(String(config.desktop.showButtonPaddingBottom));
+  const [desktopShowButtonPaddingLeft, setDesktopShowButtonPaddingLeft] =
+    useState(String(config.desktop.showButtonPaddingLeft));
+  const [desktopShowButtonPaddingRight, setDesktopShowButtonPaddingRight] =
+    useState(String(config.desktop.showButtonPaddingRight));
   const [desktopAnimationType, setDesktopAnimationType] = useState(
     config.desktop.animationType,
   );
@@ -1640,6 +1668,15 @@ export default function Index() {
     useState(String(config.mobile.showButtonBorderWidth));
   const [mobileShowButtonBorderRadius, setMobileShowButtonBorderRadius] =
     useState(String(config.mobile.showButtonBorderRadius));
+  const [mobileShowButtonPaddingTop, setMobileShowButtonPaddingTop] = useState(
+    String(config.mobile.showButtonPaddingTop),
+  );
+  const [mobileShowButtonPaddingBottom, setMobileShowButtonPaddingBottom] =
+    useState(String(config.mobile.showButtonPaddingBottom));
+  const [mobileShowButtonPaddingLeft, setMobileShowButtonPaddingLeft] =
+    useState(String(config.mobile.showButtonPaddingLeft));
+  const [mobileShowButtonPaddingRight, setMobileShowButtonPaddingRight] =
+    useState(String(config.mobile.showButtonPaddingRight));
   const [mobileAnimationType, setMobileAnimationType] = useState(
     config.mobile.animationType,
   );
@@ -1747,6 +1784,10 @@ export default function Index() {
       showButtonBorderColor: desktopShowButtonBorderColor,
       showButtonBorderWidth: desktopShowButtonBorderWidth,
       showButtonBorderRadius: desktopShowButtonBorderRadius,
+      showButtonPaddingTop: desktopShowButtonPaddingTop,
+      showButtonPaddingBottom: desktopShowButtonPaddingBottom,
+      showButtonPaddingLeft: desktopShowButtonPaddingLeft,
+      showButtonPaddingRight: desktopShowButtonPaddingRight,
       animationType: desktopAnimationType,
       followingMarkerWidth: desktopFollowingMarkerWidth,
       followingMarkerHeight: desktopFollowingMarkerHeight,
@@ -1800,6 +1841,10 @@ export default function Index() {
       showButtonBorderColor: mobileShowButtonBorderColor,
       showButtonBorderWidth: mobileShowButtonBorderWidth,
       showButtonBorderRadius: mobileShowButtonBorderRadius,
+      showButtonPaddingTop: mobileShowButtonPaddingTop,
+      showButtonPaddingBottom: mobileShowButtonPaddingBottom,
+      showButtonPaddingLeft: mobileShowButtonPaddingLeft,
+      showButtonPaddingRight: mobileShowButtonPaddingRight,
       animationType: mobileAnimationType,
       followingMarkerWidth: mobileFollowingMarkerWidth,
       followingMarkerHeight: mobileFollowingMarkerHeight,
@@ -2061,6 +2106,18 @@ export default function Index() {
           setDesktopShowButtonBorderRadius(
             String(sourceConfig.showButtonBorderRadius),
           );
+          setDesktopShowButtonPaddingTop(
+            String(sourceConfig.showButtonPaddingTop),
+          );
+          setDesktopShowButtonPaddingBottom(
+            String(sourceConfig.showButtonPaddingBottom),
+          );
+          setDesktopShowButtonPaddingLeft(
+            String(sourceConfig.showButtonPaddingLeft),
+          );
+          setDesktopShowButtonPaddingRight(
+            String(sourceConfig.showButtonPaddingRight),
+          );
         } else {
           setMobileShowButton(sourceConfig.showButton);
           setMobileShowButtonHeight(String(sourceConfig.showButtonHeight));
@@ -2077,6 +2134,18 @@ export default function Index() {
           );
           setMobileShowButtonBorderRadius(
             String(sourceConfig.showButtonBorderRadius),
+          );
+          setMobileShowButtonPaddingTop(
+            String(sourceConfig.showButtonPaddingTop),
+          );
+          setMobileShowButtonPaddingBottom(
+            String(sourceConfig.showButtonPaddingBottom),
+          );
+          setMobileShowButtonPaddingLeft(
+            String(sourceConfig.showButtonPaddingLeft),
+          );
+          setMobileShowButtonPaddingRight(
+            String(sourceConfig.showButtonPaddingRight),
           );
         }
         break;
@@ -2177,6 +2246,10 @@ export default function Index() {
       setDesktopShowButtonBorderColor,
       setDesktopShowButtonBorderWidth,
       setDesktopShowButtonBorderRadius,
+      setDesktopShowButtonPaddingTop,
+      setDesktopShowButtonPaddingBottom,
+      setDesktopShowButtonPaddingLeft,
+      setDesktopShowButtonPaddingRight,
       setDesktopAnimationType,
       setDesktopFollowingMarkerWidth,
       setDesktopFollowingMarkerHeight,
@@ -2228,6 +2301,10 @@ export default function Index() {
       setMobileShowButtonBorderColor,
       setMobileShowButtonBorderWidth,
       setMobileShowButtonBorderRadius,
+      setMobileShowButtonPaddingTop,
+      setMobileShowButtonPaddingBottom,
+      setMobileShowButtonPaddingLeft,
+      setMobileShowButtonPaddingRight,
       setMobileAnimationType,
       setMobileFollowingMarkerWidth,
       setMobileFollowingMarkerHeight,
@@ -2465,6 +2542,10 @@ export default function Index() {
               setDesktopShowButtonBorderColor,
               setDesktopShowButtonBorderWidth,
               setDesktopShowButtonBorderRadius,
+              setDesktopShowButtonPaddingTop,
+              setDesktopShowButtonPaddingBottom,
+              setDesktopShowButtonPaddingLeft,
+              setDesktopShowButtonPaddingRight,
               setDesktopAnimationType,
               setDesktopFollowingMarkerWidth,
               setDesktopFollowingMarkerHeight,
@@ -2516,6 +2597,10 @@ export default function Index() {
               setMobileShowButtonBorderColor,
               setMobileShowButtonBorderWidth,
               setMobileShowButtonBorderRadius,
+              setMobileShowButtonPaddingTop,
+              setMobileShowButtonPaddingBottom,
+              setMobileShowButtonPaddingLeft,
+              setMobileShowButtonPaddingRight,
               setMobileAnimationType,
               setMobileFollowingMarkerWidth,
               setMobileFollowingMarkerHeight,
@@ -3570,6 +3655,99 @@ export default function Index() {
                       </div>
                     </div>
                     <div className="toc-subsection">
+                      <p className="toc-subsection-title">Padding</p>
+                      <div className="toc-compact-fields-two">
+                        <TocSliderField
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonPaddingTop"
+                              : "mobileShowButtonPaddingTop"
+                          }
+                          label="Top"
+                          range={SLIDER_RANGES.padding}
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonPaddingTop
+                              : mobileShowButtonPaddingTop
+                          }
+                          onValueChange={(value) => {
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonPaddingTop(value);
+                            } else {
+                              setMobileShowButtonPaddingTop(value);
+                            }
+                          }}
+                        />
+                        <TocSliderField
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonPaddingBottom"
+                              : "mobileShowButtonPaddingBottom"
+                          }
+                          label="Bottom"
+                          range={SLIDER_RANGES.padding}
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonPaddingBottom
+                              : mobileShowButtonPaddingBottom
+                          }
+                          onValueChange={(value) => {
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonPaddingBottom(value);
+                            } else {
+                              setMobileShowButtonPaddingBottom(value);
+                            }
+                          }}
+                        />
+                        <TocSliderField
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonPaddingLeft"
+                              : "mobileShowButtonPaddingLeft"
+                          }
+                          label="Left"
+                          range={SLIDER_RANGES.padding}
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonPaddingLeft
+                              : mobileShowButtonPaddingLeft
+                          }
+                          onValueChange={(value) => {
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonPaddingLeft(value);
+                            } else {
+                              setMobileShowButtonPaddingLeft(value);
+                            }
+                          }}
+                        />
+                        <TocSliderField
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopShowButtonPaddingRight"
+                              : "mobileShowButtonPaddingRight"
+                          }
+                          label="Right"
+                          range={SLIDER_RANGES.padding}
+                          disabled={!isShowMoreEnabled}
+                          value={
+                            activeTab === "desktop"
+                              ? desktopShowButtonPaddingRight
+                              : mobileShowButtonPaddingRight
+                          }
+                          onValueChange={(value) => {
+                            if (activeTab === "desktop") {
+                              setDesktopShowButtonPaddingRight(value);
+                            } else {
+                              setMobileShowButtonPaddingRight(value);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="toc-subsection">
                       <p className="toc-subsection-title">Font</p>
                       <div className="toc-compact-fields">
                         <s-color-field
@@ -4118,6 +4296,10 @@ function applyConfigToForm(
     setDesktopShowButtonBorderColor: (value: string) => void;
     setDesktopShowButtonBorderWidth: (value: string) => void;
     setDesktopShowButtonBorderRadius: (value: string) => void;
+    setDesktopShowButtonPaddingTop: (value: string) => void;
+    setDesktopShowButtonPaddingBottom: (value: string) => void;
+    setDesktopShowButtonPaddingLeft: (value: string) => void;
+    setDesktopShowButtonPaddingRight: (value: string) => void;
     setDesktopAnimationType: (value: TocAnimationType) => void;
     setDesktopFollowingMarkerWidth: (value: string) => void;
     setDesktopFollowingMarkerHeight: (value: string) => void;
@@ -4169,6 +4351,10 @@ function applyConfigToForm(
     setMobileShowButtonBorderColor: (value: string) => void;
     setMobileShowButtonBorderWidth: (value: string) => void;
     setMobileShowButtonBorderRadius: (value: string) => void;
+    setMobileShowButtonPaddingTop: (value: string) => void;
+    setMobileShowButtonPaddingBottom: (value: string) => void;
+    setMobileShowButtonPaddingLeft: (value: string) => void;
+    setMobileShowButtonPaddingRight: (value: string) => void;
     setMobileAnimationType: (value: TocAnimationType) => void;
     setMobileFollowingMarkerWidth: (value: string) => void;
     setMobileFollowingMarkerHeight: (value: string) => void;
@@ -4244,6 +4430,18 @@ function applyConfigToForm(
   );
   controls.setDesktopShowButtonBorderRadius(
     String(config.desktop.showButtonBorderRadius),
+  );
+  controls.setDesktopShowButtonPaddingTop(
+    String(config.desktop.showButtonPaddingTop),
+  );
+  controls.setDesktopShowButtonPaddingBottom(
+    String(config.desktop.showButtonPaddingBottom),
+  );
+  controls.setDesktopShowButtonPaddingLeft(
+    String(config.desktop.showButtonPaddingLeft),
+  );
+  controls.setDesktopShowButtonPaddingRight(
+    String(config.desktop.showButtonPaddingRight),
   );
   controls.setDesktopAnimationType(config.desktop.animationType);
   controls.setDesktopFollowingMarkerWidth(
@@ -4327,6 +4525,18 @@ function applyConfigToForm(
   );
   controls.setMobileShowButtonBorderRadius(
     String(config.mobile.showButtonBorderRadius),
+  );
+  controls.setMobileShowButtonPaddingTop(
+    String(config.mobile.showButtonPaddingTop),
+  );
+  controls.setMobileShowButtonPaddingBottom(
+    String(config.mobile.showButtonPaddingBottom),
+  );
+  controls.setMobileShowButtonPaddingLeft(
+    String(config.mobile.showButtonPaddingLeft),
+  );
+  controls.setMobileShowButtonPaddingRight(
+    String(config.mobile.showButtonPaddingRight),
   );
   controls.setMobileAnimationType(config.mobile.animationType);
   controls.setMobileFollowingMarkerWidth(
@@ -4416,6 +4626,14 @@ function configsEqual(left: TocConfig, right: TocConfig) {
       right.desktop.showButtonBorderWidth &&
     left.desktop.showButtonBorderRadius ===
       right.desktop.showButtonBorderRadius &&
+    left.desktop.showButtonPaddingTop ===
+      right.desktop.showButtonPaddingTop &&
+    left.desktop.showButtonPaddingBottom ===
+      right.desktop.showButtonPaddingBottom &&
+    left.desktop.showButtonPaddingLeft ===
+      right.desktop.showButtonPaddingLeft &&
+    left.desktop.showButtonPaddingRight ===
+      right.desktop.showButtonPaddingRight &&
     left.desktop.animationType === right.desktop.animationType &&
     left.desktop.followingMarkerWidth === right.desktop.followingMarkerWidth &&
     left.desktop.followingMarkerHeight ===
@@ -4472,6 +4690,12 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.mobile.showButtonBorderWidth === right.mobile.showButtonBorderWidth &&
     left.mobile.showButtonBorderRadius ===
       right.mobile.showButtonBorderRadius &&
+    left.mobile.showButtonPaddingTop === right.mobile.showButtonPaddingTop &&
+    left.mobile.showButtonPaddingBottom ===
+      right.mobile.showButtonPaddingBottom &&
+    left.mobile.showButtonPaddingLeft === right.mobile.showButtonPaddingLeft &&
+    left.mobile.showButtonPaddingRight ===
+      right.mobile.showButtonPaddingRight &&
     left.mobile.animationType === right.mobile.animationType &&
     left.mobile.followingMarkerWidth === right.mobile.followingMarkerWidth &&
     left.mobile.followingMarkerHeight === right.mobile.followingMarkerHeight &&
@@ -4778,6 +5002,26 @@ function HiddenDeviceFields({
       />
       <input
         type="hidden"
+        name={`${prefix}ShowButtonPaddingTop`}
+        value={String(config.showButtonPaddingTop)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonPaddingBottom`}
+        value={String(config.showButtonPaddingBottom)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonPaddingLeft`}
+        value={String(config.showButtonPaddingLeft)}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}ShowButtonPaddingRight`}
+        value={String(config.showButtonPaddingRight)}
+      />
+      <input
+        type="hidden"
         name={`${prefix}AnimationType`}
         value={config.animationType}
       />
@@ -4980,6 +5224,18 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       showButtonBorderRadius: String(
         formData.get("desktopShowButtonBorderRadius") || "",
       ),
+      showButtonPaddingTop: String(
+        formData.get("desktopShowButtonPaddingTop") || "",
+      ),
+      showButtonPaddingBottom: String(
+        formData.get("desktopShowButtonPaddingBottom") || "",
+      ),
+      showButtonPaddingLeft: String(
+        formData.get("desktopShowButtonPaddingLeft") || "",
+      ),
+      showButtonPaddingRight: String(
+        formData.get("desktopShowButtonPaddingRight") || "",
+      ),
       animationType: String(
         formData.get("desktopAnimationType") ||
           DEFAULT_CONFIG.desktop.animationType,
@@ -5102,6 +5358,18 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       showButtonBorderRadius: String(
         formData.get("mobileShowButtonBorderRadius") || "",
+      ),
+      showButtonPaddingTop: String(
+        formData.get("mobileShowButtonPaddingTop") || "",
+      ),
+      showButtonPaddingBottom: String(
+        formData.get("mobileShowButtonPaddingBottom") || "",
+      ),
+      showButtonPaddingLeft: String(
+        formData.get("mobileShowButtonPaddingLeft") || "",
+      ),
+      showButtonPaddingRight: String(
+        formData.get("mobileShowButtonPaddingRight") || "",
       ),
       animationType: String(
         formData.get("mobileAnimationType") ||
@@ -5423,6 +5691,13 @@ function normalizeHeadingLevels(levels: number[]): number[] {
     .sort((left, right) => left - right);
 }
 
+function getLegacyShowButtonPaddingValue(
+  borderWidth: number,
+  side: "top" | "bottom" | "left" | "right",
+) {
+  return borderWidth * (side === "left" || side === "right" ? 6 : 2);
+}
+
 function normalizeDeviceConfig(
   value: unknown,
   fallback: TocDeviceConfig,
@@ -5450,6 +5725,11 @@ function normalizeDeviceConfig(
     }>,
     fallback.shadowPreset,
   );
+  const normalizedShowButtonBorderWidth =
+    typeof config.showButtonBorderWidth === "number" &&
+    Number.isFinite(config.showButtonBorderWidth)
+      ? Math.max(0, config.showButtonBorderWidth)
+      : fallback.showButtonBorderWidth;
 
   return {
     position:
@@ -5678,16 +5958,38 @@ function normalizeDeviceConfig(
       config.showButtonBorderColor.trim()
         ? config.showButtonBorderColor.trim()
         : fallback.showButtonBorderColor,
-    showButtonBorderWidth:
-      typeof config.showButtonBorderWidth === "number" &&
-      Number.isFinite(config.showButtonBorderWidth)
-        ? Math.max(0, config.showButtonBorderWidth)
-        : fallback.showButtonBorderWidth,
+    showButtonBorderWidth: normalizedShowButtonBorderWidth,
     showButtonBorderRadius:
       typeof config.showButtonBorderRadius === "number" &&
       Number.isFinite(config.showButtonBorderRadius)
         ? Math.max(0, config.showButtonBorderRadius)
         : fallback.showButtonBorderRadius,
+    showButtonPaddingTop:
+      typeof config.showButtonPaddingTop === "number" &&
+      Number.isFinite(config.showButtonPaddingTop)
+        ? Math.max(0, config.showButtonPaddingTop)
+        : getLegacyShowButtonPaddingValue(normalizedShowButtonBorderWidth, "top"),
+    showButtonPaddingBottom:
+      typeof config.showButtonPaddingBottom === "number" &&
+      Number.isFinite(config.showButtonPaddingBottom)
+        ? Math.max(0, config.showButtonPaddingBottom)
+        : getLegacyShowButtonPaddingValue(
+            normalizedShowButtonBorderWidth,
+            "bottom",
+          ),
+    showButtonPaddingLeft:
+      typeof config.showButtonPaddingLeft === "number" &&
+      Number.isFinite(config.showButtonPaddingLeft)
+        ? Math.max(0, config.showButtonPaddingLeft)
+        : getLegacyShowButtonPaddingValue(normalizedShowButtonBorderWidth, "left"),
+    showButtonPaddingRight:
+      typeof config.showButtonPaddingRight === "number" &&
+      Number.isFinite(config.showButtonPaddingRight)
+        ? Math.max(0, config.showButtonPaddingRight)
+        : getLegacyShowButtonPaddingValue(
+            normalizedShowButtonBorderWidth,
+            "right",
+          ),
     animationType: normalizeAnimationType(config.animationType),
   };
 }
@@ -5761,6 +6063,21 @@ function coerceDeviceConfig(
   const showButtonBorderRadius = parseNonNegativeIntegerInput(
     input.showButtonBorderRadius,
   );
+  const showButtonPaddingTop = parseNonNegativeIntegerInput(
+    input.showButtonPaddingTop,
+  );
+  const showButtonPaddingBottom = parseNonNegativeIntegerInput(
+    input.showButtonPaddingBottom,
+  );
+  const showButtonPaddingLeft = parseNonNegativeIntegerInput(
+    input.showButtonPaddingLeft,
+  );
+  const showButtonPaddingRight = parseNonNegativeIntegerInput(
+    input.showButtonPaddingRight,
+  );
+  const resolvedShowButtonBorderWidth = Number.isFinite(showButtonBorderWidth)
+    ? showButtonBorderWidth
+    : fallback.showButtonBorderWidth;
 
   return {
     position:
@@ -5870,12 +6187,28 @@ function coerceDeviceConfig(
       : fallback.showButtonFontWeight,
     showButtonBorderColor:
       input.showButtonBorderColor.trim() || fallback.showButtonBorderColor,
-    showButtonBorderWidth: Number.isFinite(showButtonBorderWidth)
-      ? showButtonBorderWidth
-      : fallback.showButtonBorderWidth,
+    showButtonBorderWidth: resolvedShowButtonBorderWidth,
     showButtonBorderRadius: Number.isFinite(showButtonBorderRadius)
       ? showButtonBorderRadius
       : fallback.showButtonBorderRadius,
+    showButtonPaddingTop: Number.isFinite(showButtonPaddingTop)
+      ? showButtonPaddingTop
+      : getLegacyShowButtonPaddingValue(resolvedShowButtonBorderWidth, "top"),
+    showButtonPaddingBottom: Number.isFinite(showButtonPaddingBottom)
+      ? showButtonPaddingBottom
+      : getLegacyShowButtonPaddingValue(
+          resolvedShowButtonBorderWidth,
+          "bottom",
+        ),
+    showButtonPaddingLeft: Number.isFinite(showButtonPaddingLeft)
+      ? showButtonPaddingLeft
+      : getLegacyShowButtonPaddingValue(resolvedShowButtonBorderWidth, "left"),
+    showButtonPaddingRight: Number.isFinite(showButtonPaddingRight)
+      ? showButtonPaddingRight
+      : getLegacyShowButtonPaddingValue(
+          resolvedShowButtonBorderWidth,
+          "right",
+        ),
     animationType: normalizeAnimationType(input.animationType),
   };
 }
@@ -6056,6 +6389,10 @@ function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
     "--toc-show-button-border-color": device.showButtonBorderColor,
     "--toc-show-button-border-width": `${device.showButtonBorderWidth}px`,
     "--toc-show-button-border-radius": `${device.showButtonBorderRadius}px`,
+    "--toc-show-button-padding-top": `${device.showButtonPaddingTop}px`,
+    "--toc-show-button-padding-bottom": `${device.showButtonPaddingBottom}px`,
+    "--toc-show-button-padding-left": `${device.showButtonPaddingLeft}px`,
+    "--toc-show-button-padding-right": `${device.showButtonPaddingRight}px`,
     "--toc-mobile-border-color": device.color,
     "--toc-mobile-border-width": `${device.width}px`,
     "--toc-mobile-border-radius": `${device.radius}px`,
@@ -6087,6 +6424,10 @@ function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
     "--toc-mobile-show-button-border-color": device.showButtonBorderColor,
     "--toc-mobile-show-button-border-width": `${device.showButtonBorderWidth}px`,
     "--toc-mobile-show-button-border-radius": `${device.showButtonBorderRadius}px`,
+    "--toc-mobile-show-button-padding-top": `${device.showButtonPaddingTop}px`,
+    "--toc-mobile-show-button-padding-bottom": `${device.showButtonPaddingBottom}px`,
+    "--toc-mobile-show-button-padding-left": `${device.showButtonPaddingLeft}px`,
+    "--toc-mobile-show-button-padding-right": `${device.showButtonPaddingRight}px`,
   } as CSSProperties;
 }
 
