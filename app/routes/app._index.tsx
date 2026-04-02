@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useDeferredValue,
   useCallback,
   useEffect,
   useRef,
@@ -7,8 +8,13 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import {
+  AppProvider as PolarisAppProvider,
+  RangeSlider,
+} from "@shopify/polaris";
 import CodeMirror, { type EditorView } from "@uiw/react-codemirror";
 import { css as cssLanguage } from "@codemirror/lang-css";
+import enTranslations from "@shopify/polaris/locales/en.json";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
@@ -121,6 +127,13 @@ type TocConfig = {
   customCss: string;
   desktop: TocDeviceConfig;
   mobile: TocDeviceConfig;
+};
+
+type TocSliderRange = {
+  min: number;
+  max: number;
+  step: number;
+  suffix?: string;
 };
 
 const DEFAULT_MOBILE_BREAKPOINT = 768;
@@ -321,6 +334,19 @@ const EDITOR_TABS = [
   { id: "desktop", label: "Desktop", icon: "desktop" },
   { id: "mobile", label: "Mobile", icon: "mobile" },
 ] as const;
+const SLIDER_RANGES = {
+  fontSize: { min: 0, max: 48, step: 1, suffix: "px" },
+  borderWidth: { min: 0, max: 12, step: 1, suffix: "px" },
+  borderRadius: { min: 0, max: 64, step: 1, suffix: "px" },
+  markerSize: { min: 0, max: 48, step: 1, suffix: "px" },
+  markerOffset: { min: 0, max: 48, step: 1, suffix: "px" },
+  markerRadius: { min: 0, max: 999, step: 1, suffix: "px" },
+  padding: { min: 0, max: 64, step: 1, suffix: "px" },
+  layoutOffset: { min: -80, max: 80, step: 1, suffix: "px" },
+  scrollOffset: { min: 0, max: 300, step: 1, suffix: "px" },
+  maxWidth: { min: 0, max: 1000, step: 1, suffix: "px" },
+  collapsedHeight: { min: 0, max: 800, step: 1, suffix: "px" },
+} as const satisfies Record<string, TocSliderRange>;
 const FORM_STYLES = `
   .toc-tab-group {
     display: grid;
@@ -542,21 +568,21 @@ const FORM_STYLES = `
   .toc-compact-fields {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
   .toc-compact-fields-two {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
   .toc-compact-fields-four {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
@@ -597,6 +623,39 @@ const FORM_STYLES = `
     max-width: calc(100% - 32px);
   }
 
+  .toc-slider-field {
+    min-width: 0;
+  }
+
+  .toc-slider-field__header {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    margin-bottom: 4px;
+  }
+
+  .toc-slider-field__label {
+    color: var(--p-color-text, #303030);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 16px;
+  }
+
+  .toc-slider-field__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 100px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .toc-slider-field__range {
+    min-width: 0;
+  }
+
+  .toc-slider-field__value {
+    min-width: 0;
+  }
+
   @media (max-width: 900px) {
     .toc-main-layout {
       grid-template-columns: minmax(0, 1fr);
@@ -610,15 +669,7 @@ const FORM_STYLES = `
       padding-bottom: 2px;
     }
 
-    .toc-compact-fields-two {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .toc-compact-fields {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .toc-compact-fields-four {
+    .toc-slider-field__row {
       grid-template-columns: minmax(0, 1fr);
     }
   }
@@ -1088,6 +1139,137 @@ function DeviceSettingsSection({
         </div>
       ) : null}
       <s-section heading={heading}>{children}</s-section>
+    </div>
+  );
+}
+
+type TocSliderFieldProps = {
+  name: string;
+  label: string;
+  value: string;
+  range: TocSliderRange;
+  details?: string;
+  disabled?: boolean;
+  onValueChange: (value: string) => void;
+};
+
+function TocSliderField({
+  name,
+  label,
+  value,
+  range,
+  details,
+  disabled = false,
+  onValueChange,
+}: TocSliderFieldProps) {
+  const clampedValue = clampSliderStringValue(value, range);
+  const deferredClampedValue = useDeferredValue(clampedValue);
+  const numericValue = parseIntegerInput(clampedValue);
+  const [inputValue, setInputValue] = useState(clampedValue);
+  const isNumberFieldFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (clampedValue !== value) {
+      onValueChange(clampedValue);
+    }
+  }, [clampedValue, onValueChange, value]);
+
+  useEffect(() => {
+    if (!isNumberFieldFocusedRef.current) {
+      setInputValue(deferredClampedValue);
+    }
+  }, [deferredClampedValue]);
+
+  const commitInputValue = useCallback(
+    (nextValue: string) => {
+      const normalized = clampSliderStringValue(nextValue, range);
+      setInputValue(normalized);
+
+      if (normalized !== clampedValue) {
+        onValueChange(normalized);
+      }
+    },
+    [clampedValue, onValueChange, range],
+  );
+
+  const supportsNegativeValues = range.min < 0;
+
+  return (
+    <div className="toc-slider-field">
+      <div className="toc-slider-field__header">
+        <div className="toc-slider-field__label">{label}</div>
+      </div>
+      <div className="toc-slider-field__row">
+        <div className="toc-slider-field__range">
+          <RangeSlider
+            id={name}
+            label={label}
+            labelHidden
+            min={range.min}
+            max={range.max}
+            step={range.step}
+            value={numericValue}
+            output
+            disabled={disabled}
+            onChange={(nextValue) => {
+              if (Array.isArray(nextValue)) {
+                return;
+              }
+
+              const normalized = String(
+                clampNumber(nextValue, range.min, range.max),
+              );
+              onValueChange(normalized);
+            }}
+          />
+        </div>
+        <div className="toc-slider-field__value">
+          <s-number-field
+            label={`${label} value`}
+            labelAccessibilityVisibility="exclusive"
+            step={range.step}
+            min={range.min}
+            max={range.max}
+            suffix={range.suffix}
+            disabled={disabled}
+            value={inputValue}
+            onFocus={() => {
+              isNumberFieldFocusedRef.current = true;
+            }}
+            onInput={(event) => {
+              if (!isNumberFieldFocusedRef.current) {
+                return;
+              }
+
+              const nextValue = event.currentTarget.value;
+
+              if (
+                nextValue === "" ||
+                (supportsNegativeValues && nextValue === "-")
+              ) {
+                setInputValue(nextValue);
+                return;
+              }
+
+              setInputValue(nextValue);
+            }}
+            onChange={(event) => {
+              if (!isNumberFieldFocusedRef.current) {
+                return;
+              }
+
+              const nextValue = event.currentTarget.value;
+              commitInputValue(nextValue);
+            }}
+            onBlur={(event) => {
+              isNumberFieldFocusedRef.current = false;
+              commitInputValue(event.currentTarget.value);
+            }}
+          ></s-number-field>
+        </div>
+      </div>
+      {details ? <div className="toc-field-details">{details}</div> : null}
+      <input type="hidden" name={name} value={clampedValue} />
     </div>
   );
 }
@@ -2145,7 +2327,8 @@ export default function Index() {
   }, [shopify]);
 
   return (
-    <s-page heading="Table of contents settings">
+    <PolarisAppProvider i18n={enTranslations}>
+      <s-page heading="Table of contents settings">
       <style>{tocStyles}</style>
       <style>{FORM_STYLES}</style>
       <style>{PREVIEW_STYLES}</style>
@@ -2681,7 +2864,7 @@ export default function Index() {
                         }
                       }}
                     ></s-color-field>
-                    <s-number-field
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopMaxWidth"
@@ -2689,31 +2872,20 @@ export default function Index() {
                       }
                       label="Max width"
                       details="Set to 0 for no max width"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.maxWidth}
                       value={
                         activeTab === "desktop"
                           ? desktopMaxWidth
                           : mobileMaxWidth
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopMaxWidth(value);
                         } else {
                           setMobileMaxWidth(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopMaxWidth(value);
-                        } else {
-                          setMobileMaxWidth(value);
-                        }
-                      }}
-                    ></s-number-field>
+                    />
                   </s-stack>,
                 )}
                 {renderDeviceSection(
@@ -2773,39 +2945,28 @@ export default function Index() {
                           }
                         }}
                       ></s-color-field>
-                      <s-number-field
+                      <TocSliderField
                         name={
                           activeTab === "desktop"
                             ? "desktopTitleFontSize"
                             : "mobileTitleFontSize"
                         }
                         label="Font size"
-                        min={0}
-                        step={1}
-                        suffix="px"
+                        range={SLIDER_RANGES.fontSize}
                         disabled={!isTitleEnabled}
                         value={
                           activeTab === "desktop"
                             ? desktopTitleFontSize
                             : mobileTitleFontSize
                         }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
+                        onValueChange={(value) => {
                           if (activeTab === "desktop") {
                             setDesktopTitleFontSize(value);
                           } else {
                             setMobileTitleFontSize(value);
                           }
                         }}
-                        onChange={(event) => {
-                          const value = event.currentTarget.value;
-                          if (activeTab === "desktop") {
-                            setDesktopTitleFontSize(value);
-                          } else {
-                            setMobileTitleFontSize(value);
-                          }
-                        }}
-                      ></s-number-field>
+                      />
                       <s-select
                         name={
                           activeTab === "desktop"
@@ -2871,38 +3032,27 @@ export default function Index() {
                         }
                       }}
                     ></s-color-field>
-                    <s-number-field
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopHeadingsFontSize"
                           : "mobileHeadingsFontSize"
                       }
                       label="Font size"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.fontSize}
                       value={
                         activeTab === "desktop"
                           ? desktopHeadingsFontSize
                           : mobileHeadingsFontSize
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopHeadingsFontSize(value);
                         } else {
                           setMobileHeadingsFontSize(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopHeadingsFontSize(value);
-                        } else {
-                          setMobileHeadingsFontSize(value);
-                        }
-                      }}
-                    ></s-number-field>
+                    />
                     <s-select
                       name={
                         activeTab === "desktop"
@@ -2966,70 +3116,48 @@ export default function Index() {
                         }
                       }}
                     ></s-color-field>
-                    <s-number-field
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopBorderWidth"
                           : "mobileBorderWidth"
                       }
                       label="Width"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.borderWidth}
                       value={
                         activeTab === "desktop"
                           ? desktopBorderWidth
                           : mobileBorderWidth
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopBorderWidth(value);
                         } else {
                           setMobileBorderWidth(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopBorderWidth(value);
-                        } else {
-                          setMobileBorderWidth(value);
-                        }
-                      }}
-                    ></s-number-field>
-                    <s-number-field
+                    />
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopBorderRadius"
                           : "mobileBorderRadius"
                       }
                       label="Radius"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.borderRadius}
                       value={
                         activeTab === "desktop"
                           ? desktopBorderRadius
                           : mobileBorderRadius
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopBorderRadius(value);
                         } else {
                           setMobileBorderRadius(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopBorderRadius(value);
-                        } else {
-                          setMobileBorderRadius(value);
-                        }
-                      }}
-                    ></s-number-field>
+                    />
                   </div>,
                 )}
                 {renderDeviceSection(
@@ -3102,264 +3230,180 @@ export default function Index() {
                   "padding",
                   "Padding",
                   <div className="toc-compact-fields-four">
-                    <s-number-field
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopPaddingTop"
                           : "mobilePaddingTop"
                       }
                       label="Top"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.padding}
                       value={
                         activeTab === "desktop"
                           ? desktopPaddingTop
                           : mobilePaddingTop
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopPaddingTop(value);
                         } else {
                           setMobilePaddingTop(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopPaddingTop(value);
-                        } else {
-                          setMobilePaddingTop(value);
-                        }
-                      }}
-                    ></s-number-field>
-                    <s-number-field
+                    />
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopPaddingBottom"
                           : "mobilePaddingBottom"
                       }
                       label="Bottom"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.padding}
                       value={
                         activeTab === "desktop"
                           ? desktopPaddingBottom
                           : mobilePaddingBottom
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopPaddingBottom(value);
                         } else {
                           setMobilePaddingBottom(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopPaddingBottom(value);
-                        } else {
-                          setMobilePaddingBottom(value);
-                        }
-                      }}
-                    ></s-number-field>
-                    <s-number-field
+                    />
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopPaddingLeft"
                           : "mobilePaddingLeft"
                       }
                       label="Left"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.padding}
                       value={
                         activeTab === "desktop"
                           ? desktopPaddingLeft
                           : mobilePaddingLeft
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopPaddingLeft(value);
                         } else {
                           setMobilePaddingLeft(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopPaddingLeft(value);
-                        } else {
-                          setMobilePaddingLeft(value);
-                        }
-                      }}
-                    ></s-number-field>
-                    <s-number-field
+                    />
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopPaddingRight"
                           : "mobilePaddingRight"
                       }
                       label="Right"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.padding}
                       value={
                         activeTab === "desktop"
                           ? desktopPaddingRight
                           : mobilePaddingRight
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopPaddingRight(value);
                         } else {
                           setMobilePaddingRight(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopPaddingRight(value);
-                        } else {
-                          setMobilePaddingRight(value);
-                        }
-                      }}
-                    ></s-number-field>
+                    />
                   </div>,
                 )}
                 {renderDeviceSection(
                   "offset",
                   "Offset",
                   <div className="toc-compact-fields-four">
-                    <s-number-field
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopOffsetTop"
                           : "mobileOffsetTop"
                       }
                       label="Top"
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.layoutOffset}
                       value={
                         activeTab === "desktop"
                           ? desktopOffsetTop
                           : mobileOffsetTop
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopOffsetTop(value);
                         } else {
                           setMobileOffsetTop(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopOffsetTop(value);
-                        } else {
-                          setMobileOffsetTop(value);
-                        }
-                      }}
-                    ></s-number-field>
-                    <s-number-field
+                    />
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopOffsetBottom"
                           : "mobileOffsetBottom"
                       }
                       label="Bottom"
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.layoutOffset}
                       value={
                         activeTab === "desktop"
                           ? desktopOffsetBottom
                           : mobileOffsetBottom
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopOffsetBottom(value);
                         } else {
                           setMobileOffsetBottom(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopOffsetBottom(value);
-                        } else {
-                          setMobileOffsetBottom(value);
-                        }
-                      }}
-                    ></s-number-field>
-                    <s-number-field
+                    />
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopOffsetLeft"
                           : "mobileOffsetLeft"
                       }
                       label="Left"
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.layoutOffset}
                       value={
                         activeTab === "desktop"
                           ? desktopOffsetLeft
                           : mobileOffsetLeft
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopOffsetLeft(value);
                         } else {
                           setMobileOffsetLeft(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopOffsetLeft(value);
-                        } else {
-                          setMobileOffsetLeft(value);
-                        }
-                      }}
-                    ></s-number-field>
-                    <s-number-field
+                    />
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopOffsetRight"
                           : "mobileOffsetRight"
                       }
                       label="Right"
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.layoutOffset}
                       value={
                         activeTab === "desktop"
                           ? desktopOffsetRight
                           : mobileOffsetRight
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopOffsetRight(value);
                         } else {
                           setMobileOffsetRight(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopOffsetRight(value);
-                        } else {
-                          setMobileOffsetRight(value);
-                        }
-                      }}
-                    ></s-number-field>
+                    />
                   </div>,
                 )}
                 {renderDeviceSection(
@@ -3388,7 +3432,7 @@ export default function Index() {
                         }
                       }}
                     ></s-checkbox>
-                    <s-number-field
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopScrollOffset"
@@ -3396,31 +3440,20 @@ export default function Index() {
                       }
                       label="Offset"
                       details="Top offset in pixels"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.scrollOffset}
                       value={
                         activeTab === "desktop"
                           ? desktopScrollOffset
                           : mobileScrollOffset
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopScrollOffset(value);
                         } else {
                           setMobileScrollOffset(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopScrollOffset(value);
-                        } else {
-                          setMobileScrollOffset(value);
-                        }
-                      }}
-                    ></s-number-field>
+                    />
                   </s-stack>,
                 )}
                 {renderDeviceSection(
@@ -3448,7 +3481,7 @@ export default function Index() {
                         }
                       }}
                     ></s-checkbox>
-                    <s-number-field
+                    <TocSliderField
                       name={
                         activeTab === "desktop"
                           ? "desktopShowButtonHeight"
@@ -3456,32 +3489,21 @@ export default function Index() {
                       }
                       label="Collapsed height"
                       details="Collapsed content height before the button is shown"
-                      min={0}
-                      step={1}
-                      suffix="px"
+                      range={SLIDER_RANGES.collapsedHeight}
                       disabled={!isShowMoreEnabled}
                       value={
                         activeTab === "desktop"
                           ? desktopShowButtonHeight
                           : mobileShowButtonHeight
                       }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
+                      onValueChange={(value) => {
                         if (activeTab === "desktop") {
                           setDesktopShowButtonHeight(value);
                         } else {
                           setMobileShowButtonHeight(value);
                         }
                       }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopShowButtonHeight(value);
-                        } else {
-                          setMobileShowButtonHeight(value);
-                        }
-                      }}
-                    ></s-number-field>
+                    />
                     <div className="toc-subsection">
                       <p className="toc-subsection-title">Text</p>
                       <div className="toc-compact-fields-two">
@@ -3581,39 +3603,28 @@ export default function Index() {
                             }
                           }}
                         ></s-color-field>
-                        <s-number-field
+                        <TocSliderField
                           name={
                             activeTab === "desktop"
                               ? "desktopShowButtonFontSize"
                               : "mobileShowButtonFontSize"
                           }
                           label="Size"
-                          min={0}
-                          step={1}
-                          suffix="px"
+                          range={SLIDER_RANGES.fontSize}
                           disabled={!isShowMoreEnabled}
                           value={
                             activeTab === "desktop"
                               ? desktopShowButtonFontSize
                               : mobileShowButtonFontSize
                           }
-                          onInput={(event) => {
-                            const value = event.currentTarget.value;
+                          onValueChange={(value) => {
                             if (activeTab === "desktop") {
                               setDesktopShowButtonFontSize(value);
                             } else {
                               setMobileShowButtonFontSize(value);
                             }
                           }}
-                          onChange={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonFontSize(value);
-                            } else {
-                              setMobileShowButtonFontSize(value);
-                            }
-                          }}
-                        ></s-number-field>
+                        />
                         <s-select
                           name={
                             activeTab === "desktop"
@@ -3678,72 +3689,50 @@ export default function Index() {
                             }
                           }}
                         ></s-color-field>
-                        <s-number-field
+                        <TocSliderField
                           name={
                             activeTab === "desktop"
                               ? "desktopShowButtonBorderWidth"
                               : "mobileShowButtonBorderWidth"
                           }
                           label="Width"
-                          min={0}
-                          step={1}
-                          suffix="px"
+                          range={SLIDER_RANGES.borderWidth}
                           disabled={!isShowMoreEnabled}
                           value={
                             activeTab === "desktop"
                               ? desktopShowButtonBorderWidth
                               : mobileShowButtonBorderWidth
                           }
-                          onInput={(event) => {
-                            const value = event.currentTarget.value;
+                          onValueChange={(value) => {
                             if (activeTab === "desktop") {
                               setDesktopShowButtonBorderWidth(value);
                             } else {
                               setMobileShowButtonBorderWidth(value);
                             }
                           }}
-                          onChange={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonBorderWidth(value);
-                            } else {
-                              setMobileShowButtonBorderWidth(value);
-                            }
-                          }}
-                        ></s-number-field>
-                        <s-number-field
+                        />
+                        <TocSliderField
                           name={
                             activeTab === "desktop"
                               ? "desktopShowButtonBorderRadius"
                               : "mobileShowButtonBorderRadius"
                           }
                           label="Radius"
-                          min={0}
-                          step={1}
-                          suffix="px"
+                          range={SLIDER_RANGES.borderRadius}
                           disabled={!isShowMoreEnabled}
                           value={
                             activeTab === "desktop"
                               ? desktopShowButtonBorderRadius
                               : mobileShowButtonBorderRadius
                           }
-                          onInput={(event) => {
-                            const value = event.currentTarget.value;
+                          onValueChange={(value) => {
                             if (activeTab === "desktop") {
                               setDesktopShowButtonBorderRadius(value);
                             } else {
                               setMobileShowButtonBorderRadius(value);
                             }
                           }}
-                          onChange={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonBorderRadius(value);
-                            } else {
-                              setMobileShowButtonBorderRadius(value);
-                            }
-                          }}
-                        ></s-number-field>
+                        />
                       </div>
                     </div>
                   </s-stack>,
@@ -3772,60 +3761,27 @@ export default function Index() {
                         {desktopFollowingMarkerSelected ? (
                           <>
                             <div className="toc-compact-fields">
-                              <s-number-field
-                                name="desktopFollowingMarkerHeight"
-                                label="Width"
-                                min={0}
-                                step={1}
-                                suffix="px"
-                                value={desktopFollowingMarkerHeight}
-                                onInput={(event) =>
-                                  setDesktopFollowingMarkerHeight(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopFollowingMarkerHeight(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
-                              <s-number-field
+                              <TocSliderField
                                 name="desktopFollowingMarkerWidth"
-                                label="Height"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                label="Width"
+                                range={SLIDER_RANGES.markerSize}
                                 value={desktopFollowingMarkerWidth}
-                                onInput={(event) =>
-                                  setDesktopFollowingMarkerWidth(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopFollowingMarkerWidth(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
-                              <s-number-field
+                                onValueChange={setDesktopFollowingMarkerWidth}
+                              />
+                              <TocSliderField
+                                name="desktopFollowingMarkerHeight"
+                                label="Height"
+                                range={SLIDER_RANGES.markerSize}
+                                value={desktopFollowingMarkerHeight}
+                                onValueChange={setDesktopFollowingMarkerHeight}
+                              />
+                              <TocSliderField
                                 name="desktopFollowingMarkerOffset"
                                 label="Offset"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                range={SLIDER_RANGES.markerOffset}
                                 value={desktopFollowingMarkerOffset}
-                                onInput={(event) =>
-                                  setDesktopFollowingMarkerOffset(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopFollowingMarkerOffset(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
+                                onValueChange={setDesktopFollowingMarkerOffset}
+                              />
                             </div>
                             <div className="toc-compact-fields-two">
                               <s-color-field
@@ -3844,84 +3800,42 @@ export default function Index() {
                                   )
                                 }
                               ></s-color-field>
-                              <s-number-field
+                              <TocSliderField
                                 name="desktopFollowingMarkerBorderRadius"
                                 label="Radius"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                range={SLIDER_RANGES.markerRadius}
                                 value={desktopFollowingMarkerBorderRadius}
-                                onInput={(event) =>
-                                  setDesktopFollowingMarkerBorderRadius(
-                                    event.currentTarget.value,
-                                  )
+                                onValueChange={
+                                  setDesktopFollowingMarkerBorderRadius
                                 }
-                                onChange={(event) =>
-                                  setDesktopFollowingMarkerBorderRadius(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
+                              />
                             </div>
                           </>
                         ) : null}
                         {desktopCrawlingSnakeSelected ? (
                           <>
                             <div className="toc-compact-fields">
-                              <s-number-field
-                                name="desktopCrawlingSnakeHeight"
-                                label="Width"
-                                min={0}
-                                step={1}
-                                suffix="px"
-                                value={desktopCrawlingSnakeHeight}
-                                onInput={(event) =>
-                                  setDesktopCrawlingSnakeHeight(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopCrawlingSnakeHeight(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
-                              <s-number-field
+                              <TocSliderField
                                 name="desktopCrawlingSnakeWidth"
-                                label="Height"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                label="Width"
+                                range={SLIDER_RANGES.markerSize}
                                 value={desktopCrawlingSnakeWidth}
-                                onInput={(event) =>
-                                  setDesktopCrawlingSnakeWidth(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopCrawlingSnakeWidth(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
-                              <s-number-field
+                                onValueChange={setDesktopCrawlingSnakeWidth}
+                              />
+                              <TocSliderField
+                                name="desktopCrawlingSnakeHeight"
+                                label="Height"
+                                range={SLIDER_RANGES.markerSize}
+                                value={desktopCrawlingSnakeHeight}
+                                onValueChange={setDesktopCrawlingSnakeHeight}
+                              />
+                              <TocSliderField
                                 name="desktopCrawlingSnakeOffset"
                                 label="Offset"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                range={SLIDER_RANGES.markerOffset}
                                 value={desktopCrawlingSnakeOffset}
-                                onInput={(event) =>
-                                  setDesktopCrawlingSnakeOffset(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopCrawlingSnakeOffset(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
+                                onValueChange={setDesktopCrawlingSnakeOffset}
+                              />
                             </div>
                             <s-color-field
                               name="desktopCrawlingSnakeColor"
@@ -3944,60 +3858,27 @@ export default function Index() {
                         {desktopJumpingMarkerSelected ? (
                           <>
                             <div className="toc-compact-fields">
-                              <s-number-field
+                              <TocSliderField
                                 name="desktopJumpingMarkerWidth"
                                 label="Width"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                range={SLIDER_RANGES.markerSize}
                                 value={desktopJumpingMarkerWidth}
-                                onInput={(event) =>
-                                  setDesktopJumpingMarkerWidth(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopJumpingMarkerWidth(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
-                              <s-number-field
+                                onValueChange={setDesktopJumpingMarkerWidth}
+                              />
+                              <TocSliderField
                                 name="desktopJumpingMarkerHeight"
                                 label="Height"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                range={SLIDER_RANGES.markerSize}
                                 value={desktopJumpingMarkerHeight}
-                                onInput={(event) =>
-                                  setDesktopJumpingMarkerHeight(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopJumpingMarkerHeight(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
-                              <s-number-field
+                                onValueChange={setDesktopJumpingMarkerHeight}
+                              />
+                              <TocSliderField
                                 name="desktopJumpingMarkerOffset"
                                 label="Offset"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                range={SLIDER_RANGES.markerOffset}
                                 value={desktopJumpingMarkerOffset}
-                                onInput={(event) =>
-                                  setDesktopJumpingMarkerOffset(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopJumpingMarkerOffset(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
+                                onValueChange={setDesktopJumpingMarkerOffset}
+                              />
                             </div>
                             <div className="toc-compact-fields-two">
                               <s-color-field
@@ -4016,24 +3897,15 @@ export default function Index() {
                                   )
                                 }
                               ></s-color-field>
-                              <s-number-field
+                              <TocSliderField
                                 name="desktopJumpingMarkerBorderRadius"
                                 label="Radius"
-                                min={0}
-                                step={1}
-                                suffix="px"
+                                range={SLIDER_RANGES.markerRadius}
                                 value={desktopJumpingMarkerBorderRadius}
-                                onInput={(event) =>
-                                  setDesktopJumpingMarkerBorderRadius(
-                                    event.currentTarget.value,
-                                  )
+                                onValueChange={
+                                  setDesktopJumpingMarkerBorderRadius
                                 }
-                                onChange={(event) =>
-                                  setDesktopJumpingMarkerBorderRadius(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-number-field>
+                              />
                             </div>
                           </>
                         ) : null}
@@ -4114,7 +3986,8 @@ export default function Index() {
           </s-section>
         </div>
       </div>
-    </s-page>
+      </s-page>
+    </PolarisAppProvider>
   );
 }
 
@@ -5443,6 +5316,16 @@ function findMatchingBrace(value: string, openBraceIndex: number): number {
 
 function parseIntegerInput(value: string): number {
   return parseInt(value, 10);
+}
+
+function clampSliderStringValue(value: string, range: TocSliderRange) {
+  const parsed = parseIntegerInput(value);
+
+  if (!Number.isFinite(parsed)) {
+    return String(range.min);
+  }
+
+  return String(clampNumber(parsed, range.min, range.max));
 }
 
 function parseNonNegativeIntegerInput(value: string): number {
