@@ -406,6 +406,20 @@ const FORM_STYLES = `
     flex: 0 0 auto;
   }
 
+  .toc-section-heading {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 12px;
+    color: #303030;
+  }
+
+  .toc-section-heading__label {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+
   .toc-editor-section {
     scroll-margin-top: 20px;
   }
@@ -835,43 +849,87 @@ type DeviceSectionKey =
   | "showButton"
   | "animation";
 type SectionNavKey = GeneralSectionKey | DeviceSectionKey;
-const GENERAL_SECTION_NAV_ITEMS: Array<{
-  key: GeneralSectionKey;
+type SectionIcon =
+  | "inventory"
+  | "book"
+  | "text-indent"
+  | "wrench"
+  | "text-title"
+  | "book-open"
+  | "corner-round"
+  | "remove-background"
+  | "measurement-size"
+  | "drag-drop"
+  | "sort"
+  | "eyeglasses"
+  | "incentive";
+type SectionNavItem<Key extends SectionNavKey> = {
+  key: Key;
   label: string;
-}> = [
-  { key: "generalSettings", label: "General" },
-  { key: "textFormatting", label: "Text Formatting" },
-  { key: "advancedSettings", label: "Advanced settings" },
-];
-const DESKTOP_DEVICE_SECTION_NAV_ITEMS: Array<{
-  key: DeviceSectionKey;
-  label: string;
-}> = [
-  { key: "general", label: "General" },
-  { key: "title", label: "Title" },
-  { key: "headings", label: "Headings" },
-  { key: "border", label: "Border" },
-  { key: "shadow", label: "Shadow" },
-  { key: "padding", label: "Padding" },
-  { key: "offset", label: "Offset" },
-  { key: "scroll", label: "Scroll" },
-  { key: "showButton", label: "Show more button" },
-  { key: "animation", label: "Animation" },
-];
-const MOBILE_DEVICE_SECTION_NAV_ITEMS: Array<{
-  key: DeviceSectionKey;
-  label: string;
-}> = [
-  { key: "general", label: "General" },
-  { key: "title", label: "Title" },
-  { key: "headings", label: "Headings" },
-  { key: "border", label: "Border" },
-  { key: "shadow", label: "Shadow" },
-  { key: "padding", label: "Padding" },
-  { key: "offset", label: "Offset" },
-  { key: "scroll", label: "Scroll" },
-  { key: "showButton", label: "Show more button" },
-];
+  icon: SectionIcon;
+};
+
+const SECTION_NAV_METADATA = {
+  generalSettings: { label: "General", icon: "inventory" },
+  textFormatting: { label: "Text Formatting", icon: "text-indent" },
+  advancedSettings: { label: "Advanced settings", icon: "wrench" },
+  general: { label: "General", icon: "book" },
+  title: { label: "Title", icon: "text-title" },
+  headings: { label: "Headings", icon: "book-open" },
+  border: { label: "Border", icon: "corner-round" },
+  shadow: { label: "Shadow", icon: "remove-background" },
+  padding: { label: "Padding", icon: "measurement-size" },
+  offset: { label: "Offset", icon: "drag-drop" },
+  scroll: { label: "Scroll", icon: "sort" },
+  showButton: { label: "Show more button", icon: "eyeglasses" },
+  animation: { label: "Animation", icon: "incentive" },
+} as const satisfies Record<
+  SectionNavKey,
+  { label: string; icon: SectionIcon }
+>;
+
+function createSectionNavItems<Key extends SectionNavKey>(
+  keys: readonly Key[],
+): Array<SectionNavItem<Key>> {
+  return keys.map((key) => {
+    const metadata = SECTION_NAV_METADATA[key];
+
+    return {
+      key,
+      label: metadata.label,
+      icon: metadata.icon,
+    } as SectionNavItem<Key>;
+  });
+}
+
+const GENERAL_SECTION_NAV_ITEMS = createSectionNavItems([
+  "generalSettings",
+  "textFormatting",
+  "advancedSettings",
+]);
+const DESKTOP_DEVICE_SECTION_NAV_ITEMS = createSectionNavItems([
+  "general",
+  "title",
+  "headings",
+  "border",
+  "shadow",
+  "padding",
+  "offset",
+  "scroll",
+  "showButton",
+  "animation",
+]);
+const MOBILE_DEVICE_SECTION_NAV_ITEMS = createSectionNavItems([
+  "general",
+  "title",
+  "headings",
+  "border",
+  "shadow",
+  "padding",
+  "offset",
+  "scroll",
+  "showButton",
+]);
 type DeviceSectionApplyState = Record<
   DeviceTab,
   Partial<Record<DeviceSectionKey, boolean>>
@@ -1027,7 +1085,7 @@ type GeneralSectionApplyPayload = Pick<
   Partial<Pick<TocDeviceConfig, "position" | "positionSelector">>;
 
 type DeviceSettingsSectionProps = {
-  heading: string;
+  section: DeviceSectionKey;
   activeDevice: DeviceTab;
   showApplyAction: boolean;
   isApplied: boolean;
@@ -1121,8 +1179,23 @@ function deviceSectionDiffersForApply(
   );
 }
 
+function TocSectionHeading({
+  icon,
+  label,
+}: {
+  icon: SectionIcon;
+  label: string;
+}) {
+  return (
+    <div className="toc-section-heading">
+      <s-icon type={icon}></s-icon>
+      <span className="toc-section-heading__label">{label}</span>
+    </div>
+  );
+}
+
 function DeviceSettingsSection({
-  heading,
+  section,
   activeDevice,
   showApplyAction,
   isApplied,
@@ -1132,6 +1205,7 @@ function DeviceSettingsSection({
   children,
 }: DeviceSettingsSectionProps) {
   const targetLabel = getDeviceLabel(getOtherDevice(activeDevice));
+  const metadata = SECTION_NAV_METADATA[section];
 
   return (
     <div
@@ -1158,7 +1232,10 @@ function DeviceSettingsSection({
           </s-clickable-chip>
         </div>
       ) : null}
-      <s-section heading={heading}>{children}</s-section>
+      <s-section>
+        <TocSectionHeading icon={metadata.icon} label={metadata.label} />
+        {children}
+      </s-section>
     </div>
   );
 }
@@ -2169,7 +2246,6 @@ export default function Index() {
 
   const renderDeviceSection = (
     section: DeviceSectionKey,
-    heading: string,
     children: ReactNode,
     options?: { allowApplyAction?: boolean },
   ) => {
@@ -2182,7 +2258,7 @@ export default function Index() {
 
     return (
       <DeviceSettingsSection
-        heading={heading}
+        section={section}
         activeDevice={activeDevice}
         showApplyAction={allowApplyAction && sectionState.showApplyAction}
         isApplied={sectionState.isApplied}
@@ -2482,6 +2558,7 @@ export default function Index() {
                     accessibilityLabel={`Scroll to ${section.label}`}
                     onClick={() => scrollToSection(section.key)}
                   >
+                    <s-icon slot="graphic" type={section.icon}></s-icon>
                     {section.label}
                   </s-clickable-chip>
                 </li>
@@ -2644,7 +2721,11 @@ export default function Index() {
                   }}
                   className="toc-editor-section"
                 >
-                  <s-section heading="General">
+                  <s-section>
+                    <TocSectionHeading
+                      icon={SECTION_NAV_METADATA.generalSettings.icon}
+                      label={SECTION_NAV_METADATA.generalSettings.label}
+                    />
                     <s-stack direction="block" gap="base">
                       <s-text-field
                         name="title"
@@ -2744,7 +2825,11 @@ export default function Index() {
                   }}
                   className="toc-editor-section"
                 >
-                  <s-section heading="Text Formatting">
+                  <s-section>
+                    <TocSectionHeading
+                      icon={SECTION_NAV_METADATA.textFormatting.icon}
+                      label={SECTION_NAV_METADATA.textFormatting.label}
+                    />
                     <s-stack direction="block" gap="base">
                       <s-select
                         name="textAlignment"
@@ -2801,7 +2886,11 @@ export default function Index() {
                   }}
                   className="toc-editor-section"
                 >
-                  <s-section heading="Advanced settings">
+                  <s-section>
+                    <TocSectionHeading
+                      icon={SECTION_NAV_METADATA.advancedSettings.icon}
+                      label={SECTION_NAV_METADATA.advancedSettings.label}
+                    />
                     <div className="toc-field">
                       <div className="toc-code-field">
                         <span className="toc-code-field__label">
@@ -2844,7 +2933,6 @@ export default function Index() {
               <>
                 {renderDeviceSection(
                   "general",
-                  "General",
                   <s-stack direction="block" gap="base">
                     <s-select
                       name={
@@ -2975,7 +3063,6 @@ export default function Index() {
                 )}
                 {renderDeviceSection(
                   "title",
-                  "Title",
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -3085,7 +3172,6 @@ export default function Index() {
                 )}
                 {renderDeviceSection(
                   "headings",
-                  "Headings",
                   <div className="toc-compact-fields">
                     <s-color-field
                       name={
@@ -3169,7 +3255,6 @@ export default function Index() {
                 )}
                 {renderDeviceSection(
                   "border",
-                  "Border",
                   <div className="toc-compact-fields">
                     <s-color-field
                       name={
@@ -3247,7 +3332,6 @@ export default function Index() {
                 )}
                 {renderDeviceSection(
                   "shadow",
-                  "Shadow",
                   <s-stack direction="block" gap="base">
                     <s-select
                       name={
@@ -3313,7 +3397,6 @@ export default function Index() {
                 )}
                 {renderDeviceSection(
                   "padding",
-                  "Padding",
                   <div className="toc-compact-fields-four">
                     <TocSliderField
                       name={
@@ -3403,7 +3486,6 @@ export default function Index() {
                 )}
                 {renderDeviceSection(
                   "offset",
-                  "Offset",
                   <div className="toc-compact-fields-four">
                     <TocSliderField
                       name={
@@ -3493,7 +3575,6 @@ export default function Index() {
                 )}
                 {renderDeviceSection(
                   "scroll",
-                  "Scroll",
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -3543,7 +3624,6 @@ export default function Index() {
                 )}
                 {renderDeviceSection(
                   "showButton",
-                  "Show more button",
                   <s-stack direction="block" gap="base">
                     <s-checkbox
                       name={
@@ -3918,7 +3998,6 @@ export default function Index() {
                 {activeTab === "desktop"
                   ? renderDeviceSection(
                       "animation",
-                      "Animation",
                       <s-stack direction="block" gap="base">
                         <s-select
                           name="desktopAnimationType"
