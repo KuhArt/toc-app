@@ -6311,26 +6311,28 @@ type TocShadowLayer = {
   alpha: number;
 };
 
-const TAILWIND_SHADOW_LAYERS: Record<TocShadowPreset, TocShadowLayer[]> = {
-  none: [],
-  "extra-small": [{ x: 0, y: 1, blur: 2, spread: 0, alpha: 0.05 }],
-  small: [
-    { x: 0, y: 1, blur: 3, spread: 0, alpha: 0.1 },
-    { x: 0, y: 1, blur: 2, spread: -1, alpha: 0.1 },
-  ],
-  medium: [
-    { x: 0, y: 4, blur: 6, spread: -1, alpha: 0.1 },
-    { x: 0, y: 2, blur: 4, spread: -2, alpha: 0.1 },
-  ],
-  large: [
-    { x: 0, y: 10, blur: 15, spread: -3, alpha: 0.1 },
-    { x: 0, y: 4, blur: 6, spread: -4, alpha: 0.1 },
-  ],
-  "extra-large": [
-    { x: 0, y: 20, blur: 25, spread: -5, alpha: 0.1 },
-    { x: 0, y: 8, blur: 10, spread: -6, alpha: 0.1 },
-  ],
-};
+function getTailwindShadowLayers(): Record<TocShadowPreset, TocShadowLayer[]> {
+  return {
+    none: [],
+    "extra-small": [{ x: 0, y: 1, blur: 2, spread: 0, alpha: 0.05 }],
+    small: [
+      { x: 0, y: 1, blur: 3, spread: 0, alpha: 0.1 },
+      { x: 0, y: 1, blur: 2, spread: -1, alpha: 0.1 },
+    ],
+    medium: [
+      { x: 0, y: 4, blur: 6, spread: -1, alpha: 0.1 },
+      { x: 0, y: 2, blur: 4, spread: -2, alpha: 0.1 },
+    ],
+    large: [
+      { x: 0, y: 10, blur: 15, spread: -3, alpha: 0.1 },
+      { x: 0, y: 4, blur: 6, spread: -4, alpha: 0.1 },
+    ],
+    "extra-large": [
+      { x: 0, y: 20, blur: 25, spread: -5, alpha: 0.1 },
+      { x: 0, y: 8, blur: 10, spread: -6, alpha: 0.1 },
+    ],
+  };
+}
 
 function clampShadowChannel(value: number) {
   return Math.max(0, Math.min(255, value));
@@ -6411,7 +6413,7 @@ function parseShadowColorValue(value: string): TocShadowColor | null {
 }
 
 function buildShadowValue(device: TocDeviceConfig) {
-  const layers = TAILWIND_SHADOW_LAYERS[device.shadowPreset];
+  const layers = getTailwindShadowLayers()[device.shadowPreset] ?? [];
 
   if (!layers.length) {
     return "none";
