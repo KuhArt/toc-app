@@ -92,6 +92,7 @@ type TocDeviceConfig = TocBorderConfig &
   TocMarkerAnimationConfig & {
     position: TocDesktopPosition | TocMobilePosition;
     positionSelector: string;
+    switchToMobileOnFloatOverflow: boolean;
     background: string;
     maxWidth: number;
     smoothScroll: boolean;
@@ -164,6 +165,7 @@ const CUSTOM_CSS_REFERENCE_SELECTORS = [
 const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
   position: "float-right",
   positionSelector: "",
+  switchToMobileOnFloatOverflow: true,
   color: "#0000001f",
   width: 1,
   radius: 12,
@@ -221,6 +223,7 @@ const DEFAULT_DESKTOP_CONFIG: TocDeviceConfig = {
 const DEFAULT_MOBILE_CONFIG: TocDeviceConfig = {
   position: "before-first-heading",
   positionSelector: "",
+  switchToMobileOnFloatOverflow: false,
   color: "#0000001f",
   width: 0,
   radius: 12,
@@ -327,8 +330,8 @@ const FONT_WEIGHT_OPTIONS = [
   { label: "Black", value: "900" },
 ] as const;
 const DESKTOP_POSITION_OPTIONS = [
-  { label: "Float right", value: "float-right" },
-  { label: "Float left", value: "float-left" },
+  { label: "Right side", value: "float-right" },
+  { label: "Left side", value: "float-left" },
   { label: "Before first heading", value: "before-first-heading" },
   { label: "After first heading", value: "after-first-heading" },
   { label: "CSS selector", value: "css-selector" },
@@ -776,27 +779,35 @@ const PREVIEW_STYLES = `
     min-height: 0;
   }
 
+  .toc-preview-shell {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
+
   .toc-preview-desktop {
     overflow: visible;
   }
 
   .toc-preview-float {
+    display: flex;
+    align-items: flex-start;
     width: 100%;
     height: 100%;
     box-sizing: border-box;
     max-width: 100%;
-    margin-left: auto;
+    justify-content: flex-end;
   }
 
   .toc-preview-float--left {
-    margin-left: 0;
-    margin-right: auto;
+    justify-content: flex-start;
   }
 
   .toc-preview-float .toc-widget,
   .toc-preview-flow .toc-widget {
     box-sizing: border-box;
-    width: 100%;
+    width: min(320px, 100%);
     margin: 0;
   }
 
@@ -805,6 +816,11 @@ const PREVIEW_STYLES = `
     height: 100%;
     box-sizing: border-box;
     max-width: 100%;
+  }
+
+  .toc-preview-flow--mobile {
+    max-width: 360px;
+    margin: 0 auto;
   }
 
   .toc-preview-mobile {
@@ -870,17 +886,17 @@ type SectionNavItem<Key extends SectionNavKey> = {
 };
 
 const SECTION_NAV_METADATA = {
-  generalSettings: { label: "General", icon: "inventory" },
+  generalSettings: { label: "Basics", icon: "inventory" },
   textFormatting: { label: "Text Formatting", icon: "text-indent" },
   advancedSettings: { label: "Advanced settings", icon: "wrench" },
-  general: { label: "General", icon: "book" },
+  general: { label: "Layout", icon: "layout-buy-button-horizontal" },
   title: { label: "Title", icon: "text-title" },
-  headings: { label: "Headings", icon: "book-open" },
+  headings: { label: "Links", icon: "book-open" },
   border: { label: "Border", icon: "corner-round" },
   shadow: { label: "Shadow", icon: "remove-background" },
   padding: { label: "Padding", icon: "measurement-size" },
   offset: { label: "Offset", icon: "drag-drop" },
-  scroll: { label: "Scroll", icon: "sort" },
+  scroll: { label: "Scroll behavior", icon: "sort" },
   showButton: { label: "Show more button", icon: "eyeglasses" },
   animation: { label: "Animation", icon: "incentive" },
 } as const satisfies Record<
@@ -952,6 +968,7 @@ type TocConfigInput = {
 type TocDeviceConfigInput = {
   position: string;
   positionSelector: string;
+  switchToMobileOnFloatOverflow: boolean;
   color: string;
   width: string;
   radius: string;
@@ -1032,7 +1049,13 @@ type AppBridgeExtensionRecord = {
 };
 
 const DEVICE_SECTION_FIELDS = {
-  general: ["position", "positionSelector", "background", "maxWidth"],
+  general: [
+    "position",
+    "positionSelector",
+    "switchToMobileOnFloatOverflow",
+    "background",
+    "maxWidth",
+  ],
   title: ["showTitle", "titleFontSize", "titleFontColor", "titleFontWeight"],
   headings: ["headingsFontSize", "headingsFontColor", "headingsFontWeight"],
   border: ["color", "width", "radius"],
@@ -1156,6 +1179,12 @@ function getGeneralSectionApplyPayload(
     positionSelector:
       source.position === "css-selector" ? source.positionSelector : "",
   };
+}
+
+function isDesktopFloatPosition(
+  value: string,
+): value is Extract<TocDesktopPosition, "float-left" | "float-right"> {
+  return value === "float-left" || value === "float-right";
 }
 
 function deviceSectionDiffersForApply(
@@ -1492,6 +1521,10 @@ export default function Index() {
   const [desktopPositionSelector, setDesktopPositionSelector] = useState(
     config.desktop.positionSelector,
   );
+  const [
+    desktopSwitchToMobileOnFloatOverflow,
+    setDesktopSwitchToMobileOnFloatOverflow,
+  ] = useState(config.desktop.switchToMobileOnFloatOverflow);
   const [desktopBorderColor, setDesktopBorderColor] = useState(
     config.desktop.color,
   );
@@ -1827,6 +1860,7 @@ export default function Index() {
     desktop: {
       position: desktopPosition,
       positionSelector: desktopPositionSelector,
+      switchToMobileOnFloatOverflow: desktopSwitchToMobileOnFloatOverflow,
       color: desktopBorderColor,
       width: desktopBorderWidth,
       radius: desktopBorderRadius,
@@ -1884,6 +1918,7 @@ export default function Index() {
     mobile: {
       position: mobilePosition,
       positionSelector: mobilePositionSelector,
+      switchToMobileOnFloatOverflow: false,
       color: mobileBorderColor,
       width: mobileBorderWidth,
       radius: mobileBorderRadius,
@@ -2288,6 +2323,7 @@ export default function Index() {
       setCustomCss,
       setDesktopPosition,
       setDesktopPositionSelector,
+      setDesktopSwitchToMobileOnFloatOverflow,
       setDesktopBorderColor,
       setDesktopBorderWidth,
       setDesktopBorderRadius,
@@ -2482,1426 +2518,696 @@ export default function Index() {
   return (
     <PolarisAppProvider i18n={enTranslations}>
       <s-page heading="Table of contents settings">
-      <style>{tocStyles}</style>
-      <style>{FORM_STYLES}</style>
-      <style>{PREVIEW_STYLES}</style>
-      <style>
-        {compilePreviewCustomCss(
-          currentConfig.customCss,
-          currentConfig.mobileBreakpoint,
-        )}
-      </style>
-      <SaveBar id={SAVE_BAR_ID} open={isDirty}>
-        <button form={FORM_ID} type="reset" disabled={isSaving}>
-          Discard
-        </button>
-        <button
-          form={FORM_ID}
-          type="submit"
-          disabled={!isDirty || isSaving}
-          {...{ variant: "primary" }}
-        >
-          Save
-        </button>
-      </SaveBar>
-      <div className="toc-tab-group">
-        <div className="toc-top-row">
-          <ul className="toc-segmented-control" aria-label="Settings view">
-            {EDITOR_TABS.map((tab) => (
-              <li key={tab.id} className="toc-segmented-item">
-                <button
-                  type="button"
-                  className="toc-segmented-button"
-                  aria-current={activeTab === tab.id ? "true" : "false"}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  <s-icon type={tab.icon}></s-icon>
-                  <span>{tab.label}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div className="toc-embed-actions">
-            <s-badge
-              tone={getAppEmbedBadgeTone(appEmbedStatus)}
-              icon={getAppEmbedBadgeIcon(appEmbedStatus)}
-            >
-              {formatAppEmbedStatus(appEmbedStatus)}
-            </s-badge>
-            {deepLink ? (
-              <s-button
-                href={deepLink}
-                target="_blank"
-                variant={getAppEmbedButtonVariant(appEmbedStatus)}
-                tone={getAppEmbedButtonTone()}
-              >
-                {getAppEmbedButtonLabel(appEmbedStatus)}
-              </s-button>
-            ) : null}
-          </div>
-        </div>
-        {activeSectionNavItems.length ? (
-          <nav
-            className="toc-section-nav"
-            aria-label={
-              activeTab === "general"
-                ? "General section navigation"
-                : activeDevice
-                  ? `${getDeviceLabel(activeDevice)} section navigation`
-                  : "Section navigation"
-            }
+        <style>{tocStyles}</style>
+        <style>{FORM_STYLES}</style>
+        <style>{PREVIEW_STYLES}</style>
+        <style>
+          {compilePreviewCustomCss(
+            currentConfig.customCss,
+            currentConfig.mobileBreakpoint,
+          )}
+        </style>
+        <SaveBar id={SAVE_BAR_ID} open={isDirty}>
+          <button form={FORM_ID} type="reset" disabled={isSaving}>
+            Discard
+          </button>
+          <button
+            form={FORM_ID}
+            type="submit"
+            disabled={!isDirty || isSaving}
+            {...{ variant: "primary" }}
           >
-            <ul className="toc-section-nav__list">
-              {activeSectionNavItems.map((section) => (
-                <li key={section.key} className="toc-section-nav__item">
-                  <s-clickable-chip
-                    accessibilityLabel={`Scroll to ${section.label}`}
-                    onClick={() => scrollToSection(section.key)}
+            Save
+          </button>
+        </SaveBar>
+        <div className="toc-tab-group">
+          <div className="toc-top-row">
+            <ul className="toc-segmented-control" aria-label="Settings view">
+              {EDITOR_TABS.map((tab) => (
+                <li key={tab.id} className="toc-segmented-item">
+                  <button
+                    type="button"
+                    className="toc-segmented-button"
+                    aria-current={activeTab === tab.id ? "true" : "false"}
+                    onClick={() => setActiveTab(tab.id)}
                   >
-                    <s-icon slot="graphic" type={section.icon}></s-icon>
-                    {section.label}
-                  </s-clickable-chip>
+                    <s-icon type={tab.icon}></s-icon>
+                    <span>{tab.label}</span>
+                  </button>
                 </li>
               ))}
             </ul>
-          </nav>
-        ) : null}
-      </div>
-      <div className="toc-main-layout">
-        <Form
-          id={FORM_ID}
-          method="post"
-          onReset={(event) => {
-            event.preventDefault();
-            applyConfigToForm(savedConfig, {
-              setTitle,
-              setHeadingLevels,
-              setIndentation,
-              setTextAlignment,
-              setMarkerFormat,
-              setMinHeadings,
-              setMobileBreakpoint,
-              setExcludedBlogs,
-              setCustomCss,
-              setDesktopPosition,
-              setDesktopPositionSelector,
-              setDesktopBorderColor,
-              setDesktopBorderWidth,
-              setDesktopBorderRadius,
-              setDesktopShadowPreset,
-              setDesktopShadowColor,
-              setDesktopPaddingTop,
-              setDesktopPaddingBottom,
-              setDesktopPaddingLeft,
-              setDesktopPaddingRight,
-              setDesktopOffsetTop,
-              setDesktopOffsetBottom,
-              setDesktopOffsetLeft,
-              setDesktopOffsetRight,
-              setDesktopBackground,
-              setDesktopMaxWidth,
-              setDesktopSmoothScroll,
-              setDesktopScrollOffset,
-              setDesktopShowTitle,
-              setDesktopHeadingsFontSize,
-              setDesktopHeadingsFontColor,
-              setDesktopHeadingsFontWeight,
-              setDesktopTitleFontSize,
-              setDesktopTitleFontColor,
-              setDesktopTitleFontWeight,
-              setDesktopShowButton,
-              setDesktopShowButtonHeight,
-              setDesktopShowMoreButtonText,
-              setDesktopShowLessButtonText,
-              setDesktopShowButtonFontSize,
-              setDesktopShowButtonFontColor,
-              setDesktopShowButtonFontWeight,
-              setDesktopShowButtonBorderColor,
-              setDesktopShowButtonBorderWidth,
-              setDesktopShowButtonBorderRadius,
-              setDesktopShowButtonPaddingTop,
-              setDesktopShowButtonPaddingBottom,
-              setDesktopShowButtonPaddingLeft,
-              setDesktopShowButtonPaddingRight,
-              setDesktopAnimationType,
-              setDesktopFollowingMarkerWidth,
-              setDesktopFollowingMarkerHeight,
-              setDesktopFollowingMarkerColor,
-              setDesktopFollowingMarkerOffset,
-              setDesktopFollowingMarkerBorderRadius,
-              setDesktopCrawlingSnakeWidth,
-              setDesktopCrawlingSnakeHeight,
-              setDesktopCrawlingSnakeColor,
-              setDesktopCrawlingSnakeOffset,
-              setDesktopJumpingMarkerWidth,
-              setDesktopJumpingMarkerHeight,
-              setDesktopJumpingMarkerColor,
-              setDesktopJumpingMarkerOffset,
-              setDesktopJumpingMarkerBorderRadius,
-              setMobilePosition,
-              setMobilePositionSelector,
-              setMobileBorderColor,
-              setMobileBorderWidth,
-              setMobileBorderRadius,
-              setMobileShadowPreset,
-              setMobileShadowColor,
-              setMobilePaddingTop,
-              setMobilePaddingBottom,
-              setMobilePaddingLeft,
-              setMobilePaddingRight,
-              setMobileOffsetTop,
-              setMobileOffsetBottom,
-              setMobileOffsetLeft,
-              setMobileOffsetRight,
-              setMobileBackground,
-              setMobileMaxWidth,
-              setMobileSmoothScroll,
-              setMobileScrollOffset,
-              setMobileShowTitle,
-              setMobileHeadingsFontSize,
-              setMobileHeadingsFontColor,
-              setMobileHeadingsFontWeight,
-              setMobileTitleFontSize,
-              setMobileTitleFontColor,
-              setMobileTitleFontWeight,
-              setMobileShowButton,
-              setMobileShowButtonHeight,
-              setMobileShowMoreButtonText,
-              setMobileShowLessButtonText,
-              setMobileShowButtonFontSize,
-              setMobileShowButtonFontColor,
-              setMobileShowButtonFontWeight,
-              setMobileShowButtonBorderColor,
-              setMobileShowButtonBorderWidth,
-              setMobileShowButtonBorderRadius,
-              setMobileShowButtonPaddingTop,
-              setMobileShowButtonPaddingBottom,
-              setMobileShowButtonPaddingLeft,
-              setMobileShowButtonPaddingRight,
-              setMobileAnimationType,
-              setMobileFollowingMarkerWidth,
-              setMobileFollowingMarkerHeight,
-              setMobileFollowingMarkerColor,
-              setMobileFollowingMarkerOffset,
-              setMobileFollowingMarkerBorderRadius,
-              setMobileCrawlingSnakeWidth,
-              setMobileCrawlingSnakeHeight,
-              setMobileCrawlingSnakeColor,
-              setMobileCrawlingSnakeOffset,
-              setMobileJumpingMarkerWidth,
-              setMobileJumpingMarkerHeight,
-              setMobileJumpingMarkerColor,
-              setMobileJumpingMarkerOffset,
-              setMobileJumpingMarkerBorderRadius,
-            });
-            setAppliedSections(createEmptyDeviceSectionApplyState());
-          }}
-        >
-          <s-stack direction="block" gap="base">
-            {activeTab !== "desktop" ? (
-              <HiddenDeviceFields
-                prefix="desktop"
-                config={currentConfig.desktop}
-              />
-            ) : null}
-            {activeTab !== "mobile" ? (
-              <HiddenDeviceFields
-                prefix="mobile"
-                config={currentConfig.mobile}
-              />
-            ) : null}
-            <div
-              className={`toc-tab-panel${activeTab === "general" ? "" : " toc-tab-panel--hidden"}`}
-              aria-hidden={activeTab === "general" ? undefined : "true"}
-            >
-              <>
-                <div
-                  ref={(node) => {
-                    sectionRefs.current.generalSettings = node;
-                  }}
-                  className="toc-editor-section"
+            <div className="toc-embed-actions">
+              <s-badge
+                tone={getAppEmbedBadgeTone(appEmbedStatus)}
+                icon={getAppEmbedBadgeIcon(appEmbedStatus)}
+              >
+                {formatAppEmbedStatus(appEmbedStatus)}
+              </s-badge>
+              {deepLink ? (
+                <s-button
+                  href={deepLink}
+                  target="_blank"
+                  variant={getAppEmbedButtonVariant(appEmbedStatus)}
+                  tone={getAppEmbedButtonTone()}
                 >
-                  <s-section>
-                    <TocSectionHeading
-                      icon={SECTION_NAV_METADATA.generalSettings.icon}
-                      label={SECTION_NAV_METADATA.generalSettings.label}
-                    />
-                    <s-stack direction="block" gap="base">
-                      <s-text-field
-                        name="title"
-                        label="Title"
-                        details="Shown at the top of the table of contents"
-                        value={title}
-                        onInput={(event) => setTitle(event.currentTarget.value)}
-                        onChange={(event) =>
-                          setTitle(event.currentTarget.value)
-                        }
-                      ></s-text-field>
-                      <div className="toc-field">
-                        <s-text>Heading levels</s-text>
-                        <div
-                          className="toc-inline-choices"
-                          role="group"
-                          aria-label="Heading levels"
-                        >
-                          {HEADING_LEVEL_OPTIONS.map((level) => (
-                            <s-checkbox
-                              key={level}
-                              name="headingLevels"
-                              value={String(level)}
-                              label={`H${level}`}
-                              checked={headingLevels.includes(level)}
-                              onChange={(event) => {
-                                const checked = event.currentTarget.checked;
+                  {getAppEmbedButtonLabel(appEmbedStatus)}
+                </s-button>
+              ) : null}
+            </div>
+          </div>
+          {activeSectionNavItems.length ? (
+            <nav
+              className="toc-section-nav"
+              aria-label={
+                activeTab === "general"
+                  ? "General section navigation"
+                  : activeDevice
+                    ? `${getDeviceLabel(activeDevice)} section navigation`
+                    : "Section navigation"
+              }
+            >
+              <ul className="toc-section-nav__list">
+                {activeSectionNavItems.map((section) => (
+                  <li key={section.key} className="toc-section-nav__item">
+                    <s-clickable-chip
+                      accessibilityLabel={`Scroll to ${section.label}`}
+                      onClick={() => scrollToSection(section.key)}
+                    >
+                      <s-icon slot="graphic" type={section.icon}></s-icon>
+                      {section.label}
+                    </s-clickable-chip>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ) : null}
+        </div>
+        <div className="toc-main-layout">
+          <Form
+            id={FORM_ID}
+            method="post"
+            onReset={(event) => {
+              event.preventDefault();
+              applyConfigToForm(savedConfig, {
+                setTitle,
+                setHeadingLevels,
+                setIndentation,
+                setTextAlignment,
+                setMarkerFormat,
+                setMinHeadings,
+                setMobileBreakpoint,
+                setExcludedBlogs,
+                setCustomCss,
+                setDesktopPosition,
+                setDesktopPositionSelector,
+                setDesktopSwitchToMobileOnFloatOverflow,
+                setDesktopBorderColor,
+                setDesktopBorderWidth,
+                setDesktopBorderRadius,
+                setDesktopShadowPreset,
+                setDesktopShadowColor,
+                setDesktopPaddingTop,
+                setDesktopPaddingBottom,
+                setDesktopPaddingLeft,
+                setDesktopPaddingRight,
+                setDesktopOffsetTop,
+                setDesktopOffsetBottom,
+                setDesktopOffsetLeft,
+                setDesktopOffsetRight,
+                setDesktopBackground,
+                setDesktopMaxWidth,
+                setDesktopSmoothScroll,
+                setDesktopScrollOffset,
+                setDesktopShowTitle,
+                setDesktopHeadingsFontSize,
+                setDesktopHeadingsFontColor,
+                setDesktopHeadingsFontWeight,
+                setDesktopTitleFontSize,
+                setDesktopTitleFontColor,
+                setDesktopTitleFontWeight,
+                setDesktopShowButton,
+                setDesktopShowButtonHeight,
+                setDesktopShowMoreButtonText,
+                setDesktopShowLessButtonText,
+                setDesktopShowButtonFontSize,
+                setDesktopShowButtonFontColor,
+                setDesktopShowButtonFontWeight,
+                setDesktopShowButtonBorderColor,
+                setDesktopShowButtonBorderWidth,
+                setDesktopShowButtonBorderRadius,
+                setDesktopShowButtonPaddingTop,
+                setDesktopShowButtonPaddingBottom,
+                setDesktopShowButtonPaddingLeft,
+                setDesktopShowButtonPaddingRight,
+                setDesktopAnimationType,
+                setDesktopFollowingMarkerWidth,
+                setDesktopFollowingMarkerHeight,
+                setDesktopFollowingMarkerColor,
+                setDesktopFollowingMarkerOffset,
+                setDesktopFollowingMarkerBorderRadius,
+                setDesktopCrawlingSnakeWidth,
+                setDesktopCrawlingSnakeHeight,
+                setDesktopCrawlingSnakeColor,
+                setDesktopCrawlingSnakeOffset,
+                setDesktopJumpingMarkerWidth,
+                setDesktopJumpingMarkerHeight,
+                setDesktopJumpingMarkerColor,
+                setDesktopJumpingMarkerOffset,
+                setDesktopJumpingMarkerBorderRadius,
+                setMobilePosition,
+                setMobilePositionSelector,
+                setMobileBorderColor,
+                setMobileBorderWidth,
+                setMobileBorderRadius,
+                setMobileShadowPreset,
+                setMobileShadowColor,
+                setMobilePaddingTop,
+                setMobilePaddingBottom,
+                setMobilePaddingLeft,
+                setMobilePaddingRight,
+                setMobileOffsetTop,
+                setMobileOffsetBottom,
+                setMobileOffsetLeft,
+                setMobileOffsetRight,
+                setMobileBackground,
+                setMobileMaxWidth,
+                setMobileSmoothScroll,
+                setMobileScrollOffset,
+                setMobileShowTitle,
+                setMobileHeadingsFontSize,
+                setMobileHeadingsFontColor,
+                setMobileHeadingsFontWeight,
+                setMobileTitleFontSize,
+                setMobileTitleFontColor,
+                setMobileTitleFontWeight,
+                setMobileShowButton,
+                setMobileShowButtonHeight,
+                setMobileShowMoreButtonText,
+                setMobileShowLessButtonText,
+                setMobileShowButtonFontSize,
+                setMobileShowButtonFontColor,
+                setMobileShowButtonFontWeight,
+                setMobileShowButtonBorderColor,
+                setMobileShowButtonBorderWidth,
+                setMobileShowButtonBorderRadius,
+                setMobileShowButtonPaddingTop,
+                setMobileShowButtonPaddingBottom,
+                setMobileShowButtonPaddingLeft,
+                setMobileShowButtonPaddingRight,
+                setMobileAnimationType,
+                setMobileFollowingMarkerWidth,
+                setMobileFollowingMarkerHeight,
+                setMobileFollowingMarkerColor,
+                setMobileFollowingMarkerOffset,
+                setMobileFollowingMarkerBorderRadius,
+                setMobileCrawlingSnakeWidth,
+                setMobileCrawlingSnakeHeight,
+                setMobileCrawlingSnakeColor,
+                setMobileCrawlingSnakeOffset,
+                setMobileJumpingMarkerWidth,
+                setMobileJumpingMarkerHeight,
+                setMobileJumpingMarkerColor,
+                setMobileJumpingMarkerOffset,
+                setMobileJumpingMarkerBorderRadius,
+              });
+              setAppliedSections(createEmptyDeviceSectionApplyState());
+            }}
+          >
+            <s-stack direction="block" gap="base">
+              {activeTab !== "desktop" ? (
+                <HiddenDeviceFields
+                  prefix="desktop"
+                  config={currentConfig.desktop}
+                />
+              ) : null}
+              {activeTab !== "mobile" ? (
+                <HiddenDeviceFields
+                  prefix="mobile"
+                  config={currentConfig.mobile}
+                />
+              ) : null}
+              <div
+                className={`toc-tab-panel${activeTab === "general" ? "" : " toc-tab-panel--hidden"}`}
+                aria-hidden={activeTab === "general" ? undefined : "true"}
+              >
+                <>
+                  <div
+                    ref={(node) => {
+                      sectionRefs.current.generalSettings = node;
+                    }}
+                    className="toc-editor-section"
+                  >
+                    <s-section>
+                      <TocSectionHeading
+                        icon={SECTION_NAV_METADATA.generalSettings.icon}
+                        label={SECTION_NAV_METADATA.generalSettings.label}
+                      />
+                      <s-stack direction="block" gap="base">
+                        <s-text-field
+                          name="title"
+                          label="Title"
+                          details="Shown above the table of contents."
+                          value={title}
+                          onInput={(event) => setTitle(event.currentTarget.value)}
+                          onChange={(event) =>
+                            setTitle(event.currentTarget.value)
+                          }
+                        ></s-text-field>
+                        <div className="toc-field">
+                          <s-text>Headings to include</s-text>
+                          <div
+                            className="toc-inline-choices"
+                            role="group"
+                            aria-label="Heading levels"
+                          >
+                            {HEADING_LEVEL_OPTIONS.map((level) => (
+                              <s-checkbox
+                                key={level}
+                                name="headingLevels"
+                                value={String(level)}
+                                label={`H${level}`}
+                                checked={headingLevels.includes(level)}
+                                onChange={(event) => {
+                                  const checked = event.currentTarget.checked;
 
-                                setHeadingLevels((current) => {
-                                  const next = checked
-                                    ? normalizeHeadingLevels([
+                                  setHeadingLevels((current) => {
+                                    const next = checked
+                                      ? normalizeHeadingLevels([
                                         ...current,
                                         level,
                                       ])
-                                    : current.filter(
+                                      : current.filter(
                                         (currentLevel) =>
                                           currentLevel !== level,
                                       );
 
-                                  return next.length ? next : current;
-                                });
-                              }}
-                            ></s-checkbox>
+                                    return next.length ? next : current;
+                                  });
+                                }}
+                              ></s-checkbox>
+                            ))}
+                          </div>
+                          <div className="toc-field-details">
+                            Choose which heading levels to show in the table of contents.
+                          </div>
+                        </div>
+                        <s-text-field
+                          name="minHeadings"
+                          label="Minimum headings required"
+                          details="Hide the table of contents until this number of selected headings is found."
+                          value={minHeadings}
+                          onInput={(event) =>
+                            setMinHeadings(event.currentTarget.value)
+                          }
+                          onChange={(event) =>
+                            setMinHeadings(event.currentTarget.value)
+                          }
+                        ></s-text-field>
+                        <s-number-field
+                          name="mobileBreakpoint"
+                          label="Mobile breakpoint"
+                          details="Apply mobile settings at this width and below."
+                          min={0}
+                          step={1}
+                          suffix="px"
+                          value={mobileBreakpoint}
+                          onInput={(event) =>
+                            setMobileBreakpoint(event.currentTarget.value)
+                          }
+                          onChange={(event) =>
+                            setMobileBreakpoint(event.currentTarget.value)
+                          }
+                        ></s-number-field>
+                        <s-text-field
+                          name="excludedBlogs"
+                          label="Hide on blog posts"
+                          details="Hide the table of contents on these blog posts. Use comma-separated article IDs, exact tags, or wildcard patterns like news/*"
+                          placeholder="news/*, news/today-is-the-best-day, 671373295959"
+                          value={excludedBlogs}
+                          onInput={(event) =>
+                            setExcludedBlogs(event.currentTarget.value)
+                          }
+                          onChange={(event) =>
+                            setExcludedBlogs(event.currentTarget.value)
+                          }
+                        ></s-text-field>
+                      </s-stack>
+                    </s-section>
+                  </div>
+                  <div
+                    ref={(node) => {
+                      sectionRefs.current.textFormatting = node;
+                    }}
+                    className="toc-editor-section"
+                  >
+                    <s-section>
+                      <TocSectionHeading
+                        icon={SECTION_NAV_METADATA.textFormatting.icon}
+                        label={SECTION_NAV_METADATA.textFormatting.label}
+                      />
+                      <s-stack direction="block" gap="base">
+                        <s-select
+                          name="textAlignment"
+                          label="Text alignment"
+                          details="Choose how the heading and links are aligned."
+                          value={textAlignment}
+                          onChange={(event) =>
+                            setTextAlignment(
+                              normalizeTextAlignment(event.currentTarget.value),
+                            )
+                          }
+                        >
+                          {TEXT_ALIGNMENT_OPTIONS.map((option) => (
+                            <s-option key={option.value} value={option.value}>
+                              {option.label}
+                            </s-option>
                           ))}
-                        </div>
-                        <div className="toc-field-details">
-                          Choose which article headings should appear in the
-                          table of contents.
-                        </div>
-                      </div>
-                      <s-text-field
-                        name="minHeadings"
-                        label="Minimum headings to show"
-                        details="Hide the table of contents until this many selected headings are found"
-                        value={minHeadings}
-                        onInput={(event) =>
-                          setMinHeadings(event.currentTarget.value)
-                        }
-                        onChange={(event) =>
-                          setMinHeadings(event.currentTarget.value)
-                        }
-                      ></s-text-field>
-                      <s-number-field
-                        name="mobileBreakpoint"
-                        label="Mobile breakpoint"
-                        details="Use mobile styles at this width and below"
-                        min={0}
-                        step={1}
-                        suffix="px"
-                        value={mobileBreakpoint}
-                        onInput={(event) =>
-                          setMobileBreakpoint(event.currentTarget.value)
-                        }
-                        onChange={(event) =>
-                          setMobileBreakpoint(event.currentTarget.value)
-                        }
-                      ></s-number-field>
-                      <s-text-field
-                        name="excludedBlogs"
-                        label="Blog posts to exclude"
-                        details="Comma-separated article IDs, exact slugs, or suffix wildcard patterns like news/* where the table of contents should stay hidden"
-                        placeholder="news/*, news/today-is-the-best-day, 671373295959"
-                        value={excludedBlogs}
-                        onInput={(event) =>
-                          setExcludedBlogs(event.currentTarget.value)
-                        }
-                        onChange={(event) =>
-                          setExcludedBlogs(event.currentTarget.value)
-                        }
-                      ></s-text-field>
-                    </s-stack>
-                  </s-section>
-                </div>
-                <div
-                  ref={(node) => {
-                    sectionRefs.current.textFormatting = node;
-                  }}
-                  className="toc-editor-section"
-                >
-                  <s-section>
-                    <TocSectionHeading
-                      icon={SECTION_NAV_METADATA.textFormatting.icon}
-                      label={SECTION_NAV_METADATA.textFormatting.label}
-                    />
-                    <s-stack direction="block" gap="base">
-                      <s-select
-                        name="textAlignment"
-                        label="Text alignment"
-                        details="Align the title and links inside the table of contents"
-                        value={textAlignment}
-                        onChange={(event) =>
-                          setTextAlignment(
-                            normalizeTextAlignment(event.currentTarget.value),
-                          )
-                        }
-                      >
-                        {TEXT_ALIGNMENT_OPTIONS.map((option) => (
-                          <s-option key={option.value} value={option.value}>
-                            {option.label}
-                          </s-option>
-                        ))}
-                      </s-select>
-                      <s-select
-                        name="markerFormat"
-                        label="Numbering / Bullet Format"
-                        details="Choose whether items use no marker, bullets, or numbers"
-                        value={markerFormat}
-                        onChange={(event) =>
-                          setMarkerFormat(
-                            normalizeMarkerFormat(event.currentTarget.value),
-                          )
-                        }
-                      >
-                        {MARKER_FORMAT_OPTIONS.map((option) => (
-                          <s-option key={option.value} value={option.value}>
-                            {option.label}
-                          </s-option>
-                        ))}
-                      </s-select>
-                      <s-checkbox
-                        name="indentation"
-                        label="Indent nested headings"
-                        details="Show lower-level headings as nested items"
-                        checked={
-                          textAlignment === "center" ? false : indentation
-                        }
-                        disabled={textAlignment === "center"}
-                        onChange={(event) =>
-                          setIndentation(event.currentTarget.checked)
-                        }
-                      ></s-checkbox>
-                    </s-stack>
-                  </s-section>
-                </div>
-                <div
-                  ref={(node) => {
-                    sectionRefs.current.advancedSettings = node;
-                  }}
-                  className="toc-editor-section"
-                >
-                  <s-section>
-                    <TocSectionHeading
-                      icon={SECTION_NAV_METADATA.advancedSettings.icon}
-                      label={SECTION_NAV_METADATA.advancedSettings.label}
-                    />
-                    <div className="toc-field">
-                      <div className="toc-code-field">
-                        <span className="toc-code-field__label">
-                          Custom CSS
-                        </span>
-                        <span className="toc-field-details">
-                          Same classes work for desktop and mobile. Use{" "}
-                          {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN} for mobile-only
-                          rules.
-                        </span>
-                        <input
-                          name="customCss"
-                          type="hidden"
-                          value={customCss}
-                        />
-                        <div className="toc-code-editor">
-                          <CodeMirror
+                        </s-select>
+                        <s-select
+                          name="markerFormat"
+                          label="List style"
+                          details="Choose whether to show no marker, bullets, or numbers."
+                          value={markerFormat}
+                          onChange={(event) =>
+                            setMarkerFormat(
+                              normalizeMarkerFormat(event.currentTarget.value),
+                            )
+                          }
+                        >
+                          {MARKER_FORMAT_OPTIONS.map((option) => (
+                            <s-option key={option.value} value={option.value}>
+                              {option.label}
+                            </s-option>
+                          ))}
+                        </s-select>
+                        <s-checkbox
+                          name="indentation"
+                          label="Indent nested items"
+                          details="Show lower-level headings as nested items."
+                          checked={
+                            textAlignment === "center" ? false : indentation
+                          }
+                          disabled={textAlignment === "center"}
+                          onChange={(event) =>
+                            setIndentation(event.currentTarget.checked)
+                          }
+                        ></s-checkbox>
+                      </s-stack>
+                    </s-section>
+                  </div>
+                  <div
+                    ref={(node) => {
+                      sectionRefs.current.advancedSettings = node;
+                    }}
+                    className="toc-editor-section"
+                  >
+                    <s-section>
+                      <TocSectionHeading
+                        icon={SECTION_NAV_METADATA.advancedSettings.icon}
+                        label={SECTION_NAV_METADATA.advancedSettings.label}
+                      />
+                      <div className="toc-field">
+                        <div className="toc-code-field">
+                          <span className="toc-code-field__label">
+                            Custom CSS
+                          </span>
+                          <span className="toc-field-details">
+                            These class names work on both desktop and mobile. Use{" "}
+                            {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN} for mobile-only
+                            rules.
+                          </span>
+                          <input
+                            name="customCss"
+                            type="hidden"
                             value={customCss}
-                            height="320px"
-                            aria-label="Custom CSS"
-                            extensions={CUSTOM_CSS_EDITOR_EXTENSIONS}
-                            basicSetup={{
-                              foldGutter: false,
-                              highlightActiveLine: true,
-                              lineNumbers: true,
-                            }}
-                            onChange={(value) => setCustomCss(value)}
-                            onCreateEditor={(view) => {
-                              customCssEditorViewRef.current = view;
-                            }}
                           />
+                          <div className="toc-code-editor">
+                            <CodeMirror
+                              value={customCss}
+                              height="320px"
+                              aria-label="Custom CSS"
+                              extensions={CUSTOM_CSS_EDITOR_EXTENSIONS}
+                              basicSetup={{
+                                foldGutter: false,
+                                highlightActiveLine: true,
+                                lineNumbers: true,
+                              }}
+                              onChange={(value) => setCustomCss(value)}
+                              onCreateEditor={(view) => {
+                                customCssEditorViewRef.current = view;
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </s-section>
-                </div>
-              </>
-            </div>
-            {activeTab !== "general" ? (
-              <>
-                {renderDeviceSection(
-                  "general",
-                  <s-stack direction="block" gap="base">
-                    <s-select
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopPosition"
-                          : "mobilePosition"
-                      }
-                      label="Position"
-                      value={
-                        activeTab === "desktop"
-                          ? desktopPosition
-                          : mobilePosition
-                      }
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-
-                        if (activeTab === "desktop") {
-                          setDesktopPosition(normalizeDesktopPosition(value));
-                        } else {
-                          setMobilePosition(normalizeMobilePosition(value));
-                        }
-                      }}
-                    >
-                      {(activeTab === "desktop"
-                        ? DESKTOP_POSITION_OPTIONS
-                        : MOBILE_POSITION_OPTIONS
-                      ).map((option) => (
-                        <s-option key={option.value} value={option.value}>
-                          {option.label}
-                        </s-option>
-                      ))}
-                    </s-select>
-                    {(
-                      activeTab === "desktop"
-                        ? desktopPosition === "css-selector"
-                        : mobilePosition === "css-selector"
-                    ) ? (
-                      <s-text-field
+                    </s-section>
+                  </div>
+                </>
+              </div>
+              {activeTab !== "general" ? (
+                <>
+                  {renderDeviceSection(
+                    "general",
+                    <s-stack direction="block" gap="base">
+                      {activeTab === "desktop" ? (
+                        <input
+                          type="hidden"
+                          name="desktopSwitchToMobileOnFloatOverflow"
+                          value={
+                            desktopSwitchToMobileOnFloatOverflow ? "on" : ""
+                          }
+                        />
+                      ) : null}
+                      <s-select
                         name={
                           activeTab === "desktop"
-                            ? "desktopPositionSelector"
-                            : "mobilePositionSelector"
+                            ? "desktopPosition"
+                            : "mobilePosition"
                         }
-                        label="CSS selector"
-                        details={
-                          activeTab === "desktop"
-                            ? "Appends the TOC inside the first matching element. Falls back to float right when no match is found."
-                            : "Appends the TOC inside the first matching element. Falls back to before first heading when no match is found."
-                        }
+                        label="Placement"
                         value={
                           activeTab === "desktop"
-                            ? desktopPositionSelector
-                            : mobilePositionSelector
+                            ? desktopPosition
+                            : mobilePosition
                         }
-                        onInput={(event) => {
-                          const value = event.currentTarget.value;
-
-                          if (activeTab === "desktop") {
-                            setDesktopPositionSelector(value);
-                          } else {
-                            setMobilePositionSelector(value);
-                          }
-                        }}
                         onChange={(event) => {
                           const value = event.currentTarget.value;
 
                           if (activeTab === "desktop") {
-                            setDesktopPositionSelector(value);
+                            const nextPosition =
+                              normalizeDesktopPosition(value);
+
+                            if (
+                              isDesktopFloatPosition(nextPosition) &&
+                              !isDesktopFloatPosition(desktopPosition)
+                            ) {
+                              setDesktopSwitchToMobileOnFloatOverflow(true);
+                            }
+
+                            setDesktopPosition(nextPosition);
                           } else {
-                            setMobilePositionSelector(value);
+                            setMobilePosition(normalizeMobilePosition(value));
                           }
                         }}
-                      ></s-text-field>
-                    ) : null}
-                    <s-color-field
-                      name={
+                      >
+                        {(activeTab === "desktop"
+                          ? DESKTOP_POSITION_OPTIONS
+                          : MOBILE_POSITION_OPTIONS
+                        ).map((option) => (
+                          <s-option key={option.value} value={option.value}>
+                            {option.label}
+                          </s-option>
+                        ))}
+                      </s-select>
+                      {activeTab === "desktop" &&
+                        isDesktopFloatPosition(desktopPosition) ? (
+                        <div className="toc-field">
+                          <s-checkbox
+                            label="Use mobile layout when desktop layout no longer fits"
+                            checked={desktopSwitchToMobileOnFloatOverflow}
+                            onChange={(event) =>
+                              setDesktopSwitchToMobileOnFloatOverflow(
+                                event.currentTarget.checked,
+                              )
+                            }
+                          ></s-checkbox>
+                          <div className="toc-field-details">
+                            Automatically switch to the mobile layout when the desktop TOC no longer fits beside the article.
+                          </div>
+                        </div>
+                      ) : null}
+                      {(
                         activeTab === "desktop"
-                          ? "desktopBackground"
-                          : "mobileBackground"
-                      }
-                      label="Background"
-                      alpha
-                      value={
-                        activeTab === "desktop"
-                          ? desktopBackground
-                          : mobileBackground
-                      }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopBackground(value);
-                        } else {
-                          setMobileBackground(value);
-                        }
-                      }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopBackground(value);
-                        } else {
-                          setMobileBackground(value);
-                        }
-                      }}
-                    ></s-color-field>
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopMaxWidth"
-                          : "mobileMaxWidth"
-                      }
-                      label="Max width"
-                      details="Set to 0 for no max width"
-                      range={SLIDER_RANGES.maxWidth}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopMaxWidth
-                          : mobileMaxWidth
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopMaxWidth(value);
-                        } else {
-                          setMobileMaxWidth(value);
-                        }
-                      }}
-                    />
-                  </s-stack>,
-                )}
-                {renderDeviceSection(
-                  "title",
-                  <s-stack direction="block" gap="base">
-                    <s-checkbox
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopShowTitle"
-                          : "mobileShowTitle"
-                      }
-                      label="Show title"
-                      checked={
-                        activeTab === "desktop"
-                          ? desktopShowTitle
-                          : mobileShowTitle
-                      }
-                      onChange={(event) => {
-                        const checked = event.currentTarget.checked;
-                        if (activeTab === "desktop") {
-                          setDesktopShowTitle(checked);
-                        } else {
-                          setMobileShowTitle(checked);
-                        }
-                      }}
-                    ></s-checkbox>
-                    <div className="toc-compact-fields">
+                          ? desktopPosition === "css-selector"
+                          : mobilePosition === "css-selector"
+                      ) ? (
+                        <s-text-field
+                          name={
+                            activeTab === "desktop"
+                              ? "desktopPositionSelector"
+                              : "mobilePositionSelector"
+                          }
+                          label="Inside selected element"
+                          details={
+                            activeTab === "desktop"
+                              ? "Places the table of contents inside the first element that matches this selector. If no match is found, it will be placed on the right side instead."
+                              : "Places the table of contents inside the first element that matches this selector. If no match is found, it will be placed before the first heading instead."
+                          }
+                          value={
+                            activeTab === "desktop"
+                              ? desktopPositionSelector
+                              : mobilePositionSelector
+                          }
+                          onInput={(event) => {
+                            const value = event.currentTarget.value;
+
+                            if (activeTab === "desktop") {
+                              setDesktopPositionSelector(value);
+                            } else {
+                              setMobilePositionSelector(value);
+                            }
+                          }}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+
+                            if (activeTab === "desktop") {
+                              setDesktopPositionSelector(value);
+                            } else {
+                              setMobilePositionSelector(value);
+                            }
+                          }}
+                        ></s-text-field>
+                      ) : null}
                       <s-color-field
                         name={
                           activeTab === "desktop"
-                            ? "desktopTitleFontColor"
-                            : "mobileTitleFontColor"
+                            ? "desktopBackground"
+                            : "mobileBackground"
                         }
-                        label="Color"
+                        label="Background color"
                         alpha
-                        disabled={!isTitleEnabled}
                         value={
                           activeTab === "desktop"
-                            ? desktopTitleFontColor
-                            : mobileTitleFontColor
+                            ? desktopBackground
+                            : mobileBackground
                         }
                         onInput={(event) => {
                           const value = event.currentTarget.value;
                           if (activeTab === "desktop") {
-                            setDesktopTitleFontColor(value);
+                            setDesktopBackground(value);
                           } else {
-                            setMobileTitleFontColor(value);
+                            setMobileBackground(value);
                           }
                         }}
                         onChange={(event) => {
                           const value = event.currentTarget.value;
                           if (activeTab === "desktop") {
-                            setDesktopTitleFontColor(value);
+                            setDesktopBackground(value);
                           } else {
-                            setMobileTitleFontColor(value);
+                            setMobileBackground(value);
                           }
                         }}
                       ></s-color-field>
                       <TocSliderField
                         name={
                           activeTab === "desktop"
-                            ? "desktopTitleFontSize"
-                            : "mobileTitleFontSize"
+                            ? "desktopMaxWidth"
+                            : "mobileMaxWidth"
                         }
-                        label="Font size"
-                        range={SLIDER_RANGES.fontSize}
-                        disabled={!isTitleEnabled}
+                        label="Maximum width"
+                        details="Set the maximum width of the table of contents. Use 0 for no limit."
+                        range={SLIDER_RANGES.maxWidth}
                         value={
                           activeTab === "desktop"
-                            ? desktopTitleFontSize
-                            : mobileTitleFontSize
+                            ? desktopMaxWidth
+                            : mobileMaxWidth
                         }
                         onValueChange={(value) => {
                           if (activeTab === "desktop") {
-                            setDesktopTitleFontSize(value);
+                            setDesktopMaxWidth(value);
                           } else {
-                            setMobileTitleFontSize(value);
+                            setMobileMaxWidth(value);
                           }
                         }}
                       />
-                      <s-select
+                    </s-stack>,
+                  )}
+                  {renderDeviceSection(
+                    "title",
+                    <s-stack direction="block" gap="base">
+                      <s-checkbox
                         name={
                           activeTab === "desktop"
-                            ? "desktopTitleFontWeight"
-                            : "mobileTitleFontWeight"
+                            ? "desktopShowTitle"
+                            : "mobileShowTitle"
                         }
-                        label="Font weight"
-                        disabled={!isTitleEnabled}
-                        value={
+                        label="Show title"
+                        checked={
                           activeTab === "desktop"
-                            ? desktopTitleFontWeight
-                            : mobileTitleFontWeight
+                            ? desktopShowTitle
+                            : mobileShowTitle
                         }
                         onChange={(event) => {
-                          const value = event.currentTarget.value;
+                          const checked = event.currentTarget.checked;
                           if (activeTab === "desktop") {
-                            setDesktopTitleFontWeight(value);
+                            setDesktopShowTitle(checked);
                           } else {
-                            setMobileTitleFontWeight(value);
+                            setMobileShowTitle(checked);
                           }
                         }}
-                      >
-                        {FONT_WEIGHT_OPTIONS.map((option) => (
-                          <s-option key={option.value} value={option.value}>
-                            {option.label}
-                          </s-option>
-                        ))}
-                      </s-select>
-                    </div>
-                  </s-stack>,
-                )}
-                {renderDeviceSection(
-                  "headings",
-                  <div className="toc-compact-fields">
-                    <s-color-field
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopHeadingsFontColor"
-                          : "mobileHeadingsFontColor"
-                      }
-                      label="Color"
-                      alpha
-                      value={
-                        activeTab === "desktop"
-                          ? desktopHeadingsFontColor
-                          : mobileHeadingsFontColor
-                      }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopHeadingsFontColor(value);
-                        } else {
-                          setMobileHeadingsFontColor(value);
-                        }
-                      }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopHeadingsFontColor(value);
-                        } else {
-                          setMobileHeadingsFontColor(value);
-                        }
-                      }}
-                    ></s-color-field>
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopHeadingsFontSize"
-                          : "mobileHeadingsFontSize"
-                      }
-                      label="Font size"
-                      range={SLIDER_RANGES.fontSize}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopHeadingsFontSize
-                          : mobileHeadingsFontSize
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopHeadingsFontSize(value);
-                        } else {
-                          setMobileHeadingsFontSize(value);
-                        }
-                      }}
-                    />
-                    <s-select
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopHeadingsFontWeight"
-                          : "mobileHeadingsFontWeight"
-                      }
-                      label="Font weight"
-                      value={
-                        activeTab === "desktop"
-                          ? desktopHeadingsFontWeight
-                          : mobileHeadingsFontWeight
-                      }
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopHeadingsFontWeight(value);
-                        } else {
-                          setMobileHeadingsFontWeight(value);
-                        }
-                      }}
-                    >
-                      {FONT_WEIGHT_OPTIONS.map((option) => (
-                        <s-option key={option.value} value={option.value}>
-                          {option.label}
-                        </s-option>
-                      ))}
-                    </s-select>
-                  </div>,
-                )}
-                {renderDeviceSection(
-                  "border",
-                  <div className="toc-compact-fields">
-                    <s-color-field
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopBorderColor"
-                          : "mobileBorderColor"
-                      }
-                      label="Color"
-                      alpha
-                      value={
-                        activeTab === "desktop"
-                          ? desktopBorderColor
-                          : mobileBorderColor
-                      }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopBorderColor(value);
-                        } else {
-                          setMobileBorderColor(value);
-                        }
-                      }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopBorderColor(value);
-                        } else {
-                          setMobileBorderColor(value);
-                        }
-                      }}
-                    ></s-color-field>
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopBorderWidth"
-                          : "mobileBorderWidth"
-                      }
-                      label="Width"
-                      range={SLIDER_RANGES.borderWidth}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopBorderWidth
-                          : mobileBorderWidth
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopBorderWidth(value);
-                        } else {
-                          setMobileBorderWidth(value);
-                        }
-                      }}
-                    />
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopBorderRadius"
-                          : "mobileBorderRadius"
-                      }
-                      label="Radius"
-                      range={SLIDER_RANGES.borderRadius}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopBorderRadius
-                          : mobileBorderRadius
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopBorderRadius(value);
-                        } else {
-                          setMobileBorderRadius(value);
-                        }
-                      }}
-                    />
-                  </div>,
-                )}
-                {renderDeviceSection(
-                  "shadow",
-                  <s-stack direction="block" gap="base">
-                    <s-select
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopShadowPreset"
-                          : "mobileShadowPreset"
-                      }
-                      label="Preset"
-                      value={
-                        activeTab === "desktop"
-                          ? desktopShadowPreset
-                          : mobileShadowPreset
-                      }
-                      onChange={(event) => {
-                        const value = normalizeShadowPreset(
-                          event.currentTarget.value,
-                        );
-
-                        if (activeTab === "desktop") {
-                          setDesktopShadowPreset(value);
-                        } else {
-                          setMobileShadowPreset(value);
-                        }
-                      }}
-                    >
-                      {SHADOW_PRESET_OPTIONS.map((option) => (
-                        <s-option key={option.value} value={option.value}>
-                          {option.label}
-                        </s-option>
-                      ))}
-                    </s-select>
-                    <s-color-field
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopShadowColor"
-                          : "mobileShadowColor"
-                      }
-                      label="Color"
-                      alpha
-                      value={
-                        activeTab === "desktop"
-                          ? desktopShadowColor
-                          : mobileShadowColor
-                      }
-                      onInput={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopShadowColor(value);
-                        } else {
-                          setMobileShadowColor(value);
-                        }
-                      }}
-                      onChange={(event) => {
-                        const value = event.currentTarget.value;
-                        if (activeTab === "desktop") {
-                          setDesktopShadowColor(value);
-                        } else {
-                          setMobileShadowColor(value);
-                        }
-                      }}
-                    ></s-color-field>
-                  </s-stack>,
-                )}
-                {renderDeviceSection(
-                  "padding",
-                  <div className="toc-compact-fields-four">
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopPaddingTop"
-                          : "mobilePaddingTop"
-                      }
-                      label="Top"
-                      range={SLIDER_RANGES.padding}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopPaddingTop
-                          : mobilePaddingTop
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopPaddingTop(value);
-                        } else {
-                          setMobilePaddingTop(value);
-                        }
-                      }}
-                    />
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopPaddingBottom"
-                          : "mobilePaddingBottom"
-                      }
-                      label="Bottom"
-                      range={SLIDER_RANGES.padding}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopPaddingBottom
-                          : mobilePaddingBottom
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopPaddingBottom(value);
-                        } else {
-                          setMobilePaddingBottom(value);
-                        }
-                      }}
-                    />
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopPaddingLeft"
-                          : "mobilePaddingLeft"
-                      }
-                      label="Left"
-                      range={SLIDER_RANGES.padding}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopPaddingLeft
-                          : mobilePaddingLeft
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopPaddingLeft(value);
-                        } else {
-                          setMobilePaddingLeft(value);
-                        }
-                      }}
-                    />
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopPaddingRight"
-                          : "mobilePaddingRight"
-                      }
-                      label="Right"
-                      range={SLIDER_RANGES.padding}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopPaddingRight
-                          : mobilePaddingRight
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopPaddingRight(value);
-                        } else {
-                          setMobilePaddingRight(value);
-                        }
-                      }}
-                    />
-                  </div>,
-                )}
-                {renderDeviceSection(
-                  "offset",
-                  <div className="toc-compact-fields-four">
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopOffsetTop"
-                          : "mobileOffsetTop"
-                      }
-                      label="Top"
-                      range={SLIDER_RANGES.layoutOffset}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopOffsetTop
-                          : mobileOffsetTop
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopOffsetTop(value);
-                        } else {
-                          setMobileOffsetTop(value);
-                        }
-                      }}
-                    />
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopOffsetBottom"
-                          : "mobileOffsetBottom"
-                      }
-                      label="Bottom"
-                      range={SLIDER_RANGES.layoutOffset}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopOffsetBottom
-                          : mobileOffsetBottom
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopOffsetBottom(value);
-                        } else {
-                          setMobileOffsetBottom(value);
-                        }
-                      }}
-                    />
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopOffsetLeft"
-                          : "mobileOffsetLeft"
-                      }
-                      label="Left"
-                      range={SLIDER_RANGES.layoutOffset}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopOffsetLeft
-                          : mobileOffsetLeft
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopOffsetLeft(value);
-                        } else {
-                          setMobileOffsetLeft(value);
-                        }
-                      }}
-                    />
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopOffsetRight"
-                          : "mobileOffsetRight"
-                      }
-                      label="Right"
-                      range={SLIDER_RANGES.layoutOffset}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopOffsetRight
-                          : mobileOffsetRight
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopOffsetRight(value);
-                        } else {
-                          setMobileOffsetRight(value);
-                        }
-                      }}
-                    />
-                  </div>,
-                )}
-                {renderDeviceSection(
-                  "scroll",
-                  <s-stack direction="block" gap="base">
-                    <s-checkbox
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopSmoothScroll"
-                          : "mobileSmoothScroll"
-                      }
-                      label="Smooth scroll"
-                      details="Scroll smoothly to a heading when a TOC link is clicked"
-                      checked={
-                        activeTab === "desktop"
-                          ? desktopSmoothScroll
-                          : mobileSmoothScroll
-                      }
-                      onChange={(event) => {
-                        const checked = event.currentTarget.checked;
-                        if (activeTab === "desktop") {
-                          setDesktopSmoothScroll(checked);
-                        } else {
-                          setMobileSmoothScroll(checked);
-                        }
-                      }}
-                    ></s-checkbox>
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopScrollOffset"
-                          : "mobileScrollOffset"
-                      }
-                      label="Offset"
-                      details="Top offset in pixels"
-                      range={SLIDER_RANGES.scrollOffset}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopScrollOffset
-                          : mobileScrollOffset
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopScrollOffset(value);
-                        } else {
-                          setMobileScrollOffset(value);
-                        }
-                      }}
-                    />
-                  </s-stack>,
-                )}
-                {renderDeviceSection(
-                  "showButton",
-                  <s-stack direction="block" gap="base">
-                    <s-checkbox
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopShowButton"
-                          : "mobileShowButton"
-                      }
-                      label="Enable show more"
-                      checked={
-                        activeTab === "desktop"
-                          ? desktopShowButton
-                          : mobileShowButton
-                      }
-                      onChange={(event) => {
-                        const checked = event.currentTarget.checked;
-                        if (activeTab === "desktop") {
-                          setDesktopShowButton(checked);
-                        } else {
-                          setMobileShowButton(checked);
-                        }
-                      }}
-                    ></s-checkbox>
-                    <TocSliderField
-                      name={
-                        activeTab === "desktop"
-                          ? "desktopShowButtonHeight"
-                          : "mobileShowButtonHeight"
-                      }
-                      label="Collapsed height"
-                      details="Collapsed content height before the button is shown"
-                      range={SLIDER_RANGES.collapsedHeight}
-                      disabled={!isShowMoreEnabled}
-                      value={
-                        activeTab === "desktop"
-                          ? desktopShowButtonHeight
-                          : mobileShowButtonHeight
-                      }
-                      onValueChange={(value) => {
-                        if (activeTab === "desktop") {
-                          setDesktopShowButtonHeight(value);
-                        } else {
-                          setMobileShowButtonHeight(value);
-                        }
-                      }}
-                    />
-                    <div className="toc-subsection">
-                      <p className="toc-subsection-title">Text</p>
-                      <div className="toc-compact-fields-two">
-                        <s-text-field
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowMoreButtonText"
-                              : "mobileShowMoreButtonText"
-                          }
-                          label="Show more"
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowMoreButtonText
-                              : mobileShowMoreButtonText
-                          }
-                          onInput={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowMoreButtonText(value);
-                            } else {
-                              setMobileShowMoreButtonText(value);
-                            }
-                          }}
-                          onChange={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowMoreButtonText(value);
-                            } else {
-                              setMobileShowMoreButtonText(value);
-                            }
-                          }}
-                        ></s-text-field>
-                        <s-text-field
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowLessButtonText"
-                              : "mobileShowLessButtonText"
-                          }
-                          label="Show less"
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowLessButtonText
-                              : mobileShowLessButtonText
-                          }
-                          onInput={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowLessButtonText(value);
-                            } else {
-                              setMobileShowLessButtonText(value);
-                            }
-                          }}
-                          onChange={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowLessButtonText(value);
-                            } else {
-                              setMobileShowLessButtonText(value);
-                            }
-                          }}
-                        ></s-text-field>
-                      </div>
-                    </div>
-                    <div className="toc-subsection">
-                      <p className="toc-subsection-title">Padding</p>
-                      <div className="toc-compact-fields-two">
-                        <TocSliderField
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowButtonPaddingTop"
-                              : "mobileShowButtonPaddingTop"
-                          }
-                          label="Top"
-                          range={SLIDER_RANGES.padding}
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowButtonPaddingTop
-                              : mobileShowButtonPaddingTop
-                          }
-                          onValueChange={(value) => {
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonPaddingTop(value);
-                            } else {
-                              setMobileShowButtonPaddingTop(value);
-                            }
-                          }}
-                        />
-                        <TocSliderField
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowButtonPaddingBottom"
-                              : "mobileShowButtonPaddingBottom"
-                          }
-                          label="Bottom"
-                          range={SLIDER_RANGES.padding}
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowButtonPaddingBottom
-                              : mobileShowButtonPaddingBottom
-                          }
-                          onValueChange={(value) => {
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonPaddingBottom(value);
-                            } else {
-                              setMobileShowButtonPaddingBottom(value);
-                            }
-                          }}
-                        />
-                        <TocSliderField
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowButtonPaddingLeft"
-                              : "mobileShowButtonPaddingLeft"
-                          }
-                          label="Left"
-                          range={SLIDER_RANGES.padding}
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowButtonPaddingLeft
-                              : mobileShowButtonPaddingLeft
-                          }
-                          onValueChange={(value) => {
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonPaddingLeft(value);
-                            } else {
-                              setMobileShowButtonPaddingLeft(value);
-                            }
-                          }}
-                        />
-                        <TocSliderField
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowButtonPaddingRight"
-                              : "mobileShowButtonPaddingRight"
-                          }
-                          label="Right"
-                          range={SLIDER_RANGES.padding}
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowButtonPaddingRight
-                              : mobileShowButtonPaddingRight
-                          }
-                          onValueChange={(value) => {
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonPaddingRight(value);
-                            } else {
-                              setMobileShowButtonPaddingRight(value);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="toc-subsection">
-                      <p className="toc-subsection-title">Font</p>
+                      ></s-checkbox>
                       <div className="toc-compact-fields">
                         <s-color-field
                           name={
                             activeTab === "desktop"
-                              ? "desktopShowButtonFontColor"
-                              : "mobileShowButtonFontColor"
+                              ? "desktopTitleFontColor"
+                              : "mobileTitleFontColor"
                           }
-                          label="Color"
+                          label="Text color"
                           alpha
-                          disabled={!isShowMoreEnabled}
+                          disabled={!isTitleEnabled}
                           value={
                             activeTab === "desktop"
-                              ? desktopShowButtonFontColor
-                              : mobileShowButtonFontColor
+                              ? desktopTitleFontColor
+                              : mobileTitleFontColor
                           }
                           onInput={(event) => {
                             const value = event.currentTarget.value;
                             if (activeTab === "desktop") {
-                              setDesktopShowButtonFontColor(value);
+                              setDesktopTitleFontColor(value);
                             } else {
-                              setMobileShowButtonFontColor(value);
+                              setMobileTitleFontColor(value);
                             }
                           }}
                           onChange={(event) => {
                             const value = event.currentTarget.value;
                             if (activeTab === "desktop") {
-                              setDesktopShowButtonFontColor(value);
+                              setDesktopTitleFontColor(value);
                             } else {
-                              setMobileShowButtonFontColor(value);
+                              setMobileTitleFontColor(value);
                             }
                           }}
                         ></s-color-field>
-                        <TocSliderField
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowButtonFontSize"
-                              : "mobileShowButtonFontSize"
-                          }
-                          label="Size"
-                          range={SLIDER_RANGES.fontSize}
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowButtonFontSize
-                              : mobileShowButtonFontSize
-                          }
-                          onValueChange={(value) => {
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonFontSize(value);
-                            } else {
-                              setMobileShowButtonFontSize(value);
-                            }
-                          }}
-                        />
                         <s-select
                           name={
                             activeTab === "desktop"
-                              ? "desktopShowButtonFontWeight"
-                              : "mobileShowButtonFontWeight"
+                              ? "desktopTitleFontWeight"
+                              : "mobileTitleFontWeight"
                           }
-                          label="Weight"
-                          disabled={!isShowMoreEnabled}
+                          label="Font weight"
+                          disabled={!isTitleEnabled}
                           value={
                             activeTab === "desktop"
-                              ? desktopShowButtonFontWeight
-                              : mobileShowButtonFontWeight
+                              ? desktopTitleFontWeight
+                              : mobileTitleFontWeight
                           }
                           onChange={(event) => {
                             const value = event.currentTarget.value;
                             if (activeTab === "desktop") {
-                              setDesktopShowButtonFontWeight(value);
+                              setDesktopTitleFontWeight(value);
                             } else {
-                              setMobileShowButtonFontWeight(value);
+                              setMobileTitleFontWeight(value);
                             }
                           }}
                         >
@@ -3911,92 +3217,861 @@ export default function Index() {
                             </s-option>
                           ))}
                         </s-select>
-                      </div>
-                    </div>
-                    <div className="toc-subsection">
-                      <p className="toc-subsection-title">Border</p>
-                      <div className="toc-compact-fields">
-                        <s-color-field
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowButtonBorderColor"
-                              : "mobileShowButtonBorderColor"
-                          }
-                          label="Color"
-                          alpha
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowButtonBorderColor
-                              : mobileShowButtonBorderColor
-                          }
-                          onInput={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonBorderColor(value);
-                            } else {
-                              setMobileShowButtonBorderColor(value);
-                            }
-                          }}
-                          onChange={(event) => {
-                            const value = event.currentTarget.value;
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonBorderColor(value);
-                            } else {
-                              setMobileShowButtonBorderColor(value);
-                            }
-                          }}
-                        ></s-color-field>
+
                         <TocSliderField
                           name={
                             activeTab === "desktop"
-                              ? "desktopShowButtonBorderWidth"
-                              : "mobileShowButtonBorderWidth"
+                              ? "desktopTitleFontSize"
+                              : "mobileTitleFontSize"
                           }
-                          label="Width"
-                          range={SLIDER_RANGES.borderWidth}
-                          disabled={!isShowMoreEnabled}
+                          label="Font size"
+                          range={SLIDER_RANGES.fontSize}
+                          disabled={!isTitleEnabled}
                           value={
                             activeTab === "desktop"
-                              ? desktopShowButtonBorderWidth
-                              : mobileShowButtonBorderWidth
+                              ? desktopTitleFontSize
+                              : mobileTitleFontSize
                           }
                           onValueChange={(value) => {
                             if (activeTab === "desktop") {
-                              setDesktopShowButtonBorderWidth(value);
+                              setDesktopTitleFontSize(value);
                             } else {
-                              setMobileShowButtonBorderWidth(value);
+                              setMobileTitleFontSize(value);
                             }
                           }}
                         />
-                        <TocSliderField
-                          name={
-                            activeTab === "desktop"
-                              ? "desktopShowButtonBorderRadius"
-                              : "mobileShowButtonBorderRadius"
-                          }
-                          label="Radius"
-                          range={SLIDER_RANGES.borderRadius}
-                          disabled={!isShowMoreEnabled}
-                          value={
-                            activeTab === "desktop"
-                              ? desktopShowButtonBorderRadius
-                              : mobileShowButtonBorderRadius
-                          }
-                          onValueChange={(value) => {
-                            if (activeTab === "desktop") {
-                              setDesktopShowButtonBorderRadius(value);
-                            } else {
-                              setMobileShowButtonBorderRadius(value);
-                            }
-                          }}
-                        />
+
                       </div>
-                    </div>
-                  </s-stack>,
-                )}
-                {activeTab === "desktop"
-                  ? renderDeviceSection(
+                    </s-stack>,
+                  )}
+                  {renderDeviceSection(
+                    "headings",
+                    <div className="toc-compact-fields">
+                      <s-color-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopHeadingsFontColor"
+                            : "mobileHeadingsFontColor"
+                        }
+                        label="Color"
+                        alpha
+                        value={
+                          activeTab === "desktop"
+                            ? desktopHeadingsFontColor
+                            : mobileHeadingsFontColor
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopHeadingsFontColor(value);
+                          } else {
+                            setMobileHeadingsFontColor(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopHeadingsFontColor(value);
+                          } else {
+                            setMobileHeadingsFontColor(value);
+                          }
+                        }}
+                      ></s-color-field>
+                      <s-select
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopHeadingsFontWeight"
+                            : "mobileHeadingsFontWeight"
+                        }
+                        label="Font weight"
+                        value={
+                          activeTab === "desktop"
+                            ? desktopHeadingsFontWeight
+                            : mobileHeadingsFontWeight
+                        }
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopHeadingsFontWeight(value);
+                          } else {
+                            setMobileHeadingsFontWeight(value);
+                          }
+                        }}
+                      >
+                        {FONT_WEIGHT_OPTIONS.map((option) => (
+                          <s-option key={option.value} value={option.value}>
+                            {option.label}
+                          </s-option>
+                        ))}
+                      </s-select>
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopHeadingsFontSize"
+                            : "mobileHeadingsFontSize"
+                        }
+                        label="Font size"
+                        range={SLIDER_RANGES.fontSize}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopHeadingsFontSize
+                            : mobileHeadingsFontSize
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopHeadingsFontSize(value);
+                          } else {
+                            setMobileHeadingsFontSize(value);
+                          }
+                        }}
+                      />
+                    </div>,
+                  )}
+                  {renderDeviceSection(
+                    "border",
+                    <div className="toc-compact-fields">
+                      <s-color-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopBorderColor"
+                            : "mobileBorderColor"
+                        }
+                        label="Border color"
+                        alpha
+                        value={
+                          activeTab === "desktop"
+                            ? desktopBorderColor
+                            : mobileBorderColor
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopBorderColor(value);
+                          } else {
+                            setMobileBorderColor(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopBorderColor(value);
+                          } else {
+                            setMobileBorderColor(value);
+                          }
+                        }}
+                      ></s-color-field>
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopBorderWidth"
+                            : "mobileBorderWidth"
+                        }
+                        label="Corder width"
+                        range={SLIDER_RANGES.borderWidth}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopBorderWidth
+                            : mobileBorderWidth
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopBorderWidth(value);
+                          } else {
+                            setMobileBorderWidth(value);
+                          }
+                        }}
+                      />
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopBorderRadius"
+                            : "mobileBorderRadius"
+                        }
+                        label="Cornder radius"
+                        range={SLIDER_RANGES.borderRadius}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopBorderRadius
+                            : mobileBorderRadius
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopBorderRadius(value);
+                          } else {
+                            setMobileBorderRadius(value);
+                          }
+                        }}
+                      />
+                    </div>,
+                  )}
+                  {renderDeviceSection(
+                    "shadow",
+                    <s-stack direction="block" gap="base">
+                      <s-select
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShadowPreset"
+                            : "mobileShadowPreset"
+                        }
+                        label="Shadow style"
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShadowPreset
+                            : mobileShadowPreset
+                        }
+                        onChange={(event) => {
+                          const value = normalizeShadowPreset(
+                            event.currentTarget.value,
+                          );
+
+                          if (activeTab === "desktop") {
+                            setDesktopShadowPreset(value);
+                          } else {
+                            setMobileShadowPreset(value);
+                          }
+                        }}
+                      >
+                        {SHADOW_PRESET_OPTIONS.map((option) => (
+                          <s-option key={option.value} value={option.value}>
+                            {option.label}
+                          </s-option>
+                        ))}
+                      </s-select>
+                      <s-color-field
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShadowColor"
+                            : "mobileShadowColor"
+                        }
+                        label="Shadow color"
+                        alpha
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShadowColor
+                            : mobileShadowColor
+                        }
+                        onInput={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShadowColor(value);
+                          } else {
+                            setMobileShadowColor(value);
+                          }
+                        }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value;
+                          if (activeTab === "desktop") {
+                            setDesktopShadowColor(value);
+                          } else {
+                            setMobileShadowColor(value);
+                          }
+                        }}
+                      ></s-color-field>
+                    </s-stack>,
+                  )}
+                  {renderDeviceSection(
+                    "padding",
+                    <div className="toc-compact-fields-four">
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopPaddingTop"
+                            : "mobilePaddingTop"
+                        }
+                        label="Top"
+                        range={SLIDER_RANGES.padding}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopPaddingTop
+                            : mobilePaddingTop
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopPaddingTop(value);
+                          } else {
+                            setMobilePaddingTop(value);
+                          }
+                        }}
+                      />
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopPaddingBottom"
+                            : "mobilePaddingBottom"
+                        }
+                        label="Bottom"
+                        range={SLIDER_RANGES.padding}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopPaddingBottom
+                            : mobilePaddingBottom
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopPaddingBottom(value);
+                          } else {
+                            setMobilePaddingBottom(value);
+                          }
+                        }}
+                      />
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopPaddingLeft"
+                            : "mobilePaddingLeft"
+                        }
+                        label="Left"
+                        range={SLIDER_RANGES.padding}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopPaddingLeft
+                            : mobilePaddingLeft
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopPaddingLeft(value);
+                          } else {
+                            setMobilePaddingLeft(value);
+                          }
+                        }}
+                      />
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopPaddingRight"
+                            : "mobilePaddingRight"
+                        }
+                        label="Right"
+                        range={SLIDER_RANGES.padding}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopPaddingRight
+                            : mobilePaddingRight
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopPaddingRight(value);
+                          } else {
+                            setMobilePaddingRight(value);
+                          }
+                        }}
+                      />
+                    </div>,
+                  )}
+                  {renderDeviceSection(
+                    "offset",
+                    <div className="toc-compact-fields-four">
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopOffsetTop"
+                            : "mobileOffsetTop"
+                        }
+                        label="Top"
+                        range={SLIDER_RANGES.layoutOffset}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopOffsetTop
+                            : mobileOffsetTop
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopOffsetTop(value);
+                          } else {
+                            setMobileOffsetTop(value);
+                          }
+                        }}
+                      />
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopOffsetBottom"
+                            : "mobileOffsetBottom"
+                        }
+                        label="Bottom"
+                        range={SLIDER_RANGES.layoutOffset}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopOffsetBottom
+                            : mobileOffsetBottom
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopOffsetBottom(value);
+                          } else {
+                            setMobileOffsetBottom(value);
+                          }
+                        }}
+                      />
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopOffsetLeft"
+                            : "mobileOffsetLeft"
+                        }
+                        label="Left"
+                        range={SLIDER_RANGES.layoutOffset}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopOffsetLeft
+                            : mobileOffsetLeft
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopOffsetLeft(value);
+                          } else {
+                            setMobileOffsetLeft(value);
+                          }
+                        }}
+                      />
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopOffsetRight"
+                            : "mobileOffsetRight"
+                        }
+                        label="Right"
+                        range={SLIDER_RANGES.layoutOffset}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopOffsetRight
+                            : mobileOffsetRight
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopOffsetRight(value);
+                          } else {
+                            setMobileOffsetRight(value);
+                          }
+                        }}
+                      />
+                    </div>,
+                  )}
+                  {renderDeviceSection(
+                    "scroll",
+                    <s-stack direction="block" gap="base">
+                      <s-checkbox
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopSmoothScroll"
+                            : "mobileSmoothScroll"
+                        }
+                        label="Enable smooth scroll"
+                        details="Smoothly scroll to the selected heading when a table of contents link is clicked."
+                        checked={
+                          activeTab === "desktop"
+                            ? desktopSmoothScroll
+                            : mobileSmoothScroll
+                        }
+                        onChange={(event) => {
+                          const checked = event.currentTarget.checked;
+                          if (activeTab === "desktop") {
+                            setDesktopSmoothScroll(checked);
+                          } else {
+                            setMobileSmoothScroll(checked);
+                          }
+                        }}
+                      ></s-checkbox>
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopScrollOffset"
+                            : "mobileScrollOffset"
+                        }
+                        label="Scroll offset"
+                        details="Top offset in pixels"
+                        range={SLIDER_RANGES.scrollOffset}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopScrollOffset
+                            : mobileScrollOffset
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopScrollOffset(value);
+                          } else {
+                            setMobileScrollOffset(value);
+                          }
+                        }}
+                      />
+                    </s-stack>,
+                  )}
+                  {renderDeviceSection(
+                    "showButton",
+                    <s-stack direction="block" gap="base">
+                      <s-checkbox
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowButton"
+                            : "mobileShowButton"
+                        }
+                        label="Enable show more"
+                        checked={
+                          activeTab === "desktop"
+                            ? desktopShowButton
+                            : mobileShowButton
+                        }
+                        onChange={(event) => {
+                          const checked = event.currentTarget.checked;
+                          if (activeTab === "desktop") {
+                            setDesktopShowButton(checked);
+                          } else {
+                            setMobileShowButton(checked);
+                          }
+                        }}
+                      ></s-checkbox>
+                      <TocSliderField
+                        name={
+                          activeTab === "desktop"
+                            ? "desktopShowButtonHeight"
+                            : "mobileShowButtonHeight"
+                        }
+                        label="Collapsed height"
+                        details="Show the button when the table of contents exceeds this height."
+                        range={SLIDER_RANGES.collapsedHeight}
+                        disabled={!isShowMoreEnabled}
+                        value={
+                          activeTab === "desktop"
+                            ? desktopShowButtonHeight
+                            : mobileShowButtonHeight
+                        }
+                        onValueChange={(value) => {
+                          if (activeTab === "desktop") {
+                            setDesktopShowButtonHeight(value);
+                          } else {
+                            setMobileShowButtonHeight(value);
+                          }
+                        }}
+                      />
+                      <div className="toc-subsection">
+                        <p className="toc-subsection-title">Text</p>
+                        <div className="toc-compact-fields-two">
+                          <s-text-field
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowMoreButtonText"
+                                : "mobileShowMoreButtonText"
+                            }
+                            label="Show more"
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowMoreButtonText
+                                : mobileShowMoreButtonText
+                            }
+                            onInput={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowMoreButtonText(value);
+                              } else {
+                                setMobileShowMoreButtonText(value);
+                              }
+                            }}
+                            onChange={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowMoreButtonText(value);
+                              } else {
+                                setMobileShowMoreButtonText(value);
+                              }
+                            }}
+                          ></s-text-field>
+                          <s-text-field
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowLessButtonText"
+                                : "mobileShowLessButtonText"
+                            }
+                            label="Show less"
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowLessButtonText
+                                : mobileShowLessButtonText
+                            }
+                            onInput={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowLessButtonText(value);
+                              } else {
+                                setMobileShowLessButtonText(value);
+                              }
+                            }}
+                            onChange={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowLessButtonText(value);
+                              } else {
+                                setMobileShowLessButtonText(value);
+                              }
+                            }}
+                          ></s-text-field>
+                        </div>
+                      </div>
+                      <div className="toc-subsection">
+                        <p className="toc-subsection-title">Padding</p>
+                        <div className="toc-compact-fields-two">
+                          <TocSliderField
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonPaddingTop"
+                                : "mobileShowButtonPaddingTop"
+                            }
+                            label="Top"
+                            range={SLIDER_RANGES.padding}
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonPaddingTop
+                                : mobileShowButtonPaddingTop
+                            }
+                            onValueChange={(value) => {
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonPaddingTop(value);
+                              } else {
+                                setMobileShowButtonPaddingTop(value);
+                              }
+                            }}
+                          />
+                          <TocSliderField
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonPaddingBottom"
+                                : "mobileShowButtonPaddingBottom"
+                            }
+                            label="Bottom"
+                            range={SLIDER_RANGES.padding}
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonPaddingBottom
+                                : mobileShowButtonPaddingBottom
+                            }
+                            onValueChange={(value) => {
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonPaddingBottom(value);
+                              } else {
+                                setMobileShowButtonPaddingBottom(value);
+                              }
+                            }}
+                          />
+                          <TocSliderField
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonPaddingLeft"
+                                : "mobileShowButtonPaddingLeft"
+                            }
+                            label="Left"
+                            range={SLIDER_RANGES.padding}
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonPaddingLeft
+                                : mobileShowButtonPaddingLeft
+                            }
+                            onValueChange={(value) => {
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonPaddingLeft(value);
+                              } else {
+                                setMobileShowButtonPaddingLeft(value);
+                              }
+                            }}
+                          />
+                          <TocSliderField
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonPaddingRight"
+                                : "mobileShowButtonPaddingRight"
+                            }
+                            label="Right"
+                            range={SLIDER_RANGES.padding}
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonPaddingRight
+                                : mobileShowButtonPaddingRight
+                            }
+                            onValueChange={(value) => {
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonPaddingRight(value);
+                              } else {
+                                setMobileShowButtonPaddingRight(value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="toc-subsection">
+                        <p className="toc-subsection-title">Font</p>
+                        <div className="toc-compact-fields">
+                          <s-color-field
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonFontColor"
+                                : "mobileShowButtonFontColor"
+                            }
+                            label="Color"
+                            alpha
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonFontColor
+                                : mobileShowButtonFontColor
+                            }
+                            onInput={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonFontColor(value);
+                              } else {
+                                setMobileShowButtonFontColor(value);
+                              }
+                            }}
+                            onChange={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonFontColor(value);
+                              } else {
+                                setMobileShowButtonFontColor(value);
+                              }
+                            }}
+                          ></s-color-field>
+                          <s-select
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonFontWeight"
+                                : "mobileShowButtonFontWeight"
+                            }
+                            label="Weight"
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonFontWeight
+                                : mobileShowButtonFontWeight
+                            }
+                            onChange={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonFontWeight(value);
+                              } else {
+                                setMobileShowButtonFontWeight(value);
+                              }
+                            }}
+                          >
+                            {FONT_WEIGHT_OPTIONS.map((option) => (
+                              <s-option key={option.value} value={option.value}>
+                                {option.label}
+                              </s-option>
+                            ))}
+                          </s-select>
+                          <TocSliderField
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonFontSize"
+                                : "mobileShowButtonFontSize"
+                            }
+                            label="Size"
+                            range={SLIDER_RANGES.fontSize}
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonFontSize
+                                : mobileShowButtonFontSize
+                            }
+                            onValueChange={(value) => {
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonFontSize(value);
+                              } else {
+                                setMobileShowButtonFontSize(value);
+                              }
+                            }}
+                          />
+
+                        </div>
+                      </div>
+                      <div className="toc-subsection">
+                        <p className="toc-subsection-title">Border</p>
+                        <div className="toc-compact-fields">
+                          <s-color-field
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonBorderColor"
+                                : "mobileShowButtonBorderColor"
+                            }
+                            label="Color"
+                            alpha
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonBorderColor
+                                : mobileShowButtonBorderColor
+                            }
+                            onInput={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonBorderColor(value);
+                              } else {
+                                setMobileShowButtonBorderColor(value);
+                              }
+                            }}
+                            onChange={(event) => {
+                              const value = event.currentTarget.value;
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonBorderColor(value);
+                              } else {
+                                setMobileShowButtonBorderColor(value);
+                              }
+                            }}
+                          ></s-color-field>
+                          <TocSliderField
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonBorderWidth"
+                                : "mobileShowButtonBorderWidth"
+                            }
+                            label="Width"
+                            range={SLIDER_RANGES.borderWidth}
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonBorderWidth
+                                : mobileShowButtonBorderWidth
+                            }
+                            onValueChange={(value) => {
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonBorderWidth(value);
+                              } else {
+                                setMobileShowButtonBorderWidth(value);
+                              }
+                            }}
+                          />
+                          <TocSliderField
+                            name={
+                              activeTab === "desktop"
+                                ? "desktopShowButtonBorderRadius"
+                                : "mobileShowButtonBorderRadius"
+                            }
+                            label="Corner radius"
+                            range={SLIDER_RANGES.borderRadius}
+                            disabled={!isShowMoreEnabled}
+                            value={
+                              activeTab === "desktop"
+                                ? desktopShowButtonBorderRadius
+                                : mobileShowButtonBorderRadius
+                            }
+                            onValueChange={(value) => {
+                              if (activeTab === "desktop") {
+                                setDesktopShowButtonBorderRadius(value);
+                              } else {
+                                setMobileShowButtonBorderRadius(value);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </s-stack>,
+                  )}
+                  {activeTab === "desktop"
+                    ? renderDeviceSection(
                       "animation",
                       <s-stack direction="block" gap="base">
                         <s-select
@@ -4017,83 +4092,56 @@ export default function Index() {
                         </s-select>
                         {desktopFollowingMarkerSelected ? (
                           <>
-                            <div className="toc-compact-fields">
-                              <TocSliderField
-                                name="desktopFollowingMarkerWidth"
-                                label="Width"
-                                range={SLIDER_RANGES.markerSize}
-                                value={desktopFollowingMarkerWidth}
-                                onValueChange={setDesktopFollowingMarkerWidth}
-                              />
-                              <TocSliderField
-                                name="desktopFollowingMarkerHeight"
-                                label="Height"
-                                range={SLIDER_RANGES.markerSize}
-                                value={desktopFollowingMarkerHeight}
-                                onValueChange={setDesktopFollowingMarkerHeight}
-                              />
-                              <TocSliderField
-                                name="desktopFollowingMarkerOffset"
-                                label="Offset"
-                                range={SLIDER_RANGES.markerOffset}
-                                value={desktopFollowingMarkerOffset}
-                                onValueChange={setDesktopFollowingMarkerOffset}
-                              />
-                            </div>
-                            <div className="toc-compact-fields-two">
-                              <s-color-field
-                                name="desktopFollowingMarkerColor"
-                                label="Color"
-                                alpha
-                                value={desktopFollowingMarkerColor}
-                                onInput={(event) =>
-                                  setDesktopFollowingMarkerColor(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopFollowingMarkerColor(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-color-field>
-                              <TocSliderField
-                                name="desktopFollowingMarkerBorderRadius"
-                                label="Radius"
-                                range={SLIDER_RANGES.markerRadius}
-                                value={desktopFollowingMarkerBorderRadius}
-                                onValueChange={
-                                  setDesktopFollowingMarkerBorderRadius
-                                }
-                              />
-                            </div>
+                            <s-color-field
+                              name="desktopFollowingMarkerColor"
+                              label="Color"
+                              alpha
+                              value={desktopFollowingMarkerColor}
+                              onInput={(event) =>
+                                setDesktopFollowingMarkerColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                              onChange={(event) =>
+                                setDesktopFollowingMarkerColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                            ></s-color-field>
+                            <TocSliderField
+                              name="desktopFollowingMarkerBorderRadius"
+                              label="Roundness"
+                              range={SLIDER_RANGES.markerRadius}
+                              value={desktopFollowingMarkerBorderRadius}
+                              onValueChange={
+                                setDesktopFollowingMarkerBorderRadius
+                              }
+                            />
+                            <TocSliderField
+                              name="desktopFollowingMarkerWidth"
+                              label="Width"
+                              range={SLIDER_RANGES.markerSize}
+                              value={desktopFollowingMarkerWidth}
+                              onValueChange={setDesktopFollowingMarkerWidth}
+                            />
+                            <TocSliderField
+                              name="desktopFollowingMarkerHeight"
+                              label="Height"
+                              range={SLIDER_RANGES.markerSize}
+                              value={desktopFollowingMarkerHeight}
+                              onValueChange={setDesktopFollowingMarkerHeight}
+                            />
+                            <TocSliderField
+                              name="desktopFollowingMarkerOffset"
+                              label="Offset"
+                              range={SLIDER_RANGES.markerOffset}
+                              value={desktopFollowingMarkerOffset}
+                              onValueChange={setDesktopFollowingMarkerOffset}
+                            />
                           </>
                         ) : null}
                         {desktopCrawlingSnakeSelected ? (
                           <>
-                            <div className="toc-compact-fields">
-                              <TocSliderField
-                                name="desktopCrawlingSnakeWidth"
-                                label="Width"
-                                range={SLIDER_RANGES.markerSize}
-                                value={desktopCrawlingSnakeWidth}
-                                onValueChange={setDesktopCrawlingSnakeWidth}
-                              />
-                              <TocSliderField
-                                name="desktopCrawlingSnakeHeight"
-                                label="Height"
-                                range={SLIDER_RANGES.markerSize}
-                                value={desktopCrawlingSnakeHeight}
-                                onValueChange={setDesktopCrawlingSnakeHeight}
-                              />
-                              <TocSliderField
-                                name="desktopCrawlingSnakeOffset"
-                                label="Offset"
-                                range={SLIDER_RANGES.markerOffset}
-                                value={desktopCrawlingSnakeOffset}
-                                onValueChange={setDesktopCrawlingSnakeOffset}
-                              />
-                            </div>
                             <s-color-field
                               name="desktopCrawlingSnakeColor"
                               label="Color"
@@ -4110,139 +4158,159 @@ export default function Index() {
                                 )
                               }
                             ></s-color-field>
+                            <TocSliderField
+                              name="desktopCrawlingSnakeWidth"
+                              label="Width"
+                              range={SLIDER_RANGES.markerSize}
+                              value={desktopCrawlingSnakeWidth}
+                              onValueChange={setDesktopCrawlingSnakeWidth}
+                            />
+                            <TocSliderField
+                              name="desktopCrawlingSnakeHeight"
+                              label="Height"
+                              range={SLIDER_RANGES.markerSize}
+                              value={desktopCrawlingSnakeHeight}
+                              onValueChange={setDesktopCrawlingSnakeHeight}
+                            />
+                            <TocSliderField
+                              name="desktopCrawlingSnakeOffset"
+                              label="Offset"
+                              range={SLIDER_RANGES.markerOffset}
+                              value={desktopCrawlingSnakeOffset}
+                              onValueChange={setDesktopCrawlingSnakeOffset}
+                            />
+
                           </>
                         ) : null}
                         {desktopJumpingMarkerSelected ? (
                           <>
-                            <div className="toc-compact-fields">
-                              <TocSliderField
-                                name="desktopJumpingMarkerWidth"
-                                label="Width"
-                                range={SLIDER_RANGES.markerSize}
-                                value={desktopJumpingMarkerWidth}
-                                onValueChange={setDesktopJumpingMarkerWidth}
-                              />
-                              <TocSliderField
-                                name="desktopJumpingMarkerHeight"
-                                label="Height"
-                                range={SLIDER_RANGES.markerSize}
-                                value={desktopJumpingMarkerHeight}
-                                onValueChange={setDesktopJumpingMarkerHeight}
-                              />
-                              <TocSliderField
-                                name="desktopJumpingMarkerOffset"
-                                label="Offset"
-                                range={SLIDER_RANGES.markerOffset}
-                                value={desktopJumpingMarkerOffset}
-                                onValueChange={setDesktopJumpingMarkerOffset}
-                              />
-                            </div>
-                            <div className="toc-compact-fields-two">
-                              <s-color-field
-                                name="desktopJumpingMarkerColor"
-                                label="Color"
-                                alpha
-                                value={desktopJumpingMarkerColor}
-                                onInput={(event) =>
-                                  setDesktopJumpingMarkerColor(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                                onChange={(event) =>
-                                  setDesktopJumpingMarkerColor(
-                                    event.currentTarget.value,
-                                  )
-                                }
-                              ></s-color-field>
-                              <TocSliderField
-                                name="desktopJumpingMarkerBorderRadius"
-                                label="Radius"
-                                range={SLIDER_RANGES.markerRadius}
-                                value={desktopJumpingMarkerBorderRadius}
-                                onValueChange={
-                                  setDesktopJumpingMarkerBorderRadius
-                                }
-                              />
-                            </div>
+                            <s-color-field
+                              name="desktopJumpingMarkerColor"
+                              label="Color"
+                              alpha
+                              value={desktopJumpingMarkerColor}
+                              onInput={(event) =>
+                                setDesktopJumpingMarkerColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                              onChange={(event) =>
+                                setDesktopJumpingMarkerColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                            ></s-color-field>
+                            <TocSliderField
+                              name="desktopJumpingMarkerBorderRadius"
+                              label="Roundness"
+                              range={SLIDER_RANGES.markerRadius}
+                              value={desktopJumpingMarkerBorderRadius}
+                              onValueChange={
+                                setDesktopJumpingMarkerBorderRadius
+                              }
+                            />
+                            <TocSliderField
+                              name="desktopJumpingMarkerWidth"
+                              label="Width"
+                              range={SLIDER_RANGES.markerSize}
+                              value={desktopJumpingMarkerWidth}
+                              onValueChange={setDesktopJumpingMarkerWidth}
+                            />
+                            <TocSliderField
+                              name="desktopJumpingMarkerHeight"
+                              label="Height"
+                              range={SLIDER_RANGES.markerSize}
+                              value={desktopJumpingMarkerHeight}
+                              onValueChange={setDesktopJumpingMarkerHeight}
+                            />
+                            <TocSliderField
+                              name="desktopJumpingMarkerOffset"
+                              label="Offset"
+                              range={SLIDER_RANGES.markerOffset}
+                              value={desktopJumpingMarkerOffset}
+                              onValueChange={setDesktopJumpingMarkerOffset}
+                            />
                           </>
                         ) : null}
                       </s-stack>,
                       { allowApplyAction: false },
                     )
-                  : null}
-              </>
-            ) : null}
-            {actionData?.userErrors?.length ? (
-              <s-paragraph>
-                {actionData.userErrors
-                  .map((error: { message: string }) => error.message)
-                  .join(" ")}
-              </s-paragraph>
-            ) : null}
-          </s-stack>
-        </Form>
-        <div
-          className={`toc-preview-column${activeTab === "general" ? "" : " toc-preview-column--sticky"}`}
-        >
-          <s-section>
-            <div className="toc-preview-section">
-              <div className="toc-preview-header">
-                <h2 className="toc-preview-heading">Preview</h2>
-                {(activeTab === "general" || activeTab === "desktop") &&
-                desktopPreviewReplayAvailable ? (
-                  <s-clickable-chip
-                    accessibilityLabel="Replay preview animation"
-                    onClick={() => {
-                      setDesktopPreviewReplayToken((current) => current + 1);
-                    }}
-                  >
-                    <s-icon slot="graphic" type="play-circle"></s-icon>
-                    Play animation
-                  </s-clickable-chip>
-                ) : null}
-              </div>
-              <div className="toc-settings-preview">
-                {(activeTab === "general" || activeTab === "desktop") && (
-                  <div className="toc-preview-pane">
-                    {activeTab === "general" ? (
-                      <p className="toc-preview-label">Desktop</p>
-                    ) : null}
-                    <div className="toc-preview-stage toc-preview-desktop">
-                      <TocPreview
-                        preview={desktopPreview}
-                        indentation={currentConfig.indentation}
-                        textAlignment={currentConfig.textAlignment}
-                        markerFormat={currentConfig.markerFormat}
-                        device={currentConfig.desktop}
-                        previewDevice="desktop"
-                        replayToken={desktopPreviewReplayToken}
-                      />
+                    : null}
+                </>
+              ) : null}
+              {actionData?.userErrors?.length ? (
+                <s-paragraph>
+                  {actionData.userErrors
+                    .map((error: { message: string }) => error.message)
+                    .join(" ")}
+                </s-paragraph>
+              ) : null}
+            </s-stack>
+          </Form>
+          <div
+            className={`toc-preview-column${activeTab === "general" ? "" : " toc-preview-column--sticky"}`}
+          >
+            <s-section>
+              <div className="toc-preview-section">
+                <div className="toc-preview-header">
+                  <h2 className="toc-preview-heading">Preview</h2>
+                  {(activeTab === "general" || activeTab === "desktop") &&
+                    desktopPreviewReplayAvailable ? (
+                    <s-clickable-chip
+                      accessibilityLabel="Replay preview animation"
+                      onClick={() => {
+                        setDesktopPreviewReplayToken((current) => current + 1);
+                      }}
+                    >
+                      <s-icon slot="graphic" type="play-circle"></s-icon>
+                      Play animation
+                    </s-clickable-chip>
+                  ) : null}
+                </div>
+                <div className="toc-settings-preview">
+                  {(activeTab === "general" || activeTab === "desktop") && (
+                    <div className="toc-preview-pane">
+                      {activeTab === "general" ? (
+                        <p className="toc-preview-label">Desktop</p>
+                      ) : null}
+                      <div className="toc-preview-stage toc-preview-desktop">
+                        <TocPreview
+                          preview={desktopPreview}
+                          indentation={currentConfig.indentation}
+                          textAlignment={currentConfig.textAlignment}
+                          markerFormat={currentConfig.markerFormat}
+                          desktopDevice={currentConfig.desktop}
+                          mobileDevice={currentConfig.mobile}
+                          previewDevice="desktop"
+                          replayToken={desktopPreviewReplayToken}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
-                {(activeTab === "general" || activeTab === "mobile") && (
-                  <div className="toc-preview-pane">
-                    {activeTab === "general" ? (
-                      <p className="toc-preview-label">Mobile</p>
-                    ) : null}
-                    <div className="toc-preview-stage toc-preview-mobile">
-                      <TocPreview
-                        preview={mobilePreview}
-                        indentation={currentConfig.indentation}
-                        textAlignment={currentConfig.textAlignment}
-                        markerFormat={currentConfig.markerFormat}
-                        device={currentConfig.mobile}
-                        previewDevice="mobile"
-                        replayToken={0}
-                      />
+                  )}
+                  {(activeTab === "general" || activeTab === "mobile") && (
+                    <div className="toc-preview-pane">
+                      {activeTab === "general" ? (
+                        <p className="toc-preview-label">Mobile</p>
+                      ) : null}
+                      <div className="toc-preview-stage toc-preview-mobile">
+                        <TocPreview
+                          preview={mobilePreview}
+                          indentation={currentConfig.indentation}
+                          textAlignment={currentConfig.textAlignment}
+                          markerFormat={currentConfig.markerFormat}
+                          desktopDevice={currentConfig.desktop}
+                          mobileDevice={currentConfig.mobile}
+                          previewDevice="mobile"
+                          replayToken={0}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </s-section>
+            </s-section>
+          </div>
         </div>
-      </div>
       </s-page>
     </PolarisAppProvider>
   );
@@ -4308,7 +4376,7 @@ function parseConfig(value: unknown): TocConfig {
       markerFormat: normalizeMarkerFormat(rest.markerFormat),
       mobileBreakpoint:
         typeof rest.mobileBreakpoint === "number" &&
-        Number.isFinite(rest.mobileBreakpoint)
+          Number.isFinite(rest.mobileBreakpoint)
           ? Math.max(0, rest.mobileBreakpoint)
           : DEFAULT_CONFIG.mobileBreakpoint,
       excludedBlogs:
@@ -4341,6 +4409,7 @@ function applyConfigToForm(
     setCustomCss: (value: string) => void;
     setDesktopPosition: (value: TocDesktopPosition) => void;
     setDesktopPositionSelector: (value: string) => void;
+    setDesktopSwitchToMobileOnFloatOverflow: (value: boolean) => void;
     setDesktopBorderColor: (value: string) => void;
     setDesktopBorderWidth: (value: string) => void;
     setDesktopBorderRadius: (value: string) => void;
@@ -4464,6 +4533,9 @@ function applyConfigToForm(
     normalizeDesktopPosition(config.desktop.position),
   );
   controls.setDesktopPositionSelector(config.desktop.positionSelector);
+  controls.setDesktopSwitchToMobileOnFloatOverflow(
+    config.desktop.switchToMobileOnFloatOverflow,
+  );
   controls.setDesktopBorderColor(config.desktop.color);
   controls.setDesktopBorderWidth(String(config.desktop.width));
   controls.setDesktopBorderRadius(String(config.desktop.radius));
@@ -4668,6 +4740,8 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.customCss === right.customCss &&
     left.desktop.position === right.desktop.position &&
     left.desktop.positionSelector === right.desktop.positionSelector &&
+    left.desktop.switchToMobileOnFloatOverflow ===
+    right.desktop.switchToMobileOnFloatOverflow &&
     left.desktop.color === right.desktop.color &&
     left.desktop.width === right.desktop.width &&
     left.desktop.radius === right.desktop.radius &&
@@ -4700,28 +4774,28 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.desktop.showButtonFontColor === right.desktop.showButtonFontColor &&
     left.desktop.showButtonFontWeight === right.desktop.showButtonFontWeight &&
     left.desktop.showButtonBorderColor ===
-      right.desktop.showButtonBorderColor &&
+    right.desktop.showButtonBorderColor &&
     left.desktop.showButtonBorderWidth ===
-      right.desktop.showButtonBorderWidth &&
+    right.desktop.showButtonBorderWidth &&
     left.desktop.showButtonBorderRadius ===
-      right.desktop.showButtonBorderRadius &&
+    right.desktop.showButtonBorderRadius &&
     left.desktop.showButtonPaddingTop ===
-      right.desktop.showButtonPaddingTop &&
+    right.desktop.showButtonPaddingTop &&
     left.desktop.showButtonPaddingBottom ===
-      right.desktop.showButtonPaddingBottom &&
+    right.desktop.showButtonPaddingBottom &&
     left.desktop.showButtonPaddingLeft ===
-      right.desktop.showButtonPaddingLeft &&
+    right.desktop.showButtonPaddingLeft &&
     left.desktop.showButtonPaddingRight ===
-      right.desktop.showButtonPaddingRight &&
+    right.desktop.showButtonPaddingRight &&
     left.desktop.animationType === right.desktop.animationType &&
     left.desktop.followingMarkerWidth === right.desktop.followingMarkerWidth &&
     left.desktop.followingMarkerHeight ===
-      right.desktop.followingMarkerHeight &&
+    right.desktop.followingMarkerHeight &&
     left.desktop.followingMarkerColor === right.desktop.followingMarkerColor &&
     left.desktop.followingMarkerOffset ===
-      right.desktop.followingMarkerOffset &&
+    right.desktop.followingMarkerOffset &&
     left.desktop.followingMarkerBorderRadius ===
-      right.desktop.followingMarkerBorderRadius &&
+    right.desktop.followingMarkerBorderRadius &&
     left.desktop.crawlingSnakeWidth === right.desktop.crawlingSnakeWidth &&
     left.desktop.crawlingSnakeHeight === right.desktop.crawlingSnakeHeight &&
     left.desktop.crawlingSnakeColor === right.desktop.crawlingSnakeColor &&
@@ -4731,9 +4805,11 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.desktop.jumpingMarkerColor === right.desktop.jumpingMarkerColor &&
     left.desktop.jumpingMarkerOffset === right.desktop.jumpingMarkerOffset &&
     left.desktop.jumpingMarkerBorderRadius ===
-      right.desktop.jumpingMarkerBorderRadius &&
+    right.desktop.jumpingMarkerBorderRadius &&
     left.mobile.position === right.mobile.position &&
     left.mobile.positionSelector === right.mobile.positionSelector &&
+    left.mobile.switchToMobileOnFloatOverflow ===
+    right.mobile.switchToMobileOnFloatOverflow &&
     left.mobile.color === right.mobile.color &&
     left.mobile.width === right.mobile.width &&
     left.mobile.radius === right.mobile.radius &&
@@ -4768,20 +4844,20 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.mobile.showButtonBorderColor === right.mobile.showButtonBorderColor &&
     left.mobile.showButtonBorderWidth === right.mobile.showButtonBorderWidth &&
     left.mobile.showButtonBorderRadius ===
-      right.mobile.showButtonBorderRadius &&
+    right.mobile.showButtonBorderRadius &&
     left.mobile.showButtonPaddingTop === right.mobile.showButtonPaddingTop &&
     left.mobile.showButtonPaddingBottom ===
-      right.mobile.showButtonPaddingBottom &&
+    right.mobile.showButtonPaddingBottom &&
     left.mobile.showButtonPaddingLeft === right.mobile.showButtonPaddingLeft &&
     left.mobile.showButtonPaddingRight ===
-      right.mobile.showButtonPaddingRight &&
+    right.mobile.showButtonPaddingRight &&
     left.mobile.animationType === right.mobile.animationType &&
     left.mobile.followingMarkerWidth === right.mobile.followingMarkerWidth &&
     left.mobile.followingMarkerHeight === right.mobile.followingMarkerHeight &&
     left.mobile.followingMarkerColor === right.mobile.followingMarkerColor &&
     left.mobile.followingMarkerOffset === right.mobile.followingMarkerOffset &&
     left.mobile.followingMarkerBorderRadius ===
-      right.mobile.followingMarkerBorderRadius &&
+    right.mobile.followingMarkerBorderRadius &&
     left.mobile.crawlingSnakeWidth === right.mobile.crawlingSnakeWidth &&
     left.mobile.crawlingSnakeHeight === right.mobile.crawlingSnakeHeight &&
     left.mobile.crawlingSnakeColor === right.mobile.crawlingSnakeColor &&
@@ -4791,7 +4867,7 @@ function configsEqual(left: TocConfig, right: TocConfig) {
     left.mobile.jumpingMarkerColor === right.mobile.jumpingMarkerColor &&
     left.mobile.jumpingMarkerOffset === right.mobile.jumpingMarkerOffset &&
     left.mobile.jumpingMarkerBorderRadius ===
-      right.mobile.jumpingMarkerBorderRadius &&
+    right.mobile.jumpingMarkerBorderRadius &&
     left.headingLevels.length === right.headingLevels.length &&
     left.headingLevels.every(
       (level, index) => level === right.headingLevels[index],
@@ -4918,6 +4994,11 @@ function HiddenDeviceFields({
         type="hidden"
         name={`${prefix}PositionSelector`}
         value={config.positionSelector}
+      />
+      <input
+        type="hidden"
+        name={`${prefix}SwitchToMobileOnFloatOverflow`}
+        value={config.switchToMobileOnFloatOverflow ? "on" : ""}
       />
       <input type="hidden" name={`${prefix}BorderColor`} value={config.color} />
       <input
@@ -5235,6 +5316,8 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
         formData.get("desktopPosition") || DEFAULT_CONFIG.desktop.position,
       ),
       positionSelector: String(formData.get("desktopPositionSelector") || ""),
+      switchToMobileOnFloatOverflow:
+        formData.get("desktopSwitchToMobileOnFloatOverflow") === "on",
       color: String(
         formData.get("desktopBorderColor") || DEFAULT_CONFIG.desktop.color,
       ),
@@ -5264,7 +5347,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       headingsFontSize: String(formData.get("desktopHeadingsFontSize") || ""),
       headingsFontColor: String(
         formData.get("desktopHeadingsFontColor") ||
-          DEFAULT_CONFIG.desktop.headingsFontColor,
+        DEFAULT_CONFIG.desktop.headingsFontColor,
       ),
       headingsFontWeight: String(
         formData.get("desktopHeadingsFontWeight") || "",
@@ -5272,7 +5355,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       titleFontSize: String(formData.get("desktopTitleFontSize") || ""),
       titleFontColor: String(
         formData.get("desktopTitleFontColor") ||
-          DEFAULT_CONFIG.desktop.titleFontColor,
+        DEFAULT_CONFIG.desktop.titleFontColor,
       ),
       titleFontWeight: String(formData.get("desktopTitleFontWeight") || ""),
       showButton: formData.get("desktopShowButton") === "on",
@@ -5288,14 +5371,14 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       showButtonFontColor: String(
         formData.get("desktopShowButtonFontColor") ||
-          DEFAULT_CONFIG.desktop.showButtonFontColor,
+        DEFAULT_CONFIG.desktop.showButtonFontColor,
       ),
       showButtonFontWeight: String(
         formData.get("desktopShowButtonFontWeight") || "",
       ),
       showButtonBorderColor: String(
         formData.get("desktopShowButtonBorderColor") ||
-          DEFAULT_CONFIG.desktop.showButtonBorderColor,
+        DEFAULT_CONFIG.desktop.showButtonBorderColor,
       ),
       showButtonBorderWidth: String(
         formData.get("desktopShowButtonBorderWidth") || "",
@@ -5317,7 +5400,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       animationType: String(
         formData.get("desktopAnimationType") ||
-          DEFAULT_CONFIG.desktop.animationType,
+        DEFAULT_CONFIG.desktop.animationType,
       ),
       followingMarkerWidth: String(
         formData.get("desktopFollowingMarkerWidth") || "",
@@ -5327,7 +5410,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       followingMarkerColor: String(
         formData.get("desktopFollowingMarkerColor") ||
-          DEFAULT_CONFIG.desktop.followingMarkerColor,
+        DEFAULT_CONFIG.desktop.followingMarkerColor,
       ),
       followingMarkerOffset: String(
         formData.get("desktopFollowingMarkerOffset") || "",
@@ -5343,7 +5426,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       crawlingSnakeColor: String(
         formData.get("desktopCrawlingSnakeColor") ||
-          DEFAULT_CONFIG.desktop.crawlingSnakeColor,
+        DEFAULT_CONFIG.desktop.crawlingSnakeColor,
       ),
       crawlingSnakeOffset: String(
         formData.get("desktopCrawlingSnakeOffset") || "",
@@ -5356,7 +5439,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       jumpingMarkerColor: String(
         formData.get("desktopJumpingMarkerColor") ||
-          DEFAULT_CONFIG.desktop.jumpingMarkerColor,
+        DEFAULT_CONFIG.desktop.jumpingMarkerColor,
       ),
       jumpingMarkerOffset: String(
         formData.get("desktopJumpingMarkerOffset") || "",
@@ -5370,6 +5453,8 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
         formData.get("mobilePosition") || DEFAULT_CONFIG.mobile.position,
       ),
       positionSelector: String(formData.get("mobilePositionSelector") || ""),
+      switchToMobileOnFloatOverflow:
+        formData.get("mobileSwitchToMobileOnFloatOverflow") === "on",
       color: String(
         formData.get("mobileBorderColor") || DEFAULT_CONFIG.mobile.color,
       ),
@@ -5399,7 +5484,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       headingsFontSize: String(formData.get("mobileHeadingsFontSize") || ""),
       headingsFontColor: String(
         formData.get("mobileHeadingsFontColor") ||
-          DEFAULT_CONFIG.mobile.headingsFontColor,
+        DEFAULT_CONFIG.mobile.headingsFontColor,
       ),
       headingsFontWeight: String(
         formData.get("mobileHeadingsFontWeight") || "",
@@ -5407,7 +5492,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       titleFontSize: String(formData.get("mobileTitleFontSize") || ""),
       titleFontColor: String(
         formData.get("mobileTitleFontColor") ||
-          DEFAULT_CONFIG.mobile.titleFontColor,
+        DEFAULT_CONFIG.mobile.titleFontColor,
       ),
       titleFontWeight: String(formData.get("mobileTitleFontWeight") || ""),
       showButton: formData.get("mobileShowButton") === "on",
@@ -5423,14 +5508,14 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       showButtonFontColor: String(
         formData.get("mobileShowButtonFontColor") ||
-          DEFAULT_CONFIG.mobile.showButtonFontColor,
+        DEFAULT_CONFIG.mobile.showButtonFontColor,
       ),
       showButtonFontWeight: String(
         formData.get("mobileShowButtonFontWeight") || "",
       ),
       showButtonBorderColor: String(
         formData.get("mobileShowButtonBorderColor") ||
-          DEFAULT_CONFIG.mobile.showButtonBorderColor,
+        DEFAULT_CONFIG.mobile.showButtonBorderColor,
       ),
       showButtonBorderWidth: String(
         formData.get("mobileShowButtonBorderWidth") || "",
@@ -5452,7 +5537,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       animationType: String(
         formData.get("mobileAnimationType") ||
-          DEFAULT_CONFIG.mobile.animationType,
+        DEFAULT_CONFIG.mobile.animationType,
       ),
       followingMarkerWidth: String(
         formData.get("mobileFollowingMarkerWidth") || "",
@@ -5462,7 +5547,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       followingMarkerColor: String(
         formData.get("mobileFollowingMarkerColor") ||
-          DEFAULT_CONFIG.mobile.followingMarkerColor,
+        DEFAULT_CONFIG.mobile.followingMarkerColor,
       ),
       followingMarkerOffset: String(
         formData.get("mobileFollowingMarkerOffset") || "",
@@ -5478,7 +5563,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       crawlingSnakeColor: String(
         formData.get("mobileCrawlingSnakeColor") ||
-          DEFAULT_CONFIG.mobile.crawlingSnakeColor,
+        DEFAULT_CONFIG.mobile.crawlingSnakeColor,
       ),
       crawlingSnakeOffset: String(
         formData.get("mobileCrawlingSnakeOffset") || "",
@@ -5491,7 +5576,7 @@ function coerceConfigFromForm(formData: FormData): TocConfig {
       ),
       jumpingMarkerColor: String(
         formData.get("mobileJumpingMarkerColor") ||
-          DEFAULT_CONFIG.mobile.jumpingMarkerColor,
+        DEFAULT_CONFIG.mobile.jumpingMarkerColor,
       ),
       jumpingMarkerOffset: String(
         formData.get("mobileJumpingMarkerOffset") || "",
@@ -5726,12 +5811,12 @@ function deriveLegacyShadowPreset(
 ) {
   const strength =
     typeof config.shadowStrength === "number" &&
-    Number.isFinite(config.shadowStrength)
+      Number.isFinite(config.shadowStrength)
       ? Math.max(0, Math.min(100, config.shadowStrength))
       : null;
   const distance =
     typeof config.shadowDistance === "number" &&
-    Number.isFinite(config.shadowDistance)
+      Number.isFinite(config.shadowDistance)
       ? Math.max(0, config.shadowDistance)
       : null;
   const blur =
@@ -5788,13 +5873,13 @@ function normalizeDeviceConfig(
   const legacyJumpingMarkerSize =
     typeof (config as { jumpingMarkerSize?: unknown }).jumpingMarkerSize ===
       "number" &&
-    Number.isFinite(
-      (config as { jumpingMarkerSize?: number }).jumpingMarkerSize,
-    )
+      Number.isFinite(
+        (config as { jumpingMarkerSize?: number }).jumpingMarkerSize,
+      )
       ? Math.max(
-          0,
-          (config as { jumpingMarkerSize?: number }).jumpingMarkerSize ?? 0,
-        )
+        0,
+        (config as { jumpingMarkerSize?: number }).jumpingMarkerSize ?? 0,
+      )
       : null;
   const legacyShadowPreset = deriveLegacyShadowPreset(
     config as Partial<{
@@ -5806,7 +5891,7 @@ function normalizeDeviceConfig(
   );
   const normalizedShowButtonBorderWidth =
     typeof config.showButtonBorderWidth === "number" &&
-    Number.isFinite(config.showButtonBorderWidth)
+      Number.isFinite(config.showButtonBorderWidth)
       ? Math.max(0, config.showButtonBorderWidth)
       : fallback.showButtonBorderWidth;
 
@@ -5819,6 +5904,12 @@ function normalizeDeviceConfig(
       typeof config.positionSelector === "string"
         ? config.positionSelector.trim()
         : fallback.positionSelector,
+    switchToMobileOnFloatOverflow:
+      device === "desktop"
+        ? typeof config.switchToMobileOnFloatOverflow === "boolean"
+          ? config.switchToMobileOnFloatOverflow
+          : fallback.switchToMobileOnFloatOverflow
+        : false,
     color:
       typeof config.color === "string" && config.color.trim()
         ? config.color.trim()
@@ -5841,22 +5932,22 @@ function normalizeDeviceConfig(
         : fallback.shadowColor,
     paddingTop:
       typeof config.paddingTop === "number" &&
-      Number.isFinite(config.paddingTop)
+        Number.isFinite(config.paddingTop)
         ? Math.max(0, config.paddingTop)
         : fallback.paddingTop,
     paddingBottom:
       typeof config.paddingBottom === "number" &&
-      Number.isFinite(config.paddingBottom)
+        Number.isFinite(config.paddingBottom)
         ? Math.max(0, config.paddingBottom)
         : fallback.paddingBottom,
     paddingLeft:
       typeof config.paddingLeft === "number" &&
-      Number.isFinite(config.paddingLeft)
+        Number.isFinite(config.paddingLeft)
         ? Math.max(0, config.paddingLeft)
         : fallback.paddingLeft,
     paddingRight:
       typeof config.paddingRight === "number" &&
-      Number.isFinite(config.paddingRight)
+        Number.isFinite(config.paddingRight)
         ? Math.max(0, config.paddingRight)
         : fallback.paddingRight,
     offsetTop:
@@ -5865,87 +5956,87 @@ function normalizeDeviceConfig(
         : fallback.offsetTop,
     offsetBottom:
       typeof config.offsetBottom === "number" &&
-      Number.isFinite(config.offsetBottom)
+        Number.isFinite(config.offsetBottom)
         ? config.offsetBottom
         : fallback.offsetBottom,
     offsetLeft:
       typeof config.offsetLeft === "number" &&
-      Number.isFinite(config.offsetLeft)
+        Number.isFinite(config.offsetLeft)
         ? config.offsetLeft
         : fallback.offsetLeft,
     offsetRight:
       typeof config.offsetRight === "number" &&
-      Number.isFinite(config.offsetRight)
+        Number.isFinite(config.offsetRight)
         ? config.offsetRight
         : fallback.offsetRight,
     followingMarkerWidth:
       typeof config.followingMarkerWidth === "number" &&
-      Number.isFinite(config.followingMarkerWidth)
+        Number.isFinite(config.followingMarkerWidth)
         ? Math.max(0, config.followingMarkerWidth)
         : fallback.followingMarkerWidth,
     followingMarkerHeight:
       typeof config.followingMarkerHeight === "number" &&
-      Number.isFinite(config.followingMarkerHeight)
+        Number.isFinite(config.followingMarkerHeight)
         ? Math.max(0, config.followingMarkerHeight)
         : fallback.followingMarkerHeight,
     followingMarkerColor:
       typeof config.followingMarkerColor === "string" &&
-      config.followingMarkerColor.trim()
+        config.followingMarkerColor.trim()
         ? config.followingMarkerColor.trim()
         : fallback.followingMarkerColor,
     followingMarkerOffset:
       typeof config.followingMarkerOffset === "number" &&
-      Number.isFinite(config.followingMarkerOffset)
+        Number.isFinite(config.followingMarkerOffset)
         ? Math.max(0, config.followingMarkerOffset)
         : fallback.followingMarkerOffset,
     followingMarkerBorderRadius:
       typeof config.followingMarkerBorderRadius === "number" &&
-      Number.isFinite(config.followingMarkerBorderRadius)
+        Number.isFinite(config.followingMarkerBorderRadius)
         ? Math.max(0, config.followingMarkerBorderRadius)
         : fallback.followingMarkerBorderRadius,
     crawlingSnakeWidth:
       typeof config.crawlingSnakeWidth === "number" &&
-      Number.isFinite(config.crawlingSnakeWidth)
+        Number.isFinite(config.crawlingSnakeWidth)
         ? Math.max(0, config.crawlingSnakeWidth)
         : fallback.crawlingSnakeWidth,
     crawlingSnakeHeight:
       typeof config.crawlingSnakeHeight === "number" &&
-      Number.isFinite(config.crawlingSnakeHeight)
+        Number.isFinite(config.crawlingSnakeHeight)
         ? Math.max(0, config.crawlingSnakeHeight)
         : fallback.crawlingSnakeHeight,
     crawlingSnakeColor:
       typeof config.crawlingSnakeColor === "string" &&
-      config.crawlingSnakeColor.trim()
+        config.crawlingSnakeColor.trim()
         ? config.crawlingSnakeColor.trim()
         : fallback.crawlingSnakeColor,
     crawlingSnakeOffset:
       typeof config.crawlingSnakeOffset === "number" &&
-      Number.isFinite(config.crawlingSnakeOffset)
+        Number.isFinite(config.crawlingSnakeOffset)
         ? Math.max(0, config.crawlingSnakeOffset)
         : fallback.crawlingSnakeOffset,
     jumpingMarkerWidth:
       typeof config.jumpingMarkerWidth === "number" &&
-      Number.isFinite(config.jumpingMarkerWidth)
+        Number.isFinite(config.jumpingMarkerWidth)
         ? Math.max(0, config.jumpingMarkerWidth)
         : (legacyJumpingMarkerSize ?? fallback.jumpingMarkerWidth),
     jumpingMarkerHeight:
       typeof config.jumpingMarkerHeight === "number" &&
-      Number.isFinite(config.jumpingMarkerHeight)
+        Number.isFinite(config.jumpingMarkerHeight)
         ? Math.max(0, config.jumpingMarkerHeight)
         : (legacyJumpingMarkerSize ?? fallback.jumpingMarkerHeight),
     jumpingMarkerColor:
       typeof config.jumpingMarkerColor === "string" &&
-      config.jumpingMarkerColor.trim()
+        config.jumpingMarkerColor.trim()
         ? config.jumpingMarkerColor.trim()
         : fallback.jumpingMarkerColor,
     jumpingMarkerOffset:
       typeof config.jumpingMarkerOffset === "number" &&
-      Number.isFinite(config.jumpingMarkerOffset)
+        Number.isFinite(config.jumpingMarkerOffset)
         ? Math.max(0, config.jumpingMarkerOffset)
         : fallback.jumpingMarkerOffset,
     jumpingMarkerBorderRadius:
       typeof config.jumpingMarkerBorderRadius === "number" &&
-      Number.isFinite(config.jumpingMarkerBorderRadius)
+        Number.isFinite(config.jumpingMarkerBorderRadius)
         ? Math.max(0, config.jumpingMarkerBorderRadius)
         : fallback.jumpingMarkerBorderRadius,
     background:
@@ -5962,7 +6053,7 @@ function normalizeDeviceConfig(
         : fallback.smoothScroll,
     scrollOffset:
       typeof config.scrollOffset === "number" &&
-      Number.isFinite(config.scrollOffset)
+        Number.isFinite(config.scrollOffset)
         ? Math.max(0, config.scrollOffset)
         : fallback.scrollOffset,
     showTitle:
@@ -5971,22 +6062,22 @@ function normalizeDeviceConfig(
         : fallback.showTitle,
     headingsFontSize:
       typeof config.headingsFontSize === "number" &&
-      Number.isFinite(config.headingsFontSize)
+        Number.isFinite(config.headingsFontSize)
         ? Math.max(0, config.headingsFontSize)
         : fallback.headingsFontSize,
     headingsFontColor:
       typeof config.headingsFontColor === "string" &&
-      config.headingsFontColor.trim()
+        config.headingsFontColor.trim()
         ? config.headingsFontColor.trim()
         : fallback.headingsFontColor,
     headingsFontWeight:
       typeof config.headingsFontWeight === "number" &&
-      Number.isFinite(config.headingsFontWeight)
+        Number.isFinite(config.headingsFontWeight)
         ? Math.max(0, config.headingsFontWeight)
         : fallback.headingsFontWeight,
     titleFontSize:
       typeof config.titleFontSize === "number" &&
-      Number.isFinite(config.titleFontSize)
+        Number.isFinite(config.titleFontSize)
         ? Math.max(0, config.titleFontSize)
         : fallback.titleFontSize,
     titleFontColor:
@@ -5995,7 +6086,7 @@ function normalizeDeviceConfig(
         : fallback.titleFontColor,
     titleFontWeight:
       typeof config.titleFontWeight === "number" &&
-      Number.isFinite(config.titleFontWeight)
+        Number.isFinite(config.titleFontWeight)
         ? Math.max(0, config.titleFontWeight)
         : fallback.titleFontWeight,
     showButton:
@@ -6004,71 +6095,71 @@ function normalizeDeviceConfig(
         : fallback.showButton,
     showButtonHeight:
       typeof config.showButtonHeight === "number" &&
-      Number.isFinite(config.showButtonHeight)
+        Number.isFinite(config.showButtonHeight)
         ? Math.max(0, config.showButtonHeight)
         : fallback.showButtonHeight,
     showMoreButtonText:
       typeof config.showMoreButtonText === "string" &&
-      config.showMoreButtonText.trim()
+        config.showMoreButtonText.trim()
         ? config.showMoreButtonText.trim()
         : fallback.showMoreButtonText,
     showLessButtonText:
       typeof config.showLessButtonText === "string" &&
-      config.showLessButtonText.trim()
+        config.showLessButtonText.trim()
         ? config.showLessButtonText.trim()
         : fallback.showLessButtonText,
     showButtonFontSize:
       typeof config.showButtonFontSize === "number" &&
-      Number.isFinite(config.showButtonFontSize)
+        Number.isFinite(config.showButtonFontSize)
         ? Math.max(0, config.showButtonFontSize)
         : fallback.showButtonFontSize,
     showButtonFontColor:
       typeof config.showButtonFontColor === "string" &&
-      config.showButtonFontColor.trim()
+        config.showButtonFontColor.trim()
         ? config.showButtonFontColor.trim()
         : fallback.showButtonFontColor,
     showButtonFontWeight:
       typeof config.showButtonFontWeight === "number" &&
-      Number.isFinite(config.showButtonFontWeight)
+        Number.isFinite(config.showButtonFontWeight)
         ? Math.max(0, config.showButtonFontWeight)
         : fallback.showButtonFontWeight,
     showButtonBorderColor:
       typeof config.showButtonBorderColor === "string" &&
-      config.showButtonBorderColor.trim()
+        config.showButtonBorderColor.trim()
         ? config.showButtonBorderColor.trim()
         : fallback.showButtonBorderColor,
     showButtonBorderWidth: normalizedShowButtonBorderWidth,
     showButtonBorderRadius:
       typeof config.showButtonBorderRadius === "number" &&
-      Number.isFinite(config.showButtonBorderRadius)
+        Number.isFinite(config.showButtonBorderRadius)
         ? Math.max(0, config.showButtonBorderRadius)
         : fallback.showButtonBorderRadius,
     showButtonPaddingTop:
       typeof config.showButtonPaddingTop === "number" &&
-      Number.isFinite(config.showButtonPaddingTop)
+        Number.isFinite(config.showButtonPaddingTop)
         ? Math.max(0, config.showButtonPaddingTop)
         : getLegacyShowButtonPaddingValue(normalizedShowButtonBorderWidth, "top"),
     showButtonPaddingBottom:
       typeof config.showButtonPaddingBottom === "number" &&
-      Number.isFinite(config.showButtonPaddingBottom)
+        Number.isFinite(config.showButtonPaddingBottom)
         ? Math.max(0, config.showButtonPaddingBottom)
         : getLegacyShowButtonPaddingValue(
-            normalizedShowButtonBorderWidth,
-            "bottom",
-          ),
+          normalizedShowButtonBorderWidth,
+          "bottom",
+        ),
     showButtonPaddingLeft:
       typeof config.showButtonPaddingLeft === "number" &&
-      Number.isFinite(config.showButtonPaddingLeft)
+        Number.isFinite(config.showButtonPaddingLeft)
         ? Math.max(0, config.showButtonPaddingLeft)
         : getLegacyShowButtonPaddingValue(normalizedShowButtonBorderWidth, "left"),
     showButtonPaddingRight:
       typeof config.showButtonPaddingRight === "number" &&
-      Number.isFinite(config.showButtonPaddingRight)
+        Number.isFinite(config.showButtonPaddingRight)
         ? Math.max(0, config.showButtonPaddingRight)
         : getLegacyShowButtonPaddingValue(
-            normalizedShowButtonBorderWidth,
-            "right",
-          ),
+          normalizedShowButtonBorderWidth,
+          "right",
+        ),
     animationType: normalizeAnimationType(config.animationType),
   };
 }
@@ -6164,6 +6255,10 @@ function coerceDeviceConfig(
         ? normalizeDesktopPosition(input.position)
         : normalizeMobilePosition(input.position),
     positionSelector: input.positionSelector.trim(),
+    switchToMobileOnFloatOverflow:
+      device === "desktop"
+        ? input.switchToMobileOnFloatOverflow
+        : false,
     color: input.color.trim() || fallback.color,
     width: Number.isFinite(width) ? width : fallback.width,
     radius: Number.isFinite(radius) ? radius : fallback.radius,
@@ -6276,18 +6371,18 @@ function coerceDeviceConfig(
     showButtonPaddingBottom: Number.isFinite(showButtonPaddingBottom)
       ? showButtonPaddingBottom
       : getLegacyShowButtonPaddingValue(
-          resolvedShowButtonBorderWidth,
-          "bottom",
-        ),
+        resolvedShowButtonBorderWidth,
+        "bottom",
+      ),
     showButtonPaddingLeft: Number.isFinite(showButtonPaddingLeft)
       ? showButtonPaddingLeft
       : getLegacyShowButtonPaddingValue(resolvedShowButtonBorderWidth, "left"),
     showButtonPaddingRight: Number.isFinite(showButtonPaddingRight)
       ? showButtonPaddingRight
       : getLegacyShowButtonPaddingValue(
-          resolvedShowButtonBorderWidth,
-          "right",
-        ),
+        resolvedShowButtonBorderWidth,
+        "right",
+      ),
     animationType: normalizeAnimationType(input.animationType),
   };
 }
@@ -6354,9 +6449,9 @@ function parseShadowColorValue(value: string): TocShadowColor | null {
     const expanded =
       hex.length === 3 || hex.length === 4
         ? hex
-            .split("")
-            .map((character) => `${character}${character}`)
-            .join("")
+          .split("")
+          .map((character) => `${character}${character}`)
+          .join("")
         : hex;
 
     if (expanded.length !== 6 && expanded.length !== 8) {
@@ -6512,9 +6607,84 @@ function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
   } as CSSProperties;
 }
 
+const PREVIEW_FLOAT_HOST_WIDTH = 320;
+const PREVIEW_DESKTOP_ARTICLE_MAX_WIDTH = 420;
+const PREVIEW_DESKTOP_STAGE_PADDING = 24;
+
+function getPreviewFloatOffsetDifference(
+  position: Extract<TocDesktopPosition, "float-left" | "float-right">,
+  device: TocDeviceConfig,
+) {
+  return position === "float-left"
+    ? device.offsetRight - device.offsetLeft
+    : device.offsetLeft - device.offsetRight;
+}
+
+function getPreviewDesktopFloatPlacement(
+  stageWidth: number,
+  device: TocDeviceConfig,
+) {
+  const articleWidth = Math.min(
+    Math.max(stageWidth - PREVIEW_DESKTOP_STAGE_PADDING * 2, 0),
+    PREVIEW_DESKTOP_ARTICLE_MAX_WIDTH,
+  );
+  const articleLeft = Math.max((stageWidth - articleWidth) / 2, 0);
+  const articleRight = articleLeft + articleWidth;
+  const hostWidth = Math.min(PREVIEW_FLOAT_HOST_WIDTH, Math.max(stageWidth, 0));
+  const maxLeft = Math.max(0, stageWidth - hostWidth);
+  const position = device.position as Extract<
+    TocDesktopPosition,
+    "float-left" | "float-right"
+  >;
+  const offsetDifference = getPreviewFloatOffsetDifference(position, device);
+  const preferredLeft =
+    position === "float-left"
+      ? articleLeft - hostWidth - offsetDifference
+      : articleRight + offsetDifference;
+
+  return {
+    articleLeft,
+    articleRight,
+    hostWidth,
+    left: Math.min(Math.max(preferredLeft, 0), maxLeft),
+  };
+}
+
+function shouldUseMobilePreviewOnFloatOverflow(
+  stageWidth: number,
+  desktopDevice: TocDeviceConfig,
+) {
+  if (
+    stageWidth <= 0 ||
+    !desktopDevice.switchToMobileOnFloatOverflow ||
+    !isDesktopFloatPosition(desktopDevice.position)
+  ) {
+    return false;
+  }
+
+  const placement = getPreviewDesktopFloatPlacement(stageWidth, desktopDevice);
+
+  return desktopDevice.position === "float-left"
+    ? placement.left + placement.hostWidth > placement.articleLeft
+    : placement.left < placement.articleRight;
+}
+
 function getPreviewPlacementClass(
   previewDevice: "desktop" | "mobile",
+  device: TocDeviceConfig,
 ) {
+  if (previewDevice !== "desktop") {
+    return "toc-preview-flow toc-preview-flow--mobile";
+  }
+
+  if (device.position === "float-left") {
+    return "toc-preview-float toc-preview-float--left";
+  }
+
+  if (device.position === "float-right") {
+    return "toc-preview-float";
+  }
+
   return "toc-preview-flow";
 }
 
@@ -7348,19 +7518,19 @@ function measureTocJumpingMarkerGeometry(
   const point =
     flight && flightProgress < 1
       ? clampPointToBounds(
-          getQuadraticPoint(
-            flight.startPoint,
-            flight.controlPoint,
-            flight.endPoint,
-            easeInOutCubic(flightProgress),
-          ),
-          bounds,
-        )
+        getQuadraticPoint(
+          flight.startPoint,
+          flight.controlPoint,
+          flight.endPoint,
+          easeInOutCubic(flightProgress),
+        ),
+        bounds,
+      )
       : settledPoint;
   const rotation =
     flight && flightProgress < 1
       ? flight.startRotation +
-        flight.rotationDelta * easeInOutCubic(flightProgress)
+      flight.rotationDelta * easeInOutCubic(flightProgress)
       : settledRotation;
 
   return {
@@ -7581,7 +7751,8 @@ function TocPreview({
   indentation,
   textAlignment,
   markerFormat,
-  device,
+  desktopDevice,
+  mobileDevice,
   previewDevice,
   replayToken,
 }: {
@@ -7589,10 +7760,20 @@ function TocPreview({
   indentation: boolean;
   textAlignment: TocTextAlignment;
   markerFormat: TocMarkerFormat;
-  device: TocDeviceConfig;
+  desktopDevice: TocDeviceConfig;
+  mobileDevice: TocDeviceConfig;
   previewDevice: "desktop" | "mobile";
   replayToken: number;
 }) {
+  const previewRootRef = useRef<HTMLDivElement | null>(null);
+  const [previewWidth, setPreviewWidth] = useState(0);
+  const effectivePreviewDevice =
+    previewDevice === "desktop" &&
+      shouldUseMobilePreviewOnFloatOverflow(previewWidth, desktopDevice)
+      ? "mobile"
+      : previewDevice;
+  const device =
+    effectivePreviewDevice === "desktop" ? desktopDevice : mobileDevice;
   const [expanded, setExpanded] = useState(false);
   const [activeId, setActiveId] = useState(preview.activeId);
   const [highlightedId, setHighlightedId] = useState(preview.activeId);
@@ -7620,7 +7801,7 @@ function TocPreview({
   const jumpingMarkerRotationRef = useRef(0);
   const previewItemIds = flattenPreviewItemIds(preview.items);
   const markerActive = isDesktopMarkerAnimation(
-    previewDevice,
+    effectivePreviewDevice,
     device.animationType,
   );
   const followingMarkerActive =
@@ -7667,6 +7848,39 @@ function TocPreview({
       jumpingMarkerFrameRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    if (previewDevice !== "desktop") {
+      setPreviewWidth(0);
+      return;
+    }
+
+    const node = previewRootRef.current;
+
+    if (!node) {
+      return;
+    }
+
+    const updatePreviewWidth = () => {
+      setPreviewWidth(node.getBoundingClientRect().width);
+    };
+
+    updatePreviewWidth();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updatePreviewWidth);
+
+      return () => window.removeEventListener("resize", updatePreviewWidth);
+    }
+
+    const observer = new ResizeObserver(() => {
+      updatePreviewWidth();
+    });
+
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [previewDevice]);
 
   const keepPreviewLinkVisible = useCallback(
     (link: HTMLAnchorElement | null) => {
@@ -7860,11 +8074,11 @@ function TocPreview({
     const progress = getSnakeClickFlightProgress(flight, performance.now());
     const replayHighlightId = crawlingSnakeReplayCompletionIdRef.current
       ? getSnakeFlightCurrentLinkId(
-          list,
-          flight.fromLink,
-          flight.toLink,
-          progress,
-        )
+        list,
+        flight.fromLink,
+        flight.toLink,
+        progress,
+      )
       : null;
 
     if (replayHighlightId) {
@@ -8296,16 +8510,16 @@ function TocPreview({
   const crawlingSnakePathStyle =
     crawlingSnakeActive && snakeGeometry
       ? ({
-          strokeDasharray: `${Math.min(crawlingSnakeVisibleLength, snakeGeometry.pathLength)} ${Math.max(snakeGeometry.pathLength, 1)}`,
-          strokeDashoffset: `-${Math.max(snakeGeometry.pathLength - crawlingSnakeVisibleLength, 0)}`,
-        } as CSSProperties)
+        strokeDasharray: `${Math.min(crawlingSnakeVisibleLength, snakeGeometry.pathLength)} ${Math.max(snakeGeometry.pathLength, 1)}`,
+        strokeDashoffset: `-${Math.max(snakeGeometry.pathLength - crawlingSnakeVisibleLength, 0)}`,
+      } as CSSProperties)
       : undefined;
 
   const nav = (
     <nav
       className={`toc-widget toc-widget--align-${textAlignment} toc-widget--markers-${markerFormat}${!indentation ? " toc-widget--flat" : ""}${showToggle ? " toc-widget--show-more-active" : ""}${showToggle && expanded ? " toc-widget--expanded" : ""}${followingMarkerActive ? " toc-widget--animation-following-marker" : ""}${crawlingSnakeActive ? " toc-widget--animation-crawling-snake" : ""}${jumpingMarkerActive ? " toc-widget--animation-jumping-marker" : ""}`}
       aria-label="Table of contents preview"
-      data-device={previewDevice}
+      data-device={effectivePreviewDevice}
       style={getPreviewContainerStyle(device)}
     >
       {device.showTitle ? (
@@ -8382,11 +8596,13 @@ function TocPreview({
     </nav>
   );
   return (
-    <div
-      className={getPreviewPlacementClass(previewDevice)}
-      style={getPreviewPlacementStyle(previewDevice, device)}
-    >
-      {nav}
+    <div ref={previewRootRef} className="toc-preview-shell">
+      <div
+        className={getPreviewPlacementClass(effectivePreviewDevice, device)}
+        style={getPreviewPlacementStyle(effectivePreviewDevice, device)}
+      >
+        {nav}
+      </div>
     </div>
   );
 }

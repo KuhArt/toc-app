@@ -1,6 +1,8 @@
 (() => {
   const DEFAULT_TOP_OFFSET = 80;
   const DEFAULT_MOBILE_BREAKPOINT = 768;
+  const DEFAULT_FLOAT_VIEWPORT_GUTTER = 24;
+  const DEFAULT_FLOAT_HOST_WIDTH = 320;
   const CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN = "{{mobileBreakpoint}}";
   const CUSTOM_CSS_STYLE_ID = "toc-custom-css";
   const DEBUG_PREFIX = "[TOC]";
@@ -23,6 +25,7 @@
   const DEFAULT_DESKTOP_CONTAINER = {
     position: "float-right",
     positionSelector: "",
+    switchToMobileOnFloatOverflow: true,
     color: "#0000001f",
     width: 1,
     radius: 12,
@@ -80,6 +83,7 @@
   const DEFAULT_MOBILE_CONTAINER = {
     position: "before-first-heading",
     positionSelector: "",
+    switchToMobileOnFloatOverflow: false,
     color: "#0000001f",
     width: 0,
     radius: 12,
@@ -234,14 +238,98 @@
   }
 
   const isDesktopViewport = () => window.innerWidth > mobileBreakpoint;
+  const isDesktopFloatPosition = (position) =>
+    position === "float-left" || position === "float-right";
+  const getValidWrapperRect = () => {
+    const rect = wrapper.getBoundingClientRect();
+
+    if (
+      !Number.isFinite(rect.left) ||
+      !Number.isFinite(rect.right) ||
+      rect.width <= 0
+    ) {
+      return null;
+    }
+
+    return rect;
+  };
+  const getDesktopFloatHostWidth = (measuredWidth = null) => {
+    if (
+      typeof measuredWidth === "number" &&
+      Number.isFinite(measuredWidth) &&
+      measuredWidth > 0
+    ) {
+      return measuredWidth;
+    }
+
+    return Math.min(
+      DEFAULT_FLOAT_HOST_WIDTH,
+      Math.max(window.innerWidth - DEFAULT_FLOAT_VIEWPORT_GUTTER * 2, 0),
+    );
+  };
+  const getDesktopFloatOffsetDifference = (kind, config) =>
+    kind === "float-left"
+      ? config.offsetRight - config.offsetLeft
+      : config.offsetLeft - config.offsetRight;
+  const clampDesktopFloatLeft = (preferredLeft, hostWidth) => {
+    const maxLeft = Math.max(0, window.innerWidth - hostWidth);
+
+    return Math.min(Math.max(preferredLeft, 0), maxLeft);
+  };
+  const resolveDesktopFloatLeft = (kind, config, wrapperRect, hostWidth) => {
+    const offsetDifference = getDesktopFloatOffsetDifference(kind, config);
+    const preferredLeft = wrapperRect
+      ? kind === "float-left"
+        ? wrapperRect.left - hostWidth - offsetDifference
+        : wrapperRect.right + offsetDifference
+      : kind === "float-left"
+        ? DEFAULT_FLOAT_VIEWPORT_GUTTER - offsetDifference
+        : window.innerWidth -
+          DEFAULT_FLOAT_VIEWPORT_GUTTER -
+          hostWidth +
+          offsetDifference;
+
+    return clampDesktopFloatLeft(preferredLeft, hostWidth);
+  };
+  const shouldUseMobileFloatOverflowFallback = () => {
+    if (
+      !isDesktopViewport() ||
+      !desktopConfig.switchToMobileOnFloatOverflow ||
+      !isDesktopFloatPosition(desktopConfig.position)
+    ) {
+      return false;
+    }
+
+    const wrapperRect = getValidWrapperRect();
+
+    if (!wrapperRect) {
+      return false;
+    }
+
+    const hostWidth = getDesktopFloatHostWidth();
+    const resolvedLeft = resolveDesktopFloatLeft(
+      desktopConfig.position,
+      desktopConfig,
+      wrapperRect,
+      hostWidth,
+    );
+
+    return desktopConfig.position === "float-left"
+      ? resolvedLeft + hostWidth > wrapperRect.left
+      : resolvedLeft < wrapperRect.right;
+  };
+  const getResolvedDevice = () =>
+    isDesktopViewport() && !shouldUseMobileFloatOverflowFallback()
+      ? "desktop"
+      : "mobile";
   const getActiveConfig = () =>
-    isDesktopViewport() ? desktopConfig : mobileConfig;
+    getResolvedDevice() === "desktop" ? desktopConfig : mobileConfig;
   const getDefaultPosition = () =>
-    isDesktopViewport()
+    getResolvedDevice() === "desktop"
       ? DEFAULT_DESKTOP_CONTAINER.position
       : DEFAULT_MOBILE_CONTAINER.position;
   const getMarkerAnimationType = () =>
-    isDesktopViewport() &&
+    getResolvedDevice() === "desktop" &&
     TOC_MARKER_ANIMATION_TYPES.includes(desktopConfig.animationType)
       ? desktopConfig.animationType
       : "none";
@@ -287,7 +375,7 @@
     `toc-widget--markers-${normalizeMarkerFormat(cfg.markerFormat)}`,
   );
   const syncDeviceState = () => {
-    toc.dataset.device = isDesktopViewport() ? "desktop" : "mobile";
+    toc.dataset.device = getResolvedDevice();
   };
   syncDeviceState();
   applyDeviceConfig(toc, desktopConfig, mobileConfig);
@@ -511,6 +599,26 @@
     floatHost?.remove();
     floatHost = null;
   };
+  const syncFloatHostPlacement = (kind, activeConfig) => {
+    if (!floatHost || !isDesktopViewport()) {
+      return;
+    }
+
+    const hostWidth = getDesktopFloatHostWidth(
+      floatHost.getBoundingClientRect().width,
+    );
+    const resolvedLeft = resolveDesktopFloatLeft(
+      kind,
+      activeConfig,
+      getValidWrapperRect(),
+      hostWidth,
+    );
+
+    floatHost.style.setProperty("--toc-offset-left", "0px");
+    floatHost.style.setProperty("--toc-offset-right", "0px");
+    floatHost.style.left = `${Math.round(resolvedLeft)}px`;
+    floatHost.style.right = "auto";
+  };
   const resolveMountTarget = (position, selector) => {
     switch (position) {
       case "before-first-heading":
@@ -565,16 +673,17 @@
       );
       floatHost.style.setProperty(
         "--toc-offset-left",
-        `${activeConfig.offsetLeft}px`,
+        "0px",
       );
       floatHost.style.setProperty(
         "--toc-offset-right",
-        `${activeConfig.offsetRight}px`,
+        "0px",
       );
       if (!floatHost.isConnected) {
         document.body.appendChild(floatHost);
       }
       floatHost.appendChild(toc);
+      syncFloatHostPlacement(target.kind, activeConfig);
       return;
     }
 
@@ -993,6 +1102,12 @@
         typeof config.positionSelector === "string"
           ? config.positionSelector.trim()
           : fallback.positionSelector,
+      switchToMobileOnFloatOverflow:
+        device === "desktop"
+          ? typeof config.switchToMobileOnFloatOverflow === "boolean"
+            ? config.switchToMobileOnFloatOverflow
+            : fallback.switchToMobileOnFloatOverflow
+          : false,
       color:
         typeof config.color === "string" && config.color.trim()
           ? config.color.trim()
