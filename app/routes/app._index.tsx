@@ -6607,68 +6607,6 @@ function getPreviewContainerStyle(device: TocDeviceConfig): CSSProperties {
   } as CSSProperties;
 }
 
-const PREVIEW_FLOAT_HOST_WIDTH = 320;
-const PREVIEW_DESKTOP_ARTICLE_MAX_WIDTH = 420;
-const PREVIEW_DESKTOP_STAGE_PADDING = 24;
-
-function getPreviewFloatOffsetDifference(
-  position: Extract<TocDesktopPosition, "float-left" | "float-right">,
-  device: TocDeviceConfig,
-) {
-  return position === "float-left"
-    ? device.offsetRight - device.offsetLeft
-    : device.offsetLeft - device.offsetRight;
-}
-
-function getPreviewDesktopFloatPlacement(
-  stageWidth: number,
-  device: TocDeviceConfig,
-) {
-  const articleWidth = Math.min(
-    Math.max(stageWidth - PREVIEW_DESKTOP_STAGE_PADDING * 2, 0),
-    PREVIEW_DESKTOP_ARTICLE_MAX_WIDTH,
-  );
-  const articleLeft = Math.max((stageWidth - articleWidth) / 2, 0);
-  const articleRight = articleLeft + articleWidth;
-  const hostWidth = Math.min(PREVIEW_FLOAT_HOST_WIDTH, Math.max(stageWidth, 0));
-  const maxLeft = Math.max(0, stageWidth - hostWidth);
-  const position = device.position as Extract<
-    TocDesktopPosition,
-    "float-left" | "float-right"
-  >;
-  const offsetDifference = getPreviewFloatOffsetDifference(position, device);
-  const preferredLeft =
-    position === "float-left"
-      ? articleLeft - hostWidth - offsetDifference
-      : articleRight + offsetDifference;
-
-  return {
-    articleLeft,
-    articleRight,
-    hostWidth,
-    left: Math.min(Math.max(preferredLeft, 0), maxLeft),
-  };
-}
-
-function shouldUseMobilePreviewOnFloatOverflow(
-  stageWidth: number,
-  desktopDevice: TocDeviceConfig,
-) {
-  if (
-    stageWidth <= 0 ||
-    !desktopDevice.switchToMobileOnFloatOverflow ||
-    !isDesktopFloatPosition(desktopDevice.position)
-  ) {
-    return false;
-  }
-
-  const placement = getPreviewDesktopFloatPlacement(stageWidth, desktopDevice);
-
-  return desktopDevice.position === "float-left"
-    ? placement.left + placement.hostWidth > placement.articleLeft
-    : placement.left < placement.articleRight;
-}
-
 function getPreviewPlacementClass(
   previewDevice: "desktop" | "mobile",
   device: TocDeviceConfig,
@@ -7766,12 +7704,7 @@ function TocPreview({
   replayToken: number;
 }) {
   const previewRootRef = useRef<HTMLDivElement | null>(null);
-  const [previewWidth, setPreviewWidth] = useState(0);
-  const effectivePreviewDevice =
-    previewDevice === "desktop" &&
-      shouldUseMobilePreviewOnFloatOverflow(previewWidth, desktopDevice)
-      ? "mobile"
-      : previewDevice;
+  const effectivePreviewDevice = previewDevice;
   const device =
     effectivePreviewDevice === "desktop" ? desktopDevice : mobileDevice;
   const [expanded, setExpanded] = useState(false);
@@ -7848,39 +7781,6 @@ function TocPreview({
       jumpingMarkerFrameRef.current = null;
     }
   }, []);
-
-  useEffect(() => {
-    if (previewDevice !== "desktop") {
-      setPreviewWidth(0);
-      return;
-    }
-
-    const node = previewRootRef.current;
-
-    if (!node) {
-      return;
-    }
-
-    const updatePreviewWidth = () => {
-      setPreviewWidth(node.getBoundingClientRect().width);
-    };
-
-    updatePreviewWidth();
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updatePreviewWidth);
-
-      return () => window.removeEventListener("resize", updatePreviewWidth);
-    }
-
-    const observer = new ResizeObserver(() => {
-      updatePreviewWidth();
-    });
-
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, [previewDevice]);
 
   const keepPreviewLinkVisible = useCallback(
     (link: HTMLAnchorElement | null) => {
