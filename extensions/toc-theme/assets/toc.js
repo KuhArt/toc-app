@@ -363,8 +363,10 @@
   applyHeadingScrollMargins();
 
   // 5) Build TOC markup
+  const tocLabel = (cfg.title || "Table of contents").trim();
   const toc = document.createElement("nav");
   toc.className = "toc-widget";
+  toc.setAttribute("aria-label", tocLabel || "Table of contents");
   if (cfg.indentation === false) {
     toc.classList.add("toc-widget--flat");
   }
@@ -399,6 +401,7 @@
   toc.appendChild(topFade);
 
   const list = buildNestedList(headings);
+  list.id = `toc-widget-list-${Math.random().toString(36).slice(2, 9)}`;
   const listShell = document.createElement("div");
   listShell.className = "toc-widget__list-shell";
   const snakeOverlay = createSnakeOverlay();
@@ -590,6 +593,7 @@
   toggle.type = "button";
   toggle.className = "toc-widget__toggle";
   toggle.hidden = true;
+  toggle.setAttribute("aria-controls", list.id);
   toggle.setAttribute("aria-expanded", "false");
   toggle.textContent = desktopConfig.showMoreButtonText;
   toc.appendChild(toggle);
@@ -785,9 +789,11 @@
     }
 
     currentLink?.classList.remove("toc-widget__link--current");
+    currentLink?.removeAttribute("aria-current");
 
     if (nextLink) {
       nextLink.classList.add("toc-widget__link--current");
+      nextLink.setAttribute("aria-current", "location");
     }
 
     currentLink = nextLink;

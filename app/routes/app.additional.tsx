@@ -1,5 +1,4 @@
 export default function AdditionalPage() {
-  console.log('AdditionalPage');
   return (
     <s-page heading="Additional page">
       <s-section heading="Multiple pages">
