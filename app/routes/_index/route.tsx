@@ -21,16 +21,17 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.content}>
-        <h1 className={styles.heading}>A short heading about [your app]</h1>
+        <h1 className={styles.heading}>Table of Contents for Shopify blogs</h1>
         <p className={styles.text}>
-          A tagline about [your app] that describes your value proposition.
+          Configure a responsive table of contents for article pages, then
+          enable it from the Shopify theme editor.
         </p>
         {showForm && (
           <Form className={styles.form} method="post" action="/auth/login">
             <label className={styles.label}>
               <span>Shop domain</span>
               <input className={styles.input} type="text" name="shop" />
-              <span>e.g: my-shop-domain.myshopify.com</span>
+              <span>example.myshopify.com</span>
             </label>
             <button className={styles.button} type="submit">
               Log in
@@ -39,16 +40,16 @@ export default function App() {
         )}
         <ul className={styles.list}>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Article-only embed</strong>. The theme app extension loads
+            on blog article templates.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Custom layout</strong>. Merchants control placement,
+            spacing, colors, headings, and mobile behavior.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Live preview</strong>. Settings can be reviewed in the app
+            before publishing to the storefront.
           </li>
         </ul>
       </div>

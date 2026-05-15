@@ -36,17 +36,6 @@
   {% endif %}
 {% endfor %}
 
-<script id="toc-debug-context" type="application/json">
-  {
-    "renderEnabled": {{ should_render_toc | json }},
-    "currentArticleHandle": {{ current_article_handle | json }},
-    "currentArticleSlug": {{ current_article_slug | json }},
-    "currentArticleUrl": {{ current_article_url | json }},
-    "currentArticleId": {{ current_article_id | json }},
-    "excludedBlogs": {{ excluded_blogs | json }}
-  }
-</script>
-
 {% if should_render_toc %}
   <script id="toc-config" type="application/json">
     {{ cfg | json }}

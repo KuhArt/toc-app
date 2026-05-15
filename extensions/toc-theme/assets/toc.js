@@ -151,28 +151,12 @@
     }
   };
 
-  const debugContext = readJsonScript("toc-debug-context") || {};
-
-  console.info(`${DEBUG_PREFIX} Boot`, debugContext);
-
-  if (debugContext.renderEnabled === false) {
-    console.info(`${DEBUG_PREFIX} Skipping render for excluded article`, {
-      currentArticleHandle: debugContext.currentArticleHandle,
-      currentArticleId: debugContext.currentArticleId,
-      excludedBlogs: debugContext.excludedBlogs,
-    });
-    return;
-  }
-
   // 1) Read config from Liquid-injected JSON
   const el = document.getElementById("toc-config");
-  const cfg = el ? readJsonScript("toc-config") || {} : {};
-
   if (!el) {
-    console.warn(
-      `${DEBUG_PREFIX} Missing #toc-config, falling back to defaults`,
-    );
+    return;
   }
+  const cfg = readJsonScript("toc-config") || {};
 
   // defaults
   const headingLevels = cfg.headingLevels?.length
@@ -214,7 +198,6 @@
     }
   }
   if (!wrapper) {
-    console.info(`${DEBUG_PREFIX} No article wrapper found`, { selectors });
     return;
   }
 
@@ -224,16 +207,7 @@
     (h) => (h.textContent || "").trim().length > 0,
   );
 
-  console.info(`${DEBUG_PREFIX} Heading scan`, {
-    headingSelector,
-    headingsFound: headings.length,
-    minHeadings,
-  });
-
   if (headings.length < minHeadings) {
-    console.info(
-      `${DEBUG_PREFIX} Skipping render because there are not enough headings`,
-    );
     return;
   }
 
@@ -708,10 +682,6 @@
 
   mount();
   ensureAnimationController();
-  console.info(`${DEBUG_PREFIX} Rendered`, {
-    headingCount: headings.length,
-    title: cfg.title || "Contents",
-  });
 
   let applyResponsiveState = () => {};
   requestAnimationFrame(() => {
