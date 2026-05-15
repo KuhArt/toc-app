@@ -21,9 +21,9 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.content}>
-        <h1 className={styles.heading}>Table of Contents for Shopify blogs</h1>
+        <h1 className={styles.heading}>Tocito</h1>
         <p className={styles.text}>
-          Configure a responsive table of contents for article pages, then
+          Configure a responsive table of contents for Shopify blog articles, then
           enable it from the Shopify theme editor.
         </p>
         {showForm && (

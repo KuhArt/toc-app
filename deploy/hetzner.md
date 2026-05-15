@@ -71,5 +71,5 @@ Backups are written to `backups/` as timestamped `.sql.gz` files.
 Example daily cron job at 03:15 UTC:
 
 ```cron
-15 3 * * * cd /path/to/toc-app && /bin/sh deploy/backup-postgres.sh >> /var/log/toc-app-backup.log 2>&1
+15 3 * * * cd /path/to/tocito && /bin/sh deploy/backup-postgres.sh >> /var/log/tocito-backup.log 2>&1
 ```

@@ -100,6 +100,38 @@ type ActionData = {
   userErrors?: Array<{ field?: string[]; message: string }>;
 };
 
+const CRISP_WEBSITE_ID = "00d4dcb8-9b3d-4cdc-bf58-2e3dcaf9989f";
+const CRISP_SCRIPT_ID = "crisp-chat-script";
+
+function CrispChat() {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const crispWindow = window as typeof window & {
+      $crisp?: unknown[];
+      CRISP_WEBSITE_ID?: string;
+    };
+
+    crispWindow.$crisp = crispWindow.$crisp || [];
+    crispWindow.CRISP_WEBSITE_ID = CRISP_WEBSITE_ID;
+
+    if (document.getElementById(CRISP_SCRIPT_ID)) {
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = CRISP_SCRIPT_ID;
+    script.src = "https://client.crisp.chat/l.js";
+    script.async = true;
+
+    document.head.appendChild(script);
+  }, []);
+
+  return null;
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
 
@@ -1813,6 +1845,7 @@ export default function Index() {
 
   return (
     <PolarisAppProvider i18n={enTranslations}>
+      <CrispChat />
       <s-page heading="Table of contents settings">
         <style>{tocStyles}</style>
         <style>{FORM_STYLES}</style>

@@ -1,9 +1,11 @@
 {
-  "name": "toc-app",
+  "name": "tocito",
   "private": true,
   "scripts": {
     "build": "react-router build",
     "dev": "shopify app dev",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d db",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
     "deploy": "shopify app deploy",

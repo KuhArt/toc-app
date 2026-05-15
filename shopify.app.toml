@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "a08fb804ac2979633366b34053452826"
-name = "toc-app"
+name = "Tocito"
 application_url = "https://example.com"
 embedded = true
 

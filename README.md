@@ -1,4 +1,4 @@
-# TOC App
+# Tocito
 
 Shopify app for adding a configurable table of contents to blog article pages.
 
@@ -6,8 +6,14 @@ Shopify app for adding a configurable table of contents to blog article pages.
 
 ```shell
 npm install
+npm run db:up
 npm run dev
 ```
+
+Local development uses PostgreSQL through Prisma. Copy `.env.example` to `.env`
+if the local file is missing or if you need to reset the data base connection
+settings. The default local database port is `55432` to avoid conflicts with
+other PostgreSQL instances on `5432`.
 
 ## Checks
 
