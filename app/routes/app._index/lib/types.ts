@@ -103,6 +103,7 @@ export type TocConfig = {
   minHeadings: number;
   mobileBreakpoint: number;
   excludedBlogs: string;
+  enableJsonLd: boolean;
   customCss: string;
   desktop: TocDeviceConfig;
   mobile: TocDeviceConfig;
@@ -174,6 +175,7 @@ export type TocConfigInput = {
   minHeadings: string;
   mobileBreakpoint: string;
   excludedBlogs: string;
+  enableJsonLd: boolean;
   customCss: string;
   desktop: TocDeviceConfigInput;
   mobile: TocDeviceConfigInput;

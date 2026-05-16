@@ -248,6 +248,7 @@ export default function Index() {
     String(config.mobileBreakpoint),
   );
   const [excludedBlogs, setExcludedBlogs] = useState(config.excludedBlogs);
+  const [enableJsonLd, setEnableJsonLd] = useState(config.enableJsonLd);
   const [customCss, setCustomCss] = useState(config.customCss);
   const [desktopPosition, setDesktopPosition] = useState(
     config.desktop.position,
@@ -824,6 +825,7 @@ export default function Index() {
     minHeadings,
     mobileBreakpoint,
     excludedBlogs,
+    enableJsonLd,
     customCss,
     desktop: {
       position: desktopPosition,
@@ -1661,6 +1663,7 @@ export default function Index() {
       setMinHeadings,
       setMobileBreakpoint,
       setExcludedBlogs,
+      setEnableJsonLd,
       setCustomCss,
       setDesktopPosition,
       setDesktopPositionSelector,
@@ -1899,6 +1902,7 @@ export default function Index() {
                   setMinHeadings,
                   setMobileBreakpoint,
                   setExcludedBlogs,
+                  setEnableJsonLd,
                   setCustomCss,
                   setDesktopPosition,
                   setDesktopPositionSelector,
@@ -2133,6 +2137,15 @@ export default function Index() {
                             setExcludedBlogs(event.currentTarget.value)
                           }
                         ></s-text-field>
+                        <s-checkbox
+                          name="enableJsonLd"
+                          label="Enable SEO JSON-LD schema"
+                          details="Add structured data for the generated table of contents links."
+                          checked={enableJsonLd}
+                          onChange={(event) =>
+                            setEnableJsonLd(event.currentTarget.checked)
+                          }
+                        ></s-checkbox>
                       </s-stack>
                     </s-section>
                   </div>

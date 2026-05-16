@@ -158,6 +158,7 @@ export const DEFAULT_CONFIG: TocConfig = {
   minHeadings: 3,
   mobileBreakpoint: DEFAULT_MOBILE_BREAKPOINT,
   excludedBlogs: "",
+  enableJsonLd: true,
   customCss: buildDefaultCustomCss(),
   desktop: DEFAULT_DESKTOP_CONFIG,
   mobile: DEFAULT_MOBILE_CONFIG,

@@ -6,6 +6,7 @@
   const CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN = "{{mobileBreakpoint}}";
   const CUSTOM_CSS_STYLE_ID = "toc-custom-css";
   const DEBUG_PREFIX = "[TOC]";
+  const TOC_JSON_LD_SCRIPT_ID = "toc-json-ld";
   const TOC_HEADING_ID_ATTRIBUTE = "data-shopify-toc-id";
   const TOC_GENERATED_ID_ATTRIBUTE = "data-shopify-toc-generated-id";
   const TOC_CRAWLING_SNAKE_VISIBLE_LENGTH = 16;
@@ -307,11 +308,96 @@
     TOC_MARKER_ANIMATION_TYPES.includes(desktopConfig.animationType)
       ? desktopConfig.animationType
       : "none";
+  const getHeadingLabel = (heading) =>
+    (heading.innerText || heading.textContent || "").replace(/\s+/g, " ").trim();
   const getHeadingAnchorId = (heading) =>
     (heading.getAttribute(TOC_HEADING_ID_ATTRIBUTE) || heading.id || "").trim();
+  const getCanonicalPageUrl = () => {
+    const canonicalUrl = document.querySelector('link[rel="canonical"]')?.href;
+    const pageUrl = new URL(
+      canonicalUrl || window.location.href,
+      window.location.origin,
+    );
+
+    pageUrl.hash = "";
+
+    return pageUrl.toString();
+  };
+  const getHeadingUrl = (pageUrl, anchorId) => {
+    const headingUrl = new URL(pageUrl);
+    headingUrl.hash = anchorId;
+
+    return headingUrl.toString();
+  };
+  const injectTocJsonLd = () => {
+    document.getElementById(TOC_JSON_LD_SCRIPT_ID)?.remove();
+
+    const pageUrl = getCanonicalPageUrl();
+    const graph = headings
+      .map((heading, index) => {
+        const anchorId = getHeadingAnchorId(heading);
+        const name = getHeadingLabel(heading);
+
+        if (!anchorId || !name) {
+          return null;
+        }
+
+        const headingUrl = getHeadingUrl(pageUrl, anchorId);
+
+        return {
+          "@type": "SiteNavigationElement",
+          "@id": headingUrl,
+          position: index + 1,
+          name,
+          url: headingUrl,
+        };
+      })
+      .filter(Boolean);
+
+    if (!graph.length) {
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = TOC_JSON_LD_SCRIPT_ID;
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": graph,
+    });
+
+    (document.head || document.documentElement).appendChild(script);
+  };
   const getHeadingByAnchorId = (anchorId) =>
     headings.find((heading) => getHeadingAnchorId(heading) === anchorId) ||
     document.getElementById(anchorId);
+  const scrollToInitialHash = () => {
+    if (!window.location.hash) {
+      return;
+    }
+
+    let anchorId = "";
+
+    try {
+      anchorId = decodeURIComponent(window.location.hash.slice(1));
+    } catch {
+      anchorId = window.location.hash.slice(1);
+    }
+
+    if (!anchorId) {
+      return;
+    }
+
+    const target = getHeadingByAnchorId(anchorId);
+
+    if (!target) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "auto" });
+    });
+  };
   const applyHeadingScrollMargins = () => {
     const activeOffset = Math.max(0, getActiveConfig().scrollOffset || 0);
 
@@ -321,12 +407,32 @@
   };
 
   // 4) Ensure each heading has a stable TOC anchor marker.
-  headings.forEach((h, i) => {
-    const anchorId = h.id.trim() || `toc-${i}-${slugify(h.textContent || "")}`;
+  const headingElements = new Set(headings);
+  const usedHeadingIds = new Set(
+    Array.from(document.querySelectorAll("[id]"))
+      .filter((element) => !headingElements.has(element))
+      .map((element) => element.id.trim())
+      .filter(Boolean),
+  );
+
+  headings.forEach((h) => {
+    const existingId = h.id.trim();
+    const baseAnchorId = existingId || slugify(getHeadingLabel(h)) || "section";
+    let anchorId = existingId || `toc-${baseAnchorId}`;
+    let suffix = 2;
+
+    while (usedHeadingIds.has(anchorId)) {
+      anchorId = existingId
+        ? `${existingId}-${suffix}`
+        : `toc-${baseAnchorId}-${suffix}`;
+      suffix += 1;
+    }
+
+    usedHeadingIds.add(anchorId);
 
     h.setAttribute(TOC_HEADING_ID_ATTRIBUTE, anchorId);
 
-    if (!h.id) {
+    if (!existingId || h.id !== anchorId) {
       h.id = anchorId;
       h.setAttribute(TOC_GENERATED_ID_ATTRIBUTE, "true");
       return;
@@ -334,6 +440,11 @@
 
     h.removeAttribute(TOC_GENERATED_ID_ATTRIBUTE);
   });
+  if (cfg.enableJsonLd !== false) {
+    injectTocJsonLd();
+  } else {
+    document.getElementById(TOC_JSON_LD_SCRIPT_ID)?.remove();
+  }
   applyHeadingScrollMargins();
 
   // 5) Build TOC markup
@@ -682,6 +793,7 @@
 
   mount();
   ensureAnimationController();
+  scrollToInitialHash();
 
   let applyResponsiveState = () => {};
   requestAnimationFrame(() => {
@@ -907,6 +1019,9 @@
       target.scrollIntoView({
         behavior: activeConfig.smoothScroll ? "smooth" : "auto",
       });
+      if (window.history?.pushState) {
+        window.history.pushState(null, "", `#${encodeURIComponent(id)}`);
+      }
       refreshCurrentLink();
     }
   });
@@ -1993,7 +2108,7 @@
       const anchorId = getHeadingAnchorId(h);
       label.className = "toc-widget__link-label";
       a.setAttribute("href", `#${encodeURIComponent(anchorId)}`);
-      label.textContent = (h.textContent || "").trim();
+      label.textContent = getHeadingLabel(h);
       a.appendChild(label);
       li.appendChild(a);
       stack[stack.length - 1].appendChild(li);

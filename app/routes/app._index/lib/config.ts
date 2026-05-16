@@ -41,6 +41,7 @@ export type TocFormControls = {
   setMinHeadings: (value: string) => void;
   setMobileBreakpoint: (value: string) => void;
   setExcludedBlogs: (value: string) => void;
+  setEnableJsonLd: (value: boolean) => void;
   setCustomCss: (value: string) => void;
   setDesktopPosition: (value: TocDesktopPosition) => void;
   setDesktopPositionSelector: (value: string) => void;
@@ -308,6 +309,10 @@ export function parseConfig(value: unknown): TocConfig {
         typeof rest.excludedBlogs === "string"
           ? normalizeExcludedBlogsInput(rest.excludedBlogs)
           : DEFAULT_CONFIG.excludedBlogs,
+      enableJsonLd:
+        typeof rest.enableJsonLd === "boolean"
+          ? rest.enableJsonLd
+          : DEFAULT_CONFIG.enableJsonLd,
       customCss:
         typeof rest.customCss === "string"
           ? normalizeCustomCssInput(rest.customCss)
@@ -329,6 +334,7 @@ export function applyConfigToForm(config: TocConfig, controls: TocFormControls) 
   controls.setMinHeadings(String(config.minHeadings));
   controls.setMobileBreakpoint(String(config.mobileBreakpoint));
   controls.setExcludedBlogs(config.excludedBlogs);
+  controls.setEnableJsonLd(config.enableJsonLd);
   controls.setCustomCss(config.customCss);
   controls.setDesktopPosition(normalizeDesktopPosition(config.desktop.position));
   controls.setDesktopPositionSelector(config.desktop.positionSelector);
@@ -554,6 +560,7 @@ export function coerceConfig(input: TocConfigInput): TocConfig {
       ? mobileBreakpoint
       : DEFAULT_CONFIG.mobileBreakpoint,
     excludedBlogs,
+    enableJsonLd: input.enableJsonLd,
     customCss,
     desktop: coerceDeviceConfig(
       input.desktop,
@@ -580,6 +587,7 @@ export function coerceConfigFromForm(formData: FormData): TocConfig {
     minHeadings: String(formData.get("minHeadings") || ""),
     mobileBreakpoint: String(formData.get("mobileBreakpoint") || ""),
     excludedBlogs: String(formData.get("excludedBlogs") || ""),
+    enableJsonLd: formData.get("enableJsonLd") === "on",
     customCss: String(formData.get("customCss") || ""),
     desktop: {
       position: String(
