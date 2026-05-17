@@ -32,3 +32,14 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model Shop {
+  shop                 String    @id
+  name                 String?
+  email                String?
+  contactEmail         String?
+  installedAt          DateTime?
+  uninstalledAt        DateTime?
+  welcomeEmailSentAt   DateTime?
+  uninstallEmailSentAt DateTime?
+}

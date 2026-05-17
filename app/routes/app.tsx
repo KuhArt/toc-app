@@ -4,9 +4,18 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
 import { authenticate } from "../shopify.server";
+import { recordAppInstalled } from "../shop-emails.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+
+  console.log("Authenticated app loader", { shop: session.shop });
+
+  try {
+    await recordAppInstalled({ admin, shop: session.shop });
+  } catch (error) {
+    console.error(`Failed to record install for ${session.shop}`, error);
+  }
 
   // eslint-disable-next-line no-undef
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };
