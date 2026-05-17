@@ -32,7 +32,7 @@ Required environment variables:
 ```shell
 SHOPIFY_API_KEY=
 SHOPIFY_API_SECRET=
-SHOPIFY_APP_URL=
+SHOPIFY_APP_URL=https://tocito.pompych.com
 SCOPES=
 DATABASE_URL=
 RESEND_API_KEY=
@@ -45,7 +45,7 @@ For the included Docker Compose setup, set these values in the server
 environment:
 
 ```shell
-DOMAIN=
+DOMAIN=tocito.pompych.com
 SHOPIFY_API_KEY=
 SHOPIFY_API_SECRET=
 SCOPES=

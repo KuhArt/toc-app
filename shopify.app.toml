@@ -2,7 +2,7 @@
 
 client_id = "a08fb804ac2979633366b34053452826"
 name = "Tocito"
-application_url = "https://example.com"
+application_url = "https://tocito.pompych.com"
 embedded = true
 
 [build]
@@ -24,4 +24,4 @@ api_version = "2026-04"
 scopes = ""
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [ "https://tocito.pompych.com/auth/callback" ]

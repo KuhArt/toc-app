@@ -16,7 +16,7 @@ cp deploy/production.env.example .env
 
 Then edit `.env` and set:
 
-- `DOMAIN` to the real app domain, for example `toc.example.com`
+- `DOMAIN` to the real app domain, for example `tocito.pompych.com`
 - `SHOPIFY_API_KEY` from Shopify Partner Dashboard
 - `SHOPIFY_API_SECRET` from Shopify Partner Dashboard
 - `SCOPES` to the scopes configured in `shopify.app.toml`
@@ -27,11 +27,11 @@ Then edit `.env` and set:
 Update `shopify.app.toml` before deploying the app config:
 
 ```toml
-application_url = "https://toc.example.com"
+application_url = "https://tocito.pompych.com"
 
 [auth]
 redirect_urls = [
-  "https://toc.example.com/auth/callback"
+  "https://tocito.pompych.com/auth/callback"
 ]
 ```
 
