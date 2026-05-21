@@ -30,6 +30,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/public ./public
+COPY --from=build /app/extensions/toc-theme/assets ./extensions/toc-theme/assets
 
 EXPOSE 8080
 
