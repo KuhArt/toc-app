@@ -36,8 +36,8 @@ SHOPIFY_APP_URL=https://tocito.pompych.com
 SCOPES=
 DATABASE_URL=
 RESEND_API_KEY=
-EMAIL_FROM="Tocito <help@pompych.com>"
-SUPPORT_EMAIL=help@pompych.com
+EMAIL_FROM="Tocito <tocito@pompych.com>"
+SUPPORT_EMAIL=tocito@pompych.com
 NODE_ENV=production
 ```
 
@@ -50,8 +50,8 @@ SHOPIFY_API_KEY=
 SHOPIFY_API_SECRET=
 SCOPES=
 RESEND_API_KEY=
-EMAIL_FROM="Tocito <help@pompych.com>"
-SUPPORT_EMAIL=help@pompych.com
+EMAIL_FROM="Tocito <tocito@pompych.com>"
+SUPPORT_EMAIL=tocito@pompych.com
 POSTGRES_DB=
 POSTGRES_USER=
 POSTGRES_PASSWORD=

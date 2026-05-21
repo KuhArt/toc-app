@@ -21,7 +21,7 @@ Then edit `.env` and set:
 - `SHOPIFY_API_SECRET` from Shopify Partner Dashboard
 - `SCOPES` to the scopes configured in `shopify.app.toml`
 - `RESEND_API_KEY` from Resend, if install/uninstall emails should be sent
-- `EMAIL_FROM` to a verified sender, for example `Tocito <help@pompych.com>`
+- `EMAIL_FROM` to a verified sender, for example `Tocito <tocito@pompych.com>`
 - `SUPPORT_EMAIL` to your support inbox
 - `POSTGRES_PASSWORD` to a long random password
 

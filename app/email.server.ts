@@ -34,7 +34,7 @@ function maskEmail(email: string) {
 }
 
 export function getSupportEmail() {
-  return process.env.SUPPORT_EMAIL || "help@pompych.com";
+  return process.env.SUPPORT_EMAIL || "tocito@pompych.com";
 }
 
 function escapeHtml(value: string) {
@@ -100,30 +100,39 @@ export async function sendWelcomeEmail({
   appUrl?: string;
 }) {
   const safeShopName = shopName ? escapeHtml(shopName) : "there";
-  const safeAppUrl = appUrl ? escapeHtml(appUrl) : "";
+  const trimmedAppUrl = appUrl?.replace(/\/$/, "");
+  const safeAppUrl = trimmedAppUrl ? escapeHtml(trimmedAppUrl) : "";
+  const safeDocsUrl = trimmedAppUrl ? escapeHtml(`${trimmedAppUrl}/docs`) : "";
   const supportEmail = getSupportEmail();
   const safeSupportEmail = escapeHtml(supportEmail);
   const appLink = safeAppUrl
-    ? `<p><a href="${safeAppUrl}">Open Tocito</a></p>`
+    ? `<p><a href="${safeAppUrl}">Explore Tocito</a></p>`
+    : "";
+  const docsLink = safeDocsUrl
+    ? `<p><a href="${safeDocsUrl}">Read the documentation</a></p>`
     : "";
 
   return sendEmail({
     to,
-    subject: "Welcome to Tocito",
+    subject: "Hello from Tocito",
     html: `
       <p>Hi ${safeShopName},</p>
-      <p>Thanks for installing Tocito.</p>
-      <p>Configure your table of contents in the app, then enable the app embed in the Shopify theme editor.</p>
+      <p>Thank you for choosing Tocito.</p>
+      <p>We hope Tocito satisfies your needs and helps your customers navigate your articles more easily.</p>
       ${appLink}
+      ${docsLink}
       <p>If you need help, reply to this email or contact ${safeSupportEmail}.</p>
+      <p>Have a good day and happy customers.</p>
     `,
     text: [
       `Hi ${shopName || "there"},`,
       "",
-      "Thanks for installing Tocito.",
-      "Configure your table of contents in the app, then enable the app embed in the Shopify theme editor.",
-      appUrl ? `Open Tocito: ${appUrl}` : "",
+      "Thank you for choosing Tocito.",
+      "We hope Tocito satisfies your needs and helps your customers navigate your articles more easily.",
+      trimmedAppUrl ? `Explore Tocito: ${trimmedAppUrl}` : "",
+      trimmedAppUrl ? `Read the documentation: ${trimmedAppUrl}/docs` : "",
       `If you need help, reply to this email or contact ${supportEmail}.`,
+      "Have a good day and happy customers!",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -143,19 +152,21 @@ export async function sendUninstallEmail({
 
   return sendEmail({
     to,
-    subject: "Tocito was uninstalled",
+    subject: "Goodbye from Tocito",
     html: `
       <p>Hi ${safeShopName},</p>
       <p>Tocito has been removed from your store.</p>
-      <p>The table of contents app embed will no longer run on your article pages.</p>
-      <p>If something did not work as expected, reply to this email or contact ${safeSupportEmail}.</p>
+      <p>Thank you for trying Tocito.</p>
+      <p>If there is anything you would like us to add, reply to this email or write to ${safeSupportEmail}.</p>
+      <p>Have a good day and happy customers!</p>
     `,
     text: [
       `Hi ${shopName || "there"},`,
       "",
       "Tocito has been removed from your store.",
-      "The table of contents app embed will no longer run on your article pages.",
-      `If something did not work as expected, reply to this email or contact ${supportEmail}.`,
+      "Thank you for trying Tocito.",
+      `If there is anything you would like us to add, reply to this email or write to ${supportEmail}.`,
+      "Have a good day and happy customers.",
     ].join("\n"),
   });
 }
