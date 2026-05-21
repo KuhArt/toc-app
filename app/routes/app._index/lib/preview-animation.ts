@@ -732,15 +732,8 @@ function chooseParabolaControlPoint(
     perpendicular.x <= oppositePerpendicular.x
       ? perpendicular
       : oppositePerpendicular;
-  const fallbackDirection =
-    preferredDirection === perpendicular
-      ? oppositePerpendicular
-      : perpendicular;
   const preferredRoom = measureRayToBounds(midpoint, preferredDirection, bounds);
-  const fallbackRoom = measureRayToBounds(midpoint, fallbackDirection, bounds);
-  const chosenDirection =
-    preferredRoom > 0 ? preferredDirection : fallbackDirection;
-  const availableRoom = preferredRoom > 0 ? preferredRoom : fallbackRoom;
+  const availableRoom = preferredRoom;
 
   const amplitude = Math.min(
     preferredHeight,
@@ -753,8 +746,8 @@ function chooseParabolaControlPoint(
 
   return clampPointToBounds(
     {
-      x: midpoint.x + chosenDirection.x * amplitude,
-      y: midpoint.y + chosenDirection.y * amplitude,
+      x: midpoint.x + preferredDirection.x * amplitude,
+      y: midpoint.y + preferredDirection.y * amplitude,
     },
     bounds,
   );

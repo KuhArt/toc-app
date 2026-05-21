@@ -21,37 +21,33 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.content}>
-        <h1 className={styles.heading}>Tocito</h1>
-        <p className={styles.text}>
-          Configure a responsive table of contents for Shopify blog articles, then
-          enable it from the Shopify theme editor.
-        </p>
+        <div className={styles.brandMark}>T</div>
+        <div className={styles.header}>
+          <h1 className={styles.heading}>Tocito</h1>
+          <p className={styles.text}>
+            Table of contents controls for Shopify blog articles.
+          </p>
+        </div>
         {showForm && (
           <Form className={styles.form} method="post" action="/auth/login">
             <label className={styles.label}>
               <span>Shop domain</span>
-              <input className={styles.input} type="text" name="shop" />
-              <span>example.myshopify.com</span>
+              <input
+                className={styles.input}
+                type="text"
+                name="shop"
+                placeholder="example.myshopify.com"
+                autoComplete="organization"
+              />
             </label>
             <button className={styles.button} type="submit">
               Log in
             </button>
           </Form>
         )}
-        <ul className={styles.list}>
-          <li>
-            <strong>Article-only embed</strong>. The theme app extension loads
-            on blog article templates.
-          </li>
-          <li>
-            <strong>Custom layout</strong>. Merchants control placement,
-            spacing, colors, headings, and mobile behavior.
-          </li>
-          <li>
-            <strong>Live preview</strong>. Settings can be reviewed in the app
-            before publishing to the storefront.
-          </li>
-        </ul>
+        <p className={styles.note}>
+          Installed merchants can manage Tocito from Shopify admin.
+        </p>
       </div>
     </div>
   );
