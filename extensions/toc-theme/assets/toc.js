@@ -38,7 +38,7 @@
     paddingRight: 16,
     offsetTop: 0,
     offsetBottom: 0,
-    offsetLeft: 0,
+    offsetLeft: 16,
     offsetRight: 0,
     followingMarkerWidth: 6,
     followingMarkerHeight: 6,
@@ -86,14 +86,14 @@
     positionSelector: "",
     switchToMobileOnFloatOverflow: false,
     color: "#0000001f",
-    width: 0,
+    width: 1,
     radius: 12,
     shadowPreset: "none",
     shadowColor: "#000000",
-    paddingTop: 0,
-    paddingBottom: 0,
-    paddingLeft: 0,
-    paddingRight: 0,
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+    paddingRight: 16,
     offsetTop: 0,
     offsetBottom: 0,
     offsetLeft: 0,
@@ -112,7 +112,7 @@
     jumpingMarkerColor: "#575757CF",
     jumpingMarkerOffset: 9,
     jumpingMarkerBorderRadius: 999,
-    background: "#00000000",
+    background: "#FFFFFF",
     maxWidth: 0,
     smoothScroll: true,
     scrollOffset: DEFAULT_TOP_OFFSET,
@@ -123,7 +123,7 @@
     titleFontSize: 14,
     titleFontColor: "#575757",
     titleFontWeight: 600,
-    showButton: false,
+    showButton: true,
     showButtonHeight: 300,
     showMoreButtonText: "Show more",
     showLessButtonText: "Show less",
@@ -796,12 +796,13 @@
   scrollToInitialHash();
 
   let applyResponsiveState = () => {};
+  let refreshFades = () => {};
   requestAnimationFrame(() => {
     const needsToggle = (activeConfig) => {
       const toggleHeight = Math.max(0, activeConfig.showButtonHeight || 0);
       return list.scrollHeight > toggleHeight + 1;
     };
-    const refreshFades = () => {
+    refreshFades = () => {
       if (!toc.classList.contains("toc-widget--show-more-active")) {
         topFade.hidden = true;
         bottomFade.hidden = true;
@@ -950,6 +951,7 @@
     setCurrentLink(nextLink);
 
     keepCurrentLinkVisible(nextLink);
+    refreshFades();
 
     if (nextLink !== previousLink) {
       animationController.handleCurrentLinkChange({
@@ -1013,6 +1015,7 @@
       if (clickResult?.nextCurrentLink) {
         setCurrentLink(clickResult.nextCurrentLink);
         keepCurrentLinkVisible(clickResult.nextCurrentLink);
+        refreshFades();
         requestSnakeSync();
       }
 

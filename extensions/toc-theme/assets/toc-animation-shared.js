@@ -146,8 +146,22 @@
     };
   }
 
+  function clampPointXToBounds(point, bounds) {
+    return {
+      x: clampNumber(point.x, bounds.minX, bounds.maxX),
+      y: point.y,
+    };
+  }
+
   function getSnakeHeadPoint(metric, bounds) {
     return clampPointToBounds({ x: metric.laneX, y: metric.centerY }, bounds);
+  }
+
+  function getJumpingMarkerHeadPoint(metric, bounds) {
+    return clampPointXToBounds(
+      { x: metric.laneX, y: metric.centerY },
+      bounds,
+    );
   }
 
   function measureListLinkHeadPoint(listElement, link) {
@@ -158,7 +172,7 @@
 
     const markerSettings = getMarkerSettingsForList(listElement);
 
-    return getSnakeHeadPoint(
+    return getJumpingMarkerHeadPoint(
       createSnakeLinkMetric(listRect, link, markerSettings.headOffset),
       getTocMarkerBounds(
         listRect,
@@ -300,8 +314,8 @@
       targetLink,
       markerSettings.headOffset,
     );
-    const boundedStartPoint = clampPointToBounds(startPoint, bounds);
-    const endPoint = getSnakeHeadPoint(targetMetric, bounds);
+    const boundedStartPoint = clampPointXToBounds(startPoint, bounds);
+    const endPoint = getJumpingMarkerHeadPoint(targetMetric, bounds);
     const distance = measurePointDistance(boundedStartPoint, endPoint);
 
     if (distance <= 1) {
@@ -814,10 +828,10 @@
       activeLink,
       markerSettings.headOffset,
     );
-    const settledPoint = getSnakeHeadPoint(activeMetric, bounds);
+    const settledPoint = getJumpingMarkerHeadPoint(activeMetric, bounds);
     const point =
       flight && flightProgress < 1
-        ? clampPointToBounds(
+        ? clampPointXToBounds(
             getQuadraticPoint(
               flight.startPoint,
               flight.controlPoint,

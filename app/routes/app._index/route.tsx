@@ -1849,7 +1849,7 @@ export default function Index() {
   return (
     <PolarisAppProvider i18n={enTranslations}>
       <CrispChat />
-      <s-page heading="Table of contents settings">
+      <s-page heading="Tocito settings">
         <style>{tocStyles}</style>
         <style>{FORM_STYLES}</style>
         <style>{PREVIEW_STYLES}</style>

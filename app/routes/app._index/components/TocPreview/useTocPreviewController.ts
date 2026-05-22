@@ -397,7 +397,7 @@ export function useTocPreviewController({
     const replayNonce = replayNonceRef.current;
     const [firstId] = previewItemIds;
     const stepDelay = getPreviewReplayStepDelay(device.animationType);
-    const replaySequence = buildPreviewReplaySequence(previewItemIds, 2);
+    const replaySequence = buildPreviewReplaySequence(previewItemIds, 3);
 
     resetPreviewFlights(firstId);
     resetReplayMarker(firstId);
@@ -650,6 +650,7 @@ export function useTocPreviewController({
     const currentLink = list ? findPreviewLinkById(list, highlightedId) : null;
 
     keepPreviewLinkVisible(currentLink);
+    refreshFades();
 
     if (!jumpingMarkerActive) {
       if (crawlingSnakeActive && previousActiveIdRef.current !== activeId) {
@@ -677,6 +678,7 @@ export function useTocPreviewController({
     highlightedId,
     jumpingMarkerActive,
     keepPreviewLinkVisible,
+    refreshFades,
     scheduleSnakeMeasurement,
     startCrawlingSnakeClickFlight,
     startJumpingMarkerFlight,
