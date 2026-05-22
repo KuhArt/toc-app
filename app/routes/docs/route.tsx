@@ -1,5 +1,5 @@
 import type { MetaFunction } from "react-router";
-import type { MouseEvent, SVGProps } from "react";
+import type { ComponentType, MouseEvent, SVGProps } from "react";
 import {
   BookOpenIcon,
   CornerRoundIcon,
@@ -22,11 +22,13 @@ import { useEffect, useState } from "react";
 
 import styles from "./styles.module.css";
 
-type DocsIcon = (props: SVGProps<SVGSVGElement>) => JSX.Element;
+type DocsIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 const supportEmail = "tocito@pompych.com";
 const CRISP_WEBSITE_ID = "00d4dcb8-9b3d-4cdc-bf58-2e3dcaf9989f";
 const CRISP_SCRIPT_ID = "crisp-chat-script";
+const DOCS_TOC_SCRIPT_ID = "docs-shopify-toc-js";
+const DOCS_TOC_STYLESHEET_ID = "docs-shopify-toc-css";
 const docsTocAssetVersion = "20260520-jump-left";
 const docsTocConfig = {
   title: "Table of Contents",
@@ -106,6 +108,14 @@ function getDocsSectionTarget(targetId: string) {
     document.getElementById(targetId) ||
     document.getElementById(`toc-${targetId}`)
   );
+}
+
+function removeDuplicateDocsTocWidgets() {
+  const widgets = Array.from(
+    document.querySelectorAll(".toc-widget, .toc-widget-float"),
+  );
+
+  widgets.slice(1).forEach((node) => node.remove());
 }
 
 export default function DocsRoute() {
@@ -194,26 +204,48 @@ export default function DocsRoute() {
   }, []);
 
   useEffect(() => {
-    const stylesheetId = "docs-shopify-toc-css";
-    const scriptId = "docs-shopify-toc-js";
+    const docsWindow = window as typeof window & {
+      __tocitoDocsTocScriptLoading?: boolean;
+    };
 
-    if (!document.getElementById(stylesheetId)) {
+    if (!document.getElementById(DOCS_TOC_STYLESHEET_ID)) {
       const stylesheet = document.createElement("link");
-      stylesheet.id = stylesheetId;
+      stylesheet.id = DOCS_TOC_STYLESHEET_ID;
       stylesheet.rel = "stylesheet";
       stylesheet.href = `/docs/toc-css?v=${docsTocAssetVersion}`;
       document.head.appendChild(stylesheet);
     }
 
-    document.querySelectorAll(".toc-widget, .toc-widget-float").forEach((node) => {
-      node.remove();
-    });
-    document.getElementById(scriptId)?.remove();
+    removeDuplicateDocsTocWidgets();
+
+    const existingScript = document.getElementById(DOCS_TOC_SCRIPT_ID);
+    const hasTocWidget = Boolean(
+      document.querySelector(".toc-widget, .toc-widget-float"),
+    );
+
+    if (docsWindow.__tocitoDocsTocScriptLoading) {
+      return;
+    }
+
+    if (existingScript && hasTocWidget) {
+      return;
+    }
+
+    existingScript?.remove();
 
     const script = document.createElement("script");
-    script.id = scriptId;
+    script.id = DOCS_TOC_SCRIPT_ID;
     script.src = `/docs/toc-js?v=${docsTocAssetVersion}`;
     script.async = true;
+    script.onload = () => {
+      docsWindow.__tocitoDocsTocScriptLoading = false;
+      removeDuplicateDocsTocWidgets();
+    };
+    script.onerror = () => {
+      docsWindow.__tocitoDocsTocScriptLoading = false;
+    };
+
+    docsWindow.__tocitoDocsTocScriptLoading = true;
     document.body.appendChild(script);
   }, []);
 
@@ -238,7 +270,9 @@ export default function DocsRoute() {
       />
       <header className={styles.header}>
         <a className={styles.brand} href="/">
-          <span className={styles.brandMark}>T</span>
+          <span className={styles.brandMark}>
+            <img className={styles.brandIcon} src="/tocito.svg" alt="" />
+          </span>
           <span>Tocito</span>
         </a>
         <div className={styles.headerActions}>

@@ -115,6 +115,18 @@
   margin-left: var(--toc-active-offset-left);
   background: var(--toc-active-background);
   max-width: var(--toc-active-max-width);
+  box-sizing: border-box;
+  display: block;
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.toc-widget,
+.toc-widget *,
+.toc-widget *::before,
+.toc-widget *::after {
+  box-sizing: border-box;
 }
 
 .toc-widget__title {
@@ -123,12 +135,18 @@
   color: var(--toc-active-title-font-color);
   font-size: var(--toc-active-title-font-size);
   font-weight: var(--toc-active-title-font-weight);
+  font-family: inherit;
+  font-style: normal;
   line-height: 1.6;
+  text-transform: none;
 }
 
 .toc-widget__list {
   list-style: none;
   margin: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
   padding-left: 12px;
   max-height: none;
   overflow: visible;
@@ -139,6 +157,9 @@
 .toc-widget__sublist {
   list-style: none;
   margin: 4px 0 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
   padding-left: 12px;
 }
 
@@ -303,15 +324,25 @@
 .toc-widget__item {
   text-align: inherit;
   margin: 4px 0;
+  padding: 0;
 }
 
 .toc-widget__link {
+  appearance: none;
+  background: transparent;
+  border: 0;
   display: inline-block;
   font-size: var(--toc-active-headings-font-size);
   color: var(--toc-active-headings-font-color);
+  font-family: inherit;
+  font-style: normal;
   font-weight: var(--toc-active-headings-font-weight);
+  letter-spacing: normal;
   line-height: 1.6;
+  margin: 0;
+  padding: 0;
   text-decoration: none;
+  text-transform: none;
   cursor: pointer;
 }
 
@@ -427,6 +458,7 @@
 }
 
 .toc-widget__toggle {
+  appearance: none;
   display: block;
   margin-top: 8px;
   margin-left: auto;
@@ -439,10 +471,15 @@
   padding-right: var(--toc-active-button-padding-right);
   padding-bottom: var(--toc-active-button-padding-bottom);
   padding-left: var(--toc-active-button-padding-left);
+  font-family: inherit;
   font-size: var(--toc-active-button-font-size);
+  font-style: normal;
   font-weight: var(--toc-active-button-font-weight);
+  line-height: 1.4;
   color: var(--toc-active-button-font-color);
+  letter-spacing: normal;
   text-decoration: none;
+  text-transform: none;
   cursor: pointer;
 }
 
