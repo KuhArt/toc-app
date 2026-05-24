@@ -99,7 +99,8 @@ export async function sendWelcomeEmail({
   shopName?: string | null;
   appUrl?: string;
 }) {
-  const safeShopName = shopName ? escapeHtml(shopName) : "there";
+  const safeGreetingName = shopName ? `${escapeHtml(shopName)} team` : "there";
+  const textGreetingName = shopName ? `${shopName} team` : "there";
   const trimmedAppUrl = appUrl?.replace(/\/$/, "");
   const safeAppUrl = trimmedAppUrl ? escapeHtml(trimmedAppUrl) : "";
   const safeDocsUrl = trimmedAppUrl ? escapeHtml(`${trimmedAppUrl}/docs`) : "";
@@ -116,7 +117,7 @@ export async function sendWelcomeEmail({
     to,
     subject: "Hello from Tocito",
     html: `
-      <p>Hi ${safeShopName},</p>
+      <p>Hi ${safeGreetingName},</p>
       <p>Thank you for choosing Tocito.</p>
       <p>We hope Tocito satisfies your needs and helps your customers navigate your articles more easily.</p>
       ${appLink}
@@ -125,7 +126,7 @@ export async function sendWelcomeEmail({
       <p>Have a good day and happy customers.</p>
     `,
     text: [
-      `Hi ${shopName || "there"},`,
+      `Hi ${textGreetingName},`,
       "",
       "Thank you for choosing Tocito.",
       "We hope Tocito satisfies your needs and helps your customers navigate your articles more easily.",
@@ -146,7 +147,8 @@ export async function sendUninstallEmail({
   to: string;
   shopName?: string | null;
 }) {
-  const safeShopName = shopName ? escapeHtml(shopName) : "there";
+  const safeGreetingName = shopName ? `${escapeHtml(shopName)} team` : "there";
+  const textGreetingName = shopName ? `${shopName} team` : "there";
   const supportEmail = getSupportEmail();
   const safeSupportEmail = escapeHtml(supportEmail);
 
@@ -154,14 +156,14 @@ export async function sendUninstallEmail({
     to,
     subject: "Goodbye from Tocito",
     html: `
-      <p>Hi ${safeShopName},</p>
+      <p>Hi ${safeGreetingName},</p>
       <p>Tocito has been removed from your store.</p>
       <p>Thank you for trying Tocito.</p>
       <p>If there is anything you would like us to add, reply to this email or write to ${safeSupportEmail}.</p>
       <p>Have a good day and happy customers!</p>
     `,
     text: [
-      `Hi ${shopName || "there"},`,
+      `Hi ${textGreetingName},`,
       "",
       "Tocito has been removed from your store.",
       "Thank you for trying Tocito.",

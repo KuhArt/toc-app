@@ -778,6 +778,11 @@
 
     removeFloatHost();
 
+    if (target.kind === "before-heading" && target.element) {
+      target.element.insertAdjacentElement("beforebegin", toc);
+      return;
+    }
+
     if (target.kind === "after-heading" && target.element) {
       target.element.insertAdjacentElement("afterend", toc);
       return;
