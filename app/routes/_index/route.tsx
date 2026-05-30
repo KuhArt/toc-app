@@ -21,11 +21,11 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.content}>
-        <div className={styles.brandMark}>T</div>
+        <img className={styles.brandMark} src="/tocito.svg" alt="" />
         <div className={styles.header}>
           <h1 className={styles.heading}>Tocito</h1>
           <p className={styles.text}>
-            Table of contents controls for Shopify blog articles.
+            Table of contents for Shopify blog posts.
           </p>
         </div>
         {showForm && (
