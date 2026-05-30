@@ -278,6 +278,7 @@ export default function DocsRoute() {
         <div className={styles.headerActions}>
           <nav className={styles.topNav} aria-label="Top navigation">
             <a href="/docs">Docs</a>
+            <a href="/privacy-policy">Privacy</a>
             <button type="button" onClick={openSupportChat}>
               Support
             </button>
@@ -317,6 +318,7 @@ export default function DocsRoute() {
             aria-label="Docs navigation"
           >
             <nav className={styles.drawerNav}>
+              <a href="/privacy-policy">Privacy policy</a>
               <a href="#getting-started" onClick={scrollToDocsSection}>
                 Getting started
               </a>
