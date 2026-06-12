@@ -1,0 +1,1 @@
+ALTER TABLE "Shop" ADD COLUMN "billingTrialUsedAt" TIMESTAMP(3);
