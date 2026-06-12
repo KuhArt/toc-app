@@ -160,10 +160,11 @@
   const cfg = readJsonScript("toc-config") || {};
 
   // defaults
-  const headingLevels = cfg.headingLevels?.length
-    ? cfg.headingLevels
-    : [2, 3, 4];
-  const minHeadings = typeof cfg.minHeadings === "number" ? cfg.minHeadings : 3;
+  const headingLevels = normalizeHeadingLevels(cfg.headingLevels);
+  const minHeadings =
+    typeof cfg.minHeadings === "number" && Number.isFinite(cfg.minHeadings)
+      ? cfg.minHeadings
+      : 3;
   const mobileBreakpoint = normalizeMobileBreakpoint(
     cfg.mobileBreakpoint,
     DEFAULT_MOBILE_BREAKPOINT,
@@ -451,7 +452,7 @@
   applyHeadingScrollMargins();
 
   // 5) Build TOC markup
-  const tocLabel = (cfg.title || "Table of contents").trim();
+  const tocLabel = normalizeTitle(cfg.title, "Table of contents");
   const toc = document.createElement("nav");
   toc.className = "toc-widget";
   toc.setAttribute("aria-label", tocLabel || "Table of contents");
@@ -472,7 +473,7 @@
   applyCustomCss(customCss);
   const title = document.createElement("div");
   title.className = "toc-widget__title";
-  title.textContent = cfg.title || "Contents";
+  title.textContent = normalizeTitle(cfg.title, "Contents");
   const syncTitleVisibility = () => {
     title.hidden = !getActiveConfig().showTitle;
   };
@@ -1054,7 +1055,23 @@
     return ["none", "bullet", "numeric"].includes(value) ? value : "none";
   }
 
-  function normalizeAnimationType(value) {
+  function normalizeHeadingLevels(value) {
+    if (!Array.isArray(value)) {
+      return [2, 3, 4];
+    }
+
+    const levels = [...new Set(value)]
+      .filter((level) => Number.isInteger(level) && level >= 1 && level <= 6)
+      .sort((left, right) => left - right);
+
+    return levels.length ? levels : [2, 3, 4];
+  }
+
+  function normalizeTitle(value, fallback) {
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  }
+
+  function normalizeAnimationType(value, fallback = "none") {
     return [
       "none",
       "following-marker",
@@ -1062,7 +1079,7 @@
       "jumping-marker",
     ].includes(value)
       ? value
-      : "none";
+      : fallback;
   }
 
   function normalizeMobileBreakpoint(value, fallback) {
@@ -1470,7 +1487,10 @@
               normalizedShowButtonBorderWidth,
               "right",
             ),
-      animationType: normalizeAnimationType(config.animationType),
+      animationType: normalizeAnimationType(
+        config.animationType,
+        fallback.animationType,
+      ),
     };
   }
 

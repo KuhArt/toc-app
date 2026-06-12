@@ -5,7 +5,10 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { AppProvider as PolarisAppProvider } from "@shopify/polaris";
+import {
+  AppProvider as PolarisAppProvider,
+  Modal as PolarisModal,
+} from "@shopify/polaris";
 import CodeMirror, { type EditorView } from "@uiw/react-codemirror";
 import enTranslations from "@shopify/polaris/locales/en.json";
 import type {
@@ -22,7 +25,24 @@ import {
 import { SaveBar, useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import tocStyles from "../../styles/toc-preview.css?raw";
-import { authenticate } from "../../shopify.server";
+import {
+  BASIC_ANNUAL_PLAN,
+  BASIC_MONTHLY_PLAN,
+  BILLING_PLANS,
+  LIFETIME_PLAN,
+} from "../../billing-plans";
+import {
+  PricingPlanCards,
+  PRICING_LAYOUT_STYLES,
+} from "../../components/PricingPlanCards";
+import db from "../../db.server";
+import {
+  buildEmbeddedAppPath,
+  hasPaidAccess,
+  isBasicSubscription,
+  isLifetimePurchase,
+} from "../../billing.server";
+import { authenticate, isTestBilling } from "../../shopify.server";
 import {
   DeviceSettingsSection,
   TocSectionHeading,
@@ -90,18 +110,46 @@ import type {
   TocConfig,
 } from "./lib/types";
 
-type LoaderData = {
+type PaidLoaderData = {
+  requiresPlan: boolean;
+  activeBasicPlan: string | null;
   config: TocConfig;
   deepLink: string | null;
+  hasLifetime: boolean;
 };
 
+type LoaderData = PaidLoaderData;
+
 type ActionData = {
+  error?: string;
   ok?: boolean;
   userErrors?: Array<{ field?: string[]; message: string }>;
 };
 
 const CRISP_WEBSITE_ID = "00d4dcb8-9b3d-4cdc-bf58-2e3dcaf9989f";
 const CRISP_SCRIPT_ID = "crisp-chat-script";
+const PAYWALL_MODAL_BODY_CLASS = "toc-paywall-modal-open";
+const PAYWALL_MODAL_STYLES = `
+  .${PAYWALL_MODAL_BODY_CLASS} .Polaris-Modal-Dialog__Modal {
+    max-width: min(600px, calc(100vw - 2rem)) !important;
+  }
+
+  .${PAYWALL_MODAL_BODY_CLASS} .Polaris-Modal-Dialog__Modal button[aria-label="Close"] {
+    display: none;
+  }
+`;
+
+function isBasicPlan(plan: FormDataEntryValue | null) {
+  return plan === BASIC_MONTHLY_PLAN || plan === BASIC_ANNUAL_PLAN;
+}
+
+function isBillingPlan(plan: FormDataEntryValue | null) {
+  return (
+    plan === BASIC_MONTHLY_PLAN ||
+    plan === BASIC_ANNUAL_PLAN ||
+    plan === LIFETIME_PLAN
+  );
+}
 
 function CrispChat() {
   useEffect(() => {
@@ -133,7 +181,14 @@ function CrispChat() {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, billing } = await authenticate.admin(request);
+  const billingCheck = await billing.check({
+    plans: [...BILLING_PLANS],
+    isTest: isTestBilling(),
+  });
+  const activeBasicSubscription =
+    billingCheck.appSubscriptions.find(isBasicSubscription);
+  const hasLifetime = billingCheck.oneTimePurchases.some(isLifetimePurchase);
 
   const response = await admin.graphql(
     `#graphql
@@ -159,14 +214,69 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const apiKey = process.env.SHOPIFY_API_KEY || "";
 
   return {
+    requiresPlan: !hasPaidAccess(billingCheck),
+    activeBasicPlan: activeBasicSubscription?.name ?? null,
     config: parseConfig(metafieldValue),
     deepLink: buildActivateDeepLink(myshopifyDomain, apiKey, APP_EMBED_HANDLE),
+    hasLifetime,
   } satisfies LoaderData;
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, billing, session } = await authenticate.admin(request);
   const formData = await request.formData();
+  const requestedPlan = formData.get("plan");
+
+  if (requestedPlan) {
+    if (!isBillingPlan(requestedPlan)) {
+      return { error: "Choose a valid plan." } satisfies ActionData;
+    }
+
+    const billingCheck = await billing.check({
+      plans: [...BILLING_PLANS],
+      isTest: isTestBilling(),
+    });
+    const hasExistingPaidAccess =
+      billingCheck.appSubscriptions.some(isBasicSubscription) ||
+      billingCheck.oneTimePurchases.some(isLifetimePurchase);
+    const shopBillingState = await db.shop.upsert({
+      where: { shop: session.shop },
+      update: {},
+      create: {
+        billingTrialUsedAt: null,
+        shop: session.shop,
+      },
+      select: { billingTrialUsedAt: true },
+    });
+    const shouldGiveBasicTrial =
+      isBasicPlan(requestedPlan) &&
+      !hasExistingPaidAccess &&
+      !shopBillingState.billingTrialUsedAt;
+
+    return await billing.request({
+      plan: requestedPlan,
+      isTest: isTestBilling(),
+      returnUrl: new URL(
+        buildEmbeddedAppPath(request, "/app/pricing"),
+        request.url,
+      ).toString(),
+      ...(isBasicPlan(requestedPlan)
+        ? { trialDays: shouldGiveBasicTrial ? 7 : 0 }
+        : {}),
+    });
+  }
+
+  const billingCheck = await billing.check({
+    plans: [...BILLING_PLANS],
+    isTest: isTestBilling(),
+  });
+
+  if (!hasPaidAccess(billingCheck)) {
+    return {
+      ok: false,
+      userErrors: [{ message: "Select a plan before saving settings." }],
+    } satisfies ActionData;
+  }
 
   const config = coerceConfigFromForm(formData);
 
@@ -222,7 +332,64 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Index() {
-  const { config, deepLink } = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
+
+  return (
+    <>
+      <Editor config={loaderData.config} deepLink={loaderData.deepLink} />
+      {loaderData.requiresPlan ? (
+        <PlanRequiredModal actionError={actionData?.error} />
+      ) : null}
+    </>
+  );
+}
+
+type EditorProps = Pick<PaidLoaderData, "config" | "deepLink">;
+
+type PlanRequiredModalProps = {
+  actionError?: string;
+};
+
+function PlanRequiredModal({ actionError }: PlanRequiredModalProps) {
+  useEffect(() => {
+    document.body.classList.add(PAYWALL_MODAL_BODY_CLASS);
+
+    return () => {
+      document.body.classList.remove(PAYWALL_MODAL_BODY_CLASS);
+    };
+  }, []);
+
+  return (
+    <PolarisAppProvider i18n={enTranslations}>
+      <style>{PAYWALL_MODAL_STYLES}</style>
+      <PolarisModal
+        open
+        title="Choose a plan to continue"
+        onClose={() => undefined}
+      >
+        <PolarisModal.Section>
+          <style>{PRICING_LAYOUT_STYLES}</style>
+          <s-stack direction="block" gap="base">
+            <s-paragraph>
+              To use Tocito, choose a plan. You can start with a free trial
+              before deciding to purchase. You can also change your plan later
+              on the billing page.
+            </s-paragraph>
+            {actionError ? (
+              <s-banner tone="critical">
+                <s-paragraph>{actionError}</s-paragraph>
+              </s-banner>
+            ) : null}
+            <PricingPlanCards activeBasicPlan={null} hasLifetime={false} />
+          </s-stack>
+        </PolarisModal.Section>
+      </PolarisModal>
+    </PolarisAppProvider>
+  );
+}
+
+function Editor({ config, deepLink }: EditorProps) {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const shopify = useAppBridge();

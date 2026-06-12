@@ -287,12 +287,19 @@ export function parseConfig(value: unknown): TocConfig {
           ? Math.max(0, legacyTopOffset)
           : DEFAULT_CONFIG.mobile.scrollOffset,
     };
+    const headingLevels = Array.isArray(rest.headingLevels)
+      ? normalizeHeadingLevels(rest.headingLevels as number[])
+      : DEFAULT_CONFIG.headingLevels;
 
     return {
       ...DEFAULT_CONFIG,
       ...rest,
-      headingLevels: Array.isArray(rest.headingLevels)
-        ? normalizeHeadingLevels(rest.headingLevels as number[])
+      title:
+        typeof rest.title === "string" && rest.title.trim()
+          ? rest.title
+          : DEFAULT_CONFIG.title,
+      headingLevels: headingLevels.length
+        ? headingLevels
         : DEFAULT_CONFIG.headingLevels,
       indentation:
         typeof rest.indentation === "boolean"
@@ -300,6 +307,10 @@ export function parseConfig(value: unknown): TocConfig {
           : DEFAULT_CONFIG.indentation,
       textAlignment: normalizeTextAlignment(rest.textAlignment),
       markerFormat: normalizeMarkerFormat(rest.markerFormat),
+      minHeadings:
+        typeof rest.minHeadings === "number" && Number.isFinite(rest.minHeadings)
+          ? rest.minHeadings
+          : DEFAULT_CONFIG.minHeadings,
       mobileBreakpoint:
         typeof rest.mobileBreakpoint === "number" &&
         Number.isFinite(rest.mobileBreakpoint)
@@ -925,10 +936,13 @@ export function normalizeMarkerFormat(value: unknown): TocMarkerFormat {
     : DEFAULT_CONFIG.markerFormat;
 }
 
-export function normalizeAnimationType(value: unknown): TocAnimationType {
+export function normalizeAnimationType(
+  value: unknown,
+  fallback: TocAnimationType = DEFAULT_CONFIG.desktop.animationType,
+): TocAnimationType {
   return ANIMATION_TYPE_OPTIONS.some((option) => option.value === value)
     ? (value as TocAnimationType)
-    : DEFAULT_CONFIG.desktop.animationType;
+    : fallback;
 }
 
 export function normalizeShadowPreset(value: unknown): TocShadowPreset {
@@ -1402,7 +1416,10 @@ function normalizeDeviceConfig(
       Number.isFinite(config.showButtonPaddingRight)
         ? Math.max(0, config.showButtonPaddingRight)
         : getLegacyShowButtonPaddingValue(normalizedShowButtonBorderWidth, "right"),
-    animationType: normalizeAnimationType(config.animationType),
+    animationType: normalizeAnimationType(
+      config.animationType,
+      fallback.animationType,
+    ),
   };
 }
 
@@ -1613,6 +1630,9 @@ function coerceDeviceConfig(
     showButtonPaddingRight: Number.isFinite(showButtonPaddingRight)
       ? showButtonPaddingRight
       : getLegacyShowButtonPaddingValue(resolvedShowButtonBorderWidth, "right"),
-    animationType: normalizeAnimationType(input.animationType),
+    animationType: normalizeAnimationType(
+      input.animationType,
+      fallback.animationType,
+    ),
   };
 }
