@@ -2,10 +2,20 @@ import "@shopify/shopify-app-react-router/adapters/node";
 import {
   ApiVersion,
   AppDistribution,
+  BillingInterval,
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+import {
+  BASIC_ANNUAL_PLAN,
+  BASIC_MONTHLY_PLAN,
+  LIFETIME_PLAN,
+} from "./billing-plans";
 import prisma from "./db.server";
+
+export function isTestBilling() {
+  return process.env.NODE_ENV !== "production";
+}
 
 const scopes = (process.env.SCOPES || "")
   .split(",")
@@ -21,6 +31,33 @@ const shopify = shopifyApp({
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
+  billing: {
+    [BASIC_MONTHLY_PLAN]: {
+      trialDays: 7,
+      lineItems: [
+        {
+          amount: 1,
+          currencyCode: "USD",
+          interval: BillingInterval.Every30Days,
+        },
+      ],
+    },
+    [BASIC_ANNUAL_PLAN]: {
+      trialDays: 7,
+      lineItems: [
+        {
+          amount: 10,
+          currencyCode: "USD",
+          interval: BillingInterval.Annual,
+        },
+      ],
+    },
+    [LIFETIME_PLAN]: {
+      amount: 12,
+      currencyCode: "USD",
+      interval: BillingInterval.OneTime,
+    },
+  },
   future: {
     expiringOfflineAccessTokens: true,
   },

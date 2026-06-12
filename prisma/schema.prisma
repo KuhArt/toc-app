@@ -42,4 +42,5 @@ model Shop {
   uninstalledAt        DateTime?
   welcomeEmailSentAt   DateTime?
   uninstallEmailSentAt DateTime?
+  billingTrialUsedAt   DateTime?
 }

@@ -23,7 +23,7 @@ export function buildPreviewState(
 }
 
 export function createPreviewShuffleSeed(source: string) {
-  return `${source}-${Date.now()}-${Math.random()}`;
+  return `preview-${source}`;
 }
 
 function buildPreviewHeadings(

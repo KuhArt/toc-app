@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { getAppEmbedRecord } from "../lib/appEmbed";
-import type {
-  AppBridgeExtensionRecord,
-  AppEmbedStatus,
-} from "../lib/types";
+import type { AppBridgeExtensionRecord, AppEmbedStatus } from "../lib/types";
 
 type AppBridgeClient = {
   app: {

@@ -185,6 +185,9 @@
 
   const selectors = [
     ".article-template__content",
+    ".blog-post-content.rte",
+    ".blog-post-content",
+    '[data-template="article"] .rte',
     "article .rte",
     ".article__content",
     "main article",
@@ -508,6 +511,7 @@
   let pendingAnimationType = "";
   let animationLoadPromise = Promise.resolve(null);
   let animationLoadNonce = 0;
+  let refreshCurrentLink = () => {};
   const setSnakeClickAnimating = (animating) => {
     snakeOverlay.root.classList.toggle(
       "toc-widget__snake--animating",
@@ -604,6 +608,7 @@
           factory(createAnimationContext()),
           requestedType,
         );
+        refreshCurrentLink();
         requestSnakeSync();
         return animationController;
       })
@@ -887,7 +892,7 @@
     currentLink = nextLink;
   };
 
-  const refreshCurrentLink = () => {
+  refreshCurrentLink = () => {
     const scrollY = window.scrollY + getActiveConfig().scrollOffset + 24;
     let currentIndex = headings.length ? 0 : -1;
 

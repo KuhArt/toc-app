@@ -1187,7 +1187,9 @@ export default function Index() {
         if (activeDevice === "desktop") {
           setDesktopHeadingsFontSize(String(initialConfig.headingsFontSize));
           setDesktopHeadingsFontColor(initialConfig.headingsFontColor);
-          setDesktopHeadingsFontWeight(String(initialConfig.headingsFontWeight));
+          setDesktopHeadingsFontWeight(
+            String(initialConfig.headingsFontWeight),
+          );
         } else {
           setMobileHeadingsFontSize(String(initialConfig.headingsFontSize));
           setMobileHeadingsFontColor(initialConfig.headingsFontColor);
@@ -1262,9 +1264,7 @@ export default function Index() {
           setDesktopShowButtonFontWeight(
             String(initialConfig.showButtonFontWeight),
           );
-          setDesktopShowButtonBorderColor(
-            initialConfig.showButtonBorderColor,
-          );
+          setDesktopShowButtonBorderColor(initialConfig.showButtonBorderColor);
           setDesktopShowButtonBorderWidth(
             String(initialConfig.showButtonBorderWidth),
           );
@@ -1288,9 +1288,7 @@ export default function Index() {
           setMobileShowButtonHeight(String(initialConfig.showButtonHeight));
           setMobileShowMoreButtonText(initialConfig.showMoreButtonText);
           setMobileShowLessButtonText(initialConfig.showLessButtonText);
-          setMobileShowButtonFontSize(
-            String(initialConfig.showButtonFontSize),
-          );
+          setMobileShowButtonFontSize(String(initialConfig.showButtonFontSize));
           setMobileShowButtonFontColor(initialConfig.showButtonFontColor);
           setMobileShowButtonFontWeight(
             String(initialConfig.showButtonFontWeight),
@@ -1370,9 +1368,7 @@ export default function Index() {
           setMobileFollowingMarkerBorderRadius(
             String(initialConfig.followingMarkerBorderRadius),
           );
-          setMobileCrawlingSnakeWidth(
-            String(initialConfig.crawlingSnakeWidth),
-          );
+          setMobileCrawlingSnakeWidth(String(initialConfig.crawlingSnakeWidth));
           setMobileCrawlingSnakeHeight(
             String(initialConfig.crawlingSnakeHeight),
           );
@@ -1380,9 +1376,7 @@ export default function Index() {
           setMobileCrawlingSnakeOffset(
             String(initialConfig.crawlingSnakeOffset),
           );
-          setMobileJumpingMarkerWidth(
-            String(initialConfig.jumpingMarkerWidth),
-          );
+          setMobileJumpingMarkerWidth(String(initialConfig.jumpingMarkerWidth));
           setMobileJumpingMarkerHeight(
             String(initialConfig.jumpingMarkerHeight),
           );
@@ -2019,735 +2013,389 @@ export default function Index() {
                 setAppliedSections(createEmptyDeviceSectionApplyState());
               }}
             >
-            <s-stack direction="block" gap="base">
-              {activeTab !== "desktop" ? (
-                <HiddenDeviceFields
-                  prefix="desktop"
-                  config={currentConfig.desktop}
-                />
-              ) : null}
-              {activeTab !== "mobile" ? (
-                <HiddenDeviceFields
-                  prefix="mobile"
-                  config={currentConfig.mobile}
-                />
-              ) : null}
-              <div
-                className={`toc-tab-panel${activeTab === "general" ? "" : " toc-tab-panel--hidden"}`}
-                aria-hidden={activeTab === "general" ? undefined : "true"}
-              >
-                <>
-                  <div
-                    ref={(node) => {
-                      sectionRefs.current.generalSettings = node;
-                    }}
-                    className="toc-editor-section"
-                  >
-                    <s-section>
-                      <TocSectionHeading
-                        icon={SECTION_NAV_METADATA.generalSettings.icon}
-                        label={SECTION_NAV_METADATA.generalSettings.label}
-                      />
-                      <s-stack direction="block" gap="base">
-                        <s-text-field
-                          name="title"
-                          label="Title"
-                          details="Shown above the table of contents."
-                          value={title}
-                          onInput={(event) => setTitle(event.currentTarget.value)}
-                          onChange={(event) =>
-                            setTitle(event.currentTarget.value)
-                          }
-                        ></s-text-field>
-                        <div className="toc-field">
-                          <s-text>Headings to include</s-text>
-                          <div
-                            className="toc-inline-choices"
-                            role="group"
-                            aria-label="Heading levels"
-                          >
-                            {HEADING_LEVEL_OPTIONS.map((level) => (
-                              <s-checkbox
-                                key={level}
-                                name="headingLevels"
-                                value={String(level)}
-                                label={`H${level}`}
-                                checked={headingLevels.includes(level)}
-                                onChange={(event) => {
-                                  const checked = event.currentTarget.checked;
-
-                                  setHeadingLevels((current) => {
-                                    const next = checked
-                                      ? normalizeHeadingLevels([
-                                        ...current,
-                                        level,
-                                      ])
-                                      : current.filter(
-                                        (currentLevel) =>
-                                          currentLevel !== level,
-                                      );
-
-                                    return next.length ? next : current;
-                                  });
-                                }}
-                              ></s-checkbox>
-                            ))}
-                          </div>
-                          <div className="toc-field-details">
-                            Choose which heading levels to show in the table of contents.
-                          </div>
-                        </div>
-                        <s-text-field
-                          name="minHeadings"
-                          label="Minimum headings required"
-                          details="Hide the table of contents until this number of selected headings is found."
-                          value={minHeadings}
-                          onInput={(event) =>
-                            setMinHeadings(event.currentTarget.value)
-                          }
-                          onChange={(event) =>
-                            setMinHeadings(event.currentTarget.value)
-                          }
-                        ></s-text-field>
-                        <s-number-field
-                          name="mobileBreakpoint"
-                          label="Mobile breakpoint"
-                          details="Apply mobile settings at this width and below."
-                          min={0}
-                          step={1}
-                          suffix="px"
-                          value={mobileBreakpoint}
-                          onInput={(event) =>
-                            setMobileBreakpoint(event.currentTarget.value)
-                          }
-                          onChange={(event) =>
-                            setMobileBreakpoint(event.currentTarget.value)
-                          }
-                        ></s-number-field>
-                        <s-text-field
-                          name="excludedBlogs"
-                          label="Hide on blog posts"
-                          details="Hide the table of contents on these blog posts. Use comma-separated article IDs, exact tags, or wildcard patterns like news/*"
-                          placeholder="news/*, news/today-is-the-best-day, 671373295959"
-                          value={excludedBlogs}
-                          onInput={(event) =>
-                            setExcludedBlogs(event.currentTarget.value)
-                          }
-                          onChange={(event) =>
-                            setExcludedBlogs(event.currentTarget.value)
-                          }
-                        ></s-text-field>
-                        <s-checkbox
-                          name="enableJsonLd"
-                          label="Enable SEO JSON-LD schema"
-                          details="Add structured data for the generated table of contents links."
-                          checked={enableJsonLd}
-                          onChange={(event) =>
-                            setEnableJsonLd(event.currentTarget.checked)
-                          }
-                        ></s-checkbox>
-                      </s-stack>
-                    </s-section>
-                  </div>
-                  <div
-                    ref={(node) => {
-                      sectionRefs.current.textFormatting = node;
-                    }}
-                    className="toc-editor-section"
-                  >
-                    <s-section>
-                      <TocSectionHeading
-                        icon={SECTION_NAV_METADATA.textFormatting.icon}
-                        label={SECTION_NAV_METADATA.textFormatting.label}
-                      />
-                      <s-stack direction="block" gap="base">
-                        <s-select
-                          name="textAlignment"
-                          label="Text alignment"
-                          details="Choose how the heading and links are aligned."
-                          value={textAlignment}
-                          onChange={(event) =>
-                            setTextAlignment(
-                              normalizeTextAlignment(event.currentTarget.value),
-                            )
-                          }
-                        >
-                          {TEXT_ALIGNMENT_OPTIONS.map((option) => (
-                            <s-option key={option.value} value={option.value}>
-                              {option.label}
-                            </s-option>
-                          ))}
-                        </s-select>
-                        <s-select
-                          name="markerFormat"
-                          label="List style"
-                          details="Choose whether to show no marker, bullets, or numbers."
-                          value={markerFormat}
-                          onChange={(event) =>
-                            setMarkerFormat(
-                              normalizeMarkerFormat(event.currentTarget.value),
-                            )
-                          }
-                        >
-                          {MARKER_FORMAT_OPTIONS.map((option) => (
-                            <s-option key={option.value} value={option.value}>
-                              {option.label}
-                            </s-option>
-                          ))}
-                        </s-select>
-                        <s-checkbox
-                          name="indentation"
-                          label="Indent nested items"
-                          details="Show lower-level headings as nested items."
-                          checked={
-                            textAlignment === "center" ? false : indentation
-                          }
-                          disabled={textAlignment === "center"}
-                          onChange={(event) =>
-                            setIndentation(event.currentTarget.checked)
-                          }
-                        ></s-checkbox>
-                      </s-stack>
-                    </s-section>
-                  </div>
-                  <div
-                    ref={(node) => {
-                      sectionRefs.current.advancedSettings = node;
-                    }}
-                    className="toc-editor-section"
-                  >
-                    <s-section>
-                      <TocSectionHeading
-                        icon={SECTION_NAV_METADATA.advancedSettings.icon}
-                        label={SECTION_NAV_METADATA.advancedSettings.label}
-                      />
-                      <div className="toc-field">
-                        <div className="toc-code-field">
-                          <span className="toc-code-field__label">
-                            Custom CSS
-                          </span>
-                          <span className="toc-field-details">
-                            These class names work on both desktop and mobile. Use{" "}
-                            {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN} for mobile-only
-                            rules.
-                          </span>
-                          <input
-                            name="customCss"
-                            type="hidden"
-                            value={customCss}
-                          />
-                          <div className="toc-code-editor">
-                            <CodeMirror
-                              value={customCss}
-                              height="320px"
-                              aria-label="Custom CSS"
-                              extensions={CUSTOM_CSS_EDITOR_EXTENSIONS}
-                              basicSetup={{
-                                foldGutter: false,
-                                highlightActiveLine: true,
-                                lineNumbers: true,
-                              }}
-                              onChange={(value) => setCustomCss(value)}
-                              onCreateEditor={(view) => {
-                                customCssEditorViewRef.current = view;
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </s-section>
-                  </div>
-                </>
-              </div>
-              {activeDeviceForm ? (
-                <>
-                  {renderDeviceSection(
-                    "general",
-                    <s-stack direction="block" gap="base">
-                      {activeDeviceForm.kind === "desktop" ? (
-                        <input
-                          type="hidden"
-                          name="desktopSwitchToMobileOnFloatOverflow"
-                          value={
-                            activeDeviceForm.general.switchToMobileOnFloatOverflow
-                              ? "on"
-                              : ""
-                          }
+              <s-stack direction="block" gap="base">
+                {activeTab !== "desktop" ? (
+                  <HiddenDeviceFields
+                    prefix="desktop"
+                    config={currentConfig.desktop}
+                  />
+                ) : null}
+                {activeTab !== "mobile" ? (
+                  <HiddenDeviceFields
+                    prefix="mobile"
+                    config={currentConfig.mobile}
+                  />
+                ) : null}
+                <div
+                  className={`toc-tab-panel${activeTab === "general" ? "" : " toc-tab-panel--hidden"}`}
+                  aria-hidden={activeTab === "general" ? undefined : "true"}
+                >
+                  <>
+                    <div
+                      ref={(node) => {
+                        sectionRefs.current.generalSettings = node;
+                      }}
+                      className="toc-editor-section"
+                    >
+                      <s-section>
+                        <TocSectionHeading
+                          icon={SECTION_NAV_METADATA.generalSettings.icon}
+                          label={SECTION_NAV_METADATA.generalSettings.label}
                         />
-                      ) : null}
-                      <s-select
-                        name={`${activeDeviceForm.namePrefix}Position`}
-                        label="Placement"
-                        value={activeDeviceForm.general.position}
-                        onChange={(event) => {
-                          activeDeviceForm.general.setPosition(
-                            event.currentTarget.value,
-                          );
-                        }}
-                      >
-                        {activeDeviceForm.positionOptions.map((option) => (
-                          <s-option key={option.value} value={option.value}>
-                            {option.label}
-                          </s-option>
-                        ))}
-                      </s-select>
-                      {activeDeviceForm.general.showFloatOverflowToggle ? (
-                        <div className="toc-field">
-                          <s-checkbox
-                            label="Use mobile layout when desktop layout no longer fits"
-                            checked={
-                              activeDeviceForm.general
-                                .switchToMobileOnFloatOverflow
+                        <s-stack direction="block" gap="base">
+                          <s-text-field
+                            name="title"
+                            label="Title"
+                            details="Shown above the table of contents."
+                            value={title}
+                            onInput={(event) =>
+                              setTitle(event.currentTarget.value)
                             }
                             onChange={(event) =>
-                              activeDeviceForm.general
-                                .setSwitchToMobileOnFloatOverflow(
-                                event.currentTarget.checked,
-                              )
+                              setTitle(event.currentTarget.value)
+                            }
+                          ></s-text-field>
+                          <div className="toc-field">
+                            <s-text>Headings to include</s-text>
+                            <div
+                              className="toc-inline-choices"
+                              role="group"
+                              aria-label="Heading levels"
+                            >
+                              {HEADING_LEVEL_OPTIONS.map((level) => (
+                                <s-checkbox
+                                  key={level}
+                                  name="headingLevels"
+                                  value={String(level)}
+                                  label={`H${level}`}
+                                  checked={headingLevels.includes(level)}
+                                  onChange={(event) => {
+                                    const checked = event.currentTarget.checked;
+
+                                    setHeadingLevels((current) => {
+                                      const next = checked
+                                        ? normalizeHeadingLevels([
+                                            ...current,
+                                            level,
+                                          ])
+                                        : current.filter(
+                                            (currentLevel) =>
+                                              currentLevel !== level,
+                                          );
+
+                                      return next.length ? next : current;
+                                    });
+                                  }}
+                                ></s-checkbox>
+                              ))}
+                            </div>
+                            <div className="toc-field-details">
+                              Choose which heading levels to show in the table
+                              of contents.
+                            </div>
+                          </div>
+                          <s-text-field
+                            name="minHeadings"
+                            label="Minimum headings required"
+                            details="Hide the table of contents until this number of selected headings is found."
+                            value={minHeadings}
+                            onInput={(event) =>
+                              setMinHeadings(event.currentTarget.value)
+                            }
+                            onChange={(event) =>
+                              setMinHeadings(event.currentTarget.value)
+                            }
+                          ></s-text-field>
+                          <s-number-field
+                            name="mobileBreakpoint"
+                            label="Mobile breakpoint"
+                            details="Apply mobile settings at this width and below."
+                            min={0}
+                            step={1}
+                            suffix="px"
+                            value={mobileBreakpoint}
+                            onInput={(event) =>
+                              setMobileBreakpoint(event.currentTarget.value)
+                            }
+                            onChange={(event) =>
+                              setMobileBreakpoint(event.currentTarget.value)
+                            }
+                          ></s-number-field>
+                          <s-text-field
+                            name="excludedBlogs"
+                            label="Hide on blog posts"
+                            details="Hide the table of contents on these blog posts. Use comma-separated article IDs, exact tags, or wildcard patterns like news/*"
+                            placeholder="news/*, news/today-is-the-best-day, 671373295959"
+                            value={excludedBlogs}
+                            onInput={(event) =>
+                              setExcludedBlogs(event.currentTarget.value)
+                            }
+                            onChange={(event) =>
+                              setExcludedBlogs(event.currentTarget.value)
+                            }
+                          ></s-text-field>
+                          <s-checkbox
+                            name="enableJsonLd"
+                            label="Enable SEO JSON-LD schema"
+                            details="Add structured data for the generated table of contents links."
+                            checked={enableJsonLd}
+                            onChange={(event) =>
+                              setEnableJsonLd(event.currentTarget.checked)
                             }
                           ></s-checkbox>
-                          <div className="toc-field-details">
-                            Automatically switch to the mobile layout when the desktop TOC no longer fits beside the article.
+                        </s-stack>
+                      </s-section>
+                    </div>
+                    <div
+                      ref={(node) => {
+                        sectionRefs.current.textFormatting = node;
+                      }}
+                      className="toc-editor-section"
+                    >
+                      <s-section>
+                        <TocSectionHeading
+                          icon={SECTION_NAV_METADATA.textFormatting.icon}
+                          label={SECTION_NAV_METADATA.textFormatting.label}
+                        />
+                        <s-stack direction="block" gap="base">
+                          <s-select
+                            name="textAlignment"
+                            label="Text alignment"
+                            details="Choose how the heading and links are aligned."
+                            value={textAlignment}
+                            onChange={(event) =>
+                              setTextAlignment(
+                                normalizeTextAlignment(
+                                  event.currentTarget.value,
+                                ),
+                              )
+                            }
+                          >
+                            {TEXT_ALIGNMENT_OPTIONS.map((option) => (
+                              <s-option key={option.value} value={option.value}>
+                                {option.label}
+                              </s-option>
+                            ))}
+                          </s-select>
+                          <s-select
+                            name="markerFormat"
+                            label="List style"
+                            details="Choose whether to show no marker, bullets, or numbers."
+                            value={markerFormat}
+                            onChange={(event) =>
+                              setMarkerFormat(
+                                normalizeMarkerFormat(
+                                  event.currentTarget.value,
+                                ),
+                              )
+                            }
+                          >
+                            {MARKER_FORMAT_OPTIONS.map((option) => (
+                              <s-option key={option.value} value={option.value}>
+                                {option.label}
+                              </s-option>
+                            ))}
+                          </s-select>
+                          <s-checkbox
+                            name="indentation"
+                            label="Indent nested items"
+                            details="Show lower-level headings as nested items."
+                            checked={
+                              textAlignment === "center" ? false : indentation
+                            }
+                            disabled={textAlignment === "center"}
+                            onChange={(event) =>
+                              setIndentation(event.currentTarget.checked)
+                            }
+                          ></s-checkbox>
+                        </s-stack>
+                      </s-section>
+                    </div>
+                    <div
+                      ref={(node) => {
+                        sectionRefs.current.advancedSettings = node;
+                      }}
+                      className="toc-editor-section"
+                    >
+                      <s-section>
+                        <TocSectionHeading
+                          icon={SECTION_NAV_METADATA.advancedSettings.icon}
+                          label={SECTION_NAV_METADATA.advancedSettings.label}
+                        />
+                        <div className="toc-field">
+                          <div className="toc-code-field">
+                            <span className="toc-code-field__label">
+                              Custom CSS
+                            </span>
+                            <span className="toc-field-details">
+                              These class names work on both desktop and mobile.
+                              Use {CUSTOM_CSS_MOBILE_BREAKPOINT_TOKEN} for
+                              mobile-only rules.
+                            </span>
+                            <input
+                              name="customCss"
+                              type="hidden"
+                              value={customCss}
+                            />
+                            <div className="toc-code-editor">
+                              <CodeMirror
+                                value={customCss}
+                                height="320px"
+                                aria-label="Custom CSS"
+                                extensions={CUSTOM_CSS_EDITOR_EXTENSIONS}
+                                basicSetup={{
+                                  foldGutter: false,
+                                  highlightActiveLine: true,
+                                  lineNumbers: true,
+                                }}
+                                onChange={(value) => setCustomCss(value)}
+                                onCreateEditor={(view) => {
+                                  customCssEditorViewRef.current = view;
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
-                      ) : null}
-                      {activeDeviceForm.general.position === "css-selector" ? (
-                        <s-text-field
-                          name={`${activeDeviceForm.namePrefix}PositionSelector`}
-                          label="Inside selected element"
-                          details={activeDeviceForm.positionSelectorDetails}
-                          value={activeDeviceForm.general.positionSelector}
-                          onInput={(event) =>
-                            activeDeviceForm.general.setPositionSelector(
+                      </s-section>
+                    </div>
+                  </>
+                </div>
+                {activeDeviceForm ? (
+                  <>
+                    {renderDeviceSection(
+                      "general",
+                      <s-stack direction="block" gap="base">
+                        {activeDeviceForm.kind === "desktop" ? (
+                          <input
+                            type="hidden"
+                            name="desktopSwitchToMobileOnFloatOverflow"
+                            value={
+                              activeDeviceForm.general
+                                .switchToMobileOnFloatOverflow
+                                ? "on"
+                                : ""
+                            }
+                          />
+                        ) : null}
+                        <s-select
+                          name={`${activeDeviceForm.namePrefix}Position`}
+                          label="Placement"
+                          value={activeDeviceForm.general.position}
+                          onChange={(event) => {
+                            activeDeviceForm.general.setPosition(
                               event.currentTarget.value,
-                            )
-                          }
-                          onChange={(event) =>
-                            activeDeviceForm.general.setPositionSelector(
-                              event.currentTarget.value,
-                            )
-                          }
-                        ></s-text-field>
-                      ) : null}
-                      <s-color-field
-                        name={`${activeDeviceForm.namePrefix}Background`}
-                        label="Background color"
-                        alpha
-                        value={activeDeviceForm.general.background}
-                        onInput={(event) =>
-                          activeDeviceForm.general.setBackground(
-                            event.currentTarget.value,
-                          )
-                        }
-                        onChange={(event) =>
-                          activeDeviceForm.general.setBackground(
-                            event.currentTarget.value,
-                          )
-                        }
-                      ></s-color-field>
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}MaxWidth`}
-                        label="Maximum width"
-                        details="Set the maximum width of the table of contents. Use 0 for no limit."
-                        range={SLIDER_RANGES.maxWidth}
-                        value={activeDeviceForm.general.maxWidth}
-                        onValueChange={activeDeviceForm.general.setMaxWidth}
-                      />
-                    </s-stack>,
-                  )}
-                  {renderDeviceSection(
-                    "title",
-                    <s-stack direction="block" gap="base">
-                      <s-checkbox
-                        name={`${activeDeviceForm.namePrefix}ShowTitle`}
-                        label="Show title"
-                        checked={activeDeviceForm.title.showTitle}
-                        onChange={(event) =>
-                          activeDeviceForm.title.setShowTitle(
-                            event.currentTarget.checked,
-                          )
-                        }
-                      ></s-checkbox>
-                      <div className="toc-compact-fields">
+                            );
+                          }}
+                        >
+                          {activeDeviceForm.positionOptions.map((option) => (
+                            <s-option key={option.value} value={option.value}>
+                              {option.label}
+                            </s-option>
+                          ))}
+                        </s-select>
+                        {activeDeviceForm.general.showFloatOverflowToggle ? (
+                          <div className="toc-field">
+                            <s-checkbox
+                              label="Use mobile layout when desktop layout no longer fits"
+                              checked={
+                                activeDeviceForm.general
+                                  .switchToMobileOnFloatOverflow
+                              }
+                              onChange={(event) =>
+                                activeDeviceForm.general.setSwitchToMobileOnFloatOverflow(
+                                  event.currentTarget.checked,
+                                )
+                              }
+                            ></s-checkbox>
+                            <div className="toc-field-details">
+                              Automatically switch to the mobile layout when the
+                              desktop TOC no longer fits beside the article.
+                            </div>
+                          </div>
+                        ) : null}
+                        {activeDeviceForm.general.position ===
+                        "css-selector" ? (
+                          <s-text-field
+                            name={`${activeDeviceForm.namePrefix}PositionSelector`}
+                            label="Inside selected element"
+                            details={activeDeviceForm.positionSelectorDetails}
+                            value={activeDeviceForm.general.positionSelector}
+                            onInput={(event) =>
+                              activeDeviceForm.general.setPositionSelector(
+                                event.currentTarget.value,
+                              )
+                            }
+                            onChange={(event) =>
+                              activeDeviceForm.general.setPositionSelector(
+                                event.currentTarget.value,
+                              )
+                            }
+                          ></s-text-field>
+                        ) : null}
                         <s-color-field
-                          name={`${activeDeviceForm.namePrefix}TitleFontColor`}
-                          label="Text color"
+                          name={`${activeDeviceForm.namePrefix}Background`}
+                          label="Background color"
                           alpha
-                          disabled={!isTitleEnabled}
-                          value={activeDeviceForm.title.fontColor}
+                          value={activeDeviceForm.general.background}
                           onInput={(event) =>
-                            activeDeviceForm.title.setFontColor(
+                            activeDeviceForm.general.setBackground(
                               event.currentTarget.value,
                             )
                           }
                           onChange={(event) =>
-                            activeDeviceForm.title.setFontColor(
+                            activeDeviceForm.general.setBackground(
                               event.currentTarget.value,
                             )
                           }
                         ></s-color-field>
-                        <s-select
-                          name={`${activeDeviceForm.namePrefix}TitleFontWeight`}
-                          label="Font weight"
-                          disabled={!isTitleEnabled}
-                          value={activeDeviceForm.title.fontWeight}
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}MaxWidth`}
+                          label="Maximum width"
+                          details="Set the maximum width of the table of contents. Use 0 for no limit."
+                          range={SLIDER_RANGES.maxWidth}
+                          value={activeDeviceForm.general.maxWidth}
+                          onValueChange={activeDeviceForm.general.setMaxWidth}
+                        />
+                      </s-stack>,
+                    )}
+                    {renderDeviceSection(
+                      "title",
+                      <s-stack direction="block" gap="base">
+                        <s-checkbox
+                          name={`${activeDeviceForm.namePrefix}ShowTitle`}
+                          label="Show title"
+                          checked={activeDeviceForm.title.showTitle}
                           onChange={(event) =>
-                            activeDeviceForm.title.setFontWeight(
-                              event.currentTarget.value,
+                            activeDeviceForm.title.setShowTitle(
+                              event.currentTarget.checked,
                             )
                           }
-                        >
-                          {FONT_WEIGHT_OPTIONS.map((option) => (
-                            <s-option key={option.value} value={option.value}>
-                              {option.label}
-                            </s-option>
-                          ))}
-                        </s-select>
-
-                        <TocSliderField
-                          name={`${activeDeviceForm.namePrefix}TitleFontSize`}
-                          label="Font size"
-                          range={SLIDER_RANGES.fontSize}
-                          disabled={!isTitleEnabled}
-                          value={activeDeviceForm.title.fontSize}
-                          onValueChange={activeDeviceForm.title.setFontSize}
-                        />
-
-                      </div>
-                    </s-stack>,
-                  )}
-                  {renderDeviceSection(
-                    "headings",
-                    <div className="toc-compact-fields">
-                      <s-color-field
-                        name={`${activeDeviceForm.namePrefix}HeadingsFontColor`}
-                        label="Color"
-                        alpha
-                        value={activeDeviceForm.headings.fontColor}
-                        onInput={(event) =>
-                          activeDeviceForm.headings.setFontColor(
-                            event.currentTarget.value,
-                          )
-                        }
-                        onChange={(event) =>
-                          activeDeviceForm.headings.setFontColor(
-                            event.currentTarget.value,
-                          )
-                        }
-                      ></s-color-field>
-                      <s-select
-                        name={`${activeDeviceForm.namePrefix}HeadingsFontWeight`}
-                        label="Font weight"
-                        value={activeDeviceForm.headings.fontWeight}
-                        onChange={(event) =>
-                          activeDeviceForm.headings.setFontWeight(
-                            event.currentTarget.value,
-                          )
-                        }
-                      >
-                        {FONT_WEIGHT_OPTIONS.map((option) => (
-                          <s-option key={option.value} value={option.value}>
-                            {option.label}
-                          </s-option>
-                        ))}
-                      </s-select>
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}HeadingsFontSize`}
-                        label="Font size"
-                        range={SLIDER_RANGES.fontSize}
-                        value={activeDeviceForm.headings.fontSize}
-                        onValueChange={activeDeviceForm.headings.setFontSize}
-                      />
-                    </div>,
-                  )}
-                  {renderDeviceSection(
-                    "border",
-                    <div className="toc-compact-fields">
-                      <s-color-field
-                        name={`${activeDeviceForm.namePrefix}BorderColor`}
-                        label="Border color"
-                        alpha
-                        value={activeDeviceForm.border.color}
-                        onInput={(event) =>
-                          activeDeviceForm.border.setColor(
-                            event.currentTarget.value,
-                          )
-                        }
-                        onChange={(event) =>
-                          activeDeviceForm.border.setColor(
-                            event.currentTarget.value,
-                          )
-                        }
-                      ></s-color-field>
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}BorderWidth`}
-                        label="Corder width"
-                        range={SLIDER_RANGES.borderWidth}
-                        value={activeDeviceForm.border.width}
-                        onValueChange={activeDeviceForm.border.setWidth}
-                      />
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}BorderRadius`}
-                        label="Cornder radius"
-                        range={SLIDER_RANGES.borderRadius}
-                        value={activeDeviceForm.border.radius}
-                        onValueChange={activeDeviceForm.border.setRadius}
-                      />
-                    </div>,
-                  )}
-                  {renderDeviceSection(
-                    "shadow",
-                    <s-stack direction="block" gap="base">
-                      <s-select
-                        name={`${activeDeviceForm.namePrefix}ShadowPreset`}
-                        label="Shadow style"
-                        value={activeDeviceForm.shadow.preset}
-                        onChange={(event) => {
-                          const value = normalizeShadowPreset(
-                            event.currentTarget.value,
-                          );
-                          activeDeviceForm.shadow.setPreset(value);
-                        }}
-                      >
-                        {SHADOW_PRESET_OPTIONS.map((option) => (
-                          <s-option key={option.value} value={option.value}>
-                            {option.label}
-                          </s-option>
-                        ))}
-                      </s-select>
-                      <s-color-field
-                        name={`${activeDeviceForm.namePrefix}ShadowColor`}
-                        label="Shadow color"
-                        alpha
-                        value={activeDeviceForm.shadow.color}
-                        onInput={(event) =>
-                          activeDeviceForm.shadow.setColor(
-                            event.currentTarget.value,
-                          )
-                        }
-                        onChange={(event) =>
-                          activeDeviceForm.shadow.setColor(
-                            event.currentTarget.value,
-                          )
-                        }
-                      ></s-color-field>
-                    </s-stack>,
-                  )}
-                  {renderDeviceSection(
-                    "padding",
-                    <div className="toc-compact-fields-four">
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}PaddingTop`}
-                        label="Top"
-                        range={SLIDER_RANGES.padding}
-                        value={activeDeviceForm.padding.top}
-                        onValueChange={activeDeviceForm.padding.setTop}
-                      />
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}PaddingBottom`}
-                        label="Bottom"
-                        range={SLIDER_RANGES.padding}
-                        value={activeDeviceForm.padding.bottom}
-                        onValueChange={activeDeviceForm.padding.setBottom}
-                      />
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}PaddingLeft`}
-                        label="Left"
-                        range={SLIDER_RANGES.padding}
-                        value={activeDeviceForm.padding.left}
-                        onValueChange={activeDeviceForm.padding.setLeft}
-                      />
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}PaddingRight`}
-                        label="Right"
-                        range={SLIDER_RANGES.padding}
-                        value={activeDeviceForm.padding.right}
-                        onValueChange={activeDeviceForm.padding.setRight}
-                      />
-                    </div>,
-                  )}
-                  {renderDeviceSection(
-                    "offset",
-                    <div className="toc-compact-fields-four">
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}OffsetTop`}
-                        label="Top"
-                        range={SLIDER_RANGES.layoutOffset}
-                        value={activeDeviceForm.offset.top}
-                        onValueChange={activeDeviceForm.offset.setTop}
-                      />
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}OffsetBottom`}
-                        label="Bottom"
-                        range={SLIDER_RANGES.layoutOffset}
-                        value={activeDeviceForm.offset.bottom}
-                        onValueChange={activeDeviceForm.offset.setBottom}
-                      />
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}OffsetLeft`}
-                        label="Left"
-                        range={SLIDER_RANGES.layoutOffset}
-                        value={activeDeviceForm.offset.left}
-                        onValueChange={activeDeviceForm.offset.setLeft}
-                      />
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}OffsetRight`}
-                        label="Right"
-                        range={SLIDER_RANGES.layoutOffset}
-                        value={activeDeviceForm.offset.right}
-                        onValueChange={activeDeviceForm.offset.setRight}
-                      />
-                    </div>,
-                  )}
-                  {renderDeviceSection(
-                    "scroll",
-                    <s-stack direction="block" gap="base">
-                      <s-checkbox
-                        name={`${activeDeviceForm.namePrefix}SmoothScroll`}
-                        label="Enable smooth scroll"
-                        details="Smoothly scroll to the selected heading when a table of contents link is clicked."
-                        checked={activeDeviceForm.scroll.smoothScroll}
-                        onChange={(event) =>
-                          activeDeviceForm.scroll.setSmoothScroll(
-                            event.currentTarget.checked,
-                          )
-                        }
-                      ></s-checkbox>
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}ScrollOffset`}
-                        label="Scroll offset"
-                        details="Top offset in pixels"
-                        range={SLIDER_RANGES.scrollOffset}
-                        value={activeDeviceForm.scroll.offset}
-                        onValueChange={activeDeviceForm.scroll.setOffset}
-                      />
-                    </s-stack>,
-                  )}
-                  {renderDeviceSection(
-                    "showButton",
-                    <s-stack direction="block" gap="base">
-                      <s-checkbox
-                        name={`${activeDeviceForm.namePrefix}ShowButton`}
-                        label="Enable show more"
-                        checked={activeDeviceForm.showButton.enabled}
-                        onChange={(event) =>
-                          activeDeviceForm.showButton.setEnabled(
-                            event.currentTarget.checked,
-                          )
-                        }
-                      ></s-checkbox>
-                      <TocSliderField
-                        name={`${activeDeviceForm.namePrefix}ShowButtonHeight`}
-                        label="Collapsed height"
-                        details="Show the button when the table of contents exceeds this height."
-                        range={SLIDER_RANGES.collapsedHeight}
-                        disabled={!isShowMoreEnabled}
-                        value={activeDeviceForm.showButton.height}
-                        onValueChange={activeDeviceForm.showButton.setHeight}
-                      />
-                      <div className="toc-subsection">
-                        <p className="toc-subsection-title">Text</p>
-                        <div className="toc-compact-fields-two">
-                          <s-text-field
-                            name={`${activeDeviceForm.namePrefix}ShowMoreButtonText`}
-                            label="Show more"
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.showMoreText}
-                            onInput={(event) =>
-                              activeDeviceForm.showButton.setShowMoreText(
-                                event.currentTarget.value,
-                              )
-                            }
-                            onChange={(event) =>
-                              activeDeviceForm.showButton.setShowMoreText(
-                                event.currentTarget.value,
-                              )
-                            }
-                          ></s-text-field>
-                          <s-text-field
-                            name={`${activeDeviceForm.namePrefix}ShowLessButtonText`}
-                            label="Show less"
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.showLessText}
-                            onInput={(event) =>
-                              activeDeviceForm.showButton.setShowLessText(
-                                event.currentTarget.value,
-                              )
-                            }
-                            onChange={(event) =>
-                              activeDeviceForm.showButton.setShowLessText(
-                                event.currentTarget.value,
-                              )
-                            }
-                          ></s-text-field>
-                        </div>
-                      </div>
-                      <div className="toc-subsection">
-                        <p className="toc-subsection-title">Padding</p>
-                        <div className="toc-compact-fields-two">
-                          <TocSliderField
-                            name={`${activeDeviceForm.namePrefix}ShowButtonPaddingTop`}
-                            label="Top"
-                            range={SLIDER_RANGES.padding}
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.paddingTop}
-                            onValueChange={activeDeviceForm.showButton.setPaddingTop}
-                          />
-                          <TocSliderField
-                            name={`${activeDeviceForm.namePrefix}ShowButtonPaddingBottom`}
-                            label="Bottom"
-                            range={SLIDER_RANGES.padding}
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.paddingBottom}
-                            onValueChange={
-                              activeDeviceForm.showButton.setPaddingBottom
-                            }
-                          />
-                          <TocSliderField
-                            name={`${activeDeviceForm.namePrefix}ShowButtonPaddingLeft`}
-                            label="Left"
-                            range={SLIDER_RANGES.padding}
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.paddingLeft}
-                            onValueChange={activeDeviceForm.showButton.setPaddingLeft}
-                          />
-                          <TocSliderField
-                            name={`${activeDeviceForm.namePrefix}ShowButtonPaddingRight`}
-                            label="Right"
-                            range={SLIDER_RANGES.padding}
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.paddingRight}
-                            onValueChange={activeDeviceForm.showButton.setPaddingRight}
-                          />
-                        </div>
-                      </div>
-                      <div className="toc-subsection">
-                        <p className="toc-subsection-title">Font</p>
+                        ></s-checkbox>
                         <div className="toc-compact-fields">
                           <s-color-field
-                            name={`${activeDeviceForm.namePrefix}ShowButtonFontColor`}
-                            label="Color"
+                            name={`${activeDeviceForm.namePrefix}TitleFontColor`}
+                            label="Text color"
                             alpha
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.fontColor}
+                            disabled={!isTitleEnabled}
+                            value={activeDeviceForm.title.fontColor}
                             onInput={(event) =>
-                              activeDeviceForm.showButton.setFontColor(
+                              activeDeviceForm.title.setFontColor(
                                 event.currentTarget.value,
                               )
                             }
                             onChange={(event) =>
-                              activeDeviceForm.showButton.setFontColor(
+                              activeDeviceForm.title.setFontColor(
                                 event.currentTarget.value,
                               )
                             }
                           ></s-color-field>
                           <s-select
-                            name={`${activeDeviceForm.namePrefix}ShowButtonFontWeight`}
-                            label="Weight"
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.fontWeight}
+                            name={`${activeDeviceForm.namePrefix}TitleFontWeight`}
+                            label="Font weight"
+                            disabled={!isTitleEnabled}
+                            value={activeDeviceForm.title.fontWeight}
                             onChange={(event) =>
-                              activeDeviceForm.showButton.setFontWeight(
+                              activeDeviceForm.title.setFontWeight(
                                 event.currentTarget.value,
                               )
                             }
@@ -2758,235 +2406,609 @@ export default function Index() {
                               </s-option>
                             ))}
                           </s-select>
-                          <TocSliderField
-                            name={`${activeDeviceForm.namePrefix}ShowButtonFontSize`}
-                            label="Size"
-                            range={SLIDER_RANGES.fontSize}
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.fontSize}
-                            onValueChange={activeDeviceForm.showButton.setFontSize}
-                          />
 
-                        </div>
-                      </div>
-                      <div className="toc-subsection">
-                        <p className="toc-subsection-title">Border</p>
-                        <div className="toc-compact-fields">
-                          <s-color-field
-                            name={`${activeDeviceForm.namePrefix}ShowButtonBorderColor`}
-                            label="Color"
-                            alpha
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.borderColor}
-                            onInput={(event) =>
-                              activeDeviceForm.showButton.setBorderColor(
-                                event.currentTarget.value,
-                              )
-                            }
-                            onChange={(event) =>
-                              activeDeviceForm.showButton.setBorderColor(
-                                event.currentTarget.value,
-                              )
-                            }
-                          ></s-color-field>
                           <TocSliderField
-                            name={`${activeDeviceForm.namePrefix}ShowButtonBorderWidth`}
-                            label="Width"
-                            range={SLIDER_RANGES.borderWidth}
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.borderWidth}
-                            onValueChange={activeDeviceForm.showButton.setBorderWidth}
-                          />
-                          <TocSliderField
-                            name={`${activeDeviceForm.namePrefix}ShowButtonBorderRadius`}
-                            label="Corner radius"
-                            range={SLIDER_RANGES.borderRadius}
-                            disabled={!isShowMoreEnabled}
-                            value={activeDeviceForm.showButton.borderRadius}
-                            onValueChange={
-                              activeDeviceForm.showButton.setBorderRadius
-                            }
+                            name={`${activeDeviceForm.namePrefix}TitleFontSize`}
+                            label="Font size"
+                            range={SLIDER_RANGES.fontSize}
+                            disabled={!isTitleEnabled}
+                            value={activeDeviceForm.title.fontSize}
+                            onValueChange={activeDeviceForm.title.setFontSize}
                           />
                         </div>
-                      </div>
-                    </s-stack>,
-                  )}
-                  {activeTab === "desktop"
-                    ? renderDeviceSection(
-                      "animation",
-                      <s-stack direction="block" gap="base">
+                      </s-stack>,
+                    )}
+                    {renderDeviceSection(
+                      "headings",
+                      <div className="toc-compact-fields">
+                        <s-color-field
+                          name={`${activeDeviceForm.namePrefix}HeadingsFontColor`}
+                          label="Color"
+                          alpha
+                          value={activeDeviceForm.headings.fontColor}
+                          onInput={(event) =>
+                            activeDeviceForm.headings.setFontColor(
+                              event.currentTarget.value,
+                            )
+                          }
+                          onChange={(event) =>
+                            activeDeviceForm.headings.setFontColor(
+                              event.currentTarget.value,
+                            )
+                          }
+                        ></s-color-field>
                         <s-select
-                          name="desktopAnimationType"
-                          label="Type"
-                          value={desktopAnimationType}
-                          onChange={(event) => {
-                            setDesktopAnimationType(
-                              normalizeAnimationType(event.currentTarget.value),
-                            );
-                          }}
+                          name={`${activeDeviceForm.namePrefix}HeadingsFontWeight`}
+                          label="Font weight"
+                          value={activeDeviceForm.headings.fontWeight}
+                          onChange={(event) =>
+                            activeDeviceForm.headings.setFontWeight(
+                              event.currentTarget.value,
+                            )
+                          }
                         >
-                          {ANIMATION_TYPE_OPTIONS.map((option) => (
+                          {FONT_WEIGHT_OPTIONS.map((option) => (
                             <s-option key={option.value} value={option.value}>
                               {option.label}
                             </s-option>
                           ))}
                         </s-select>
-                        {desktopFollowingMarkerSelected ? (
-                          <>
-                            <s-color-field
-                              name="desktopFollowingMarkerColor"
-                              label="Color"
-                              alpha
-                              value={desktopFollowingMarkerColor}
-                              onInput={(event) =>
-                                setDesktopFollowingMarkerColor(
-                                  event.currentTarget.value,
-                                )
-                              }
-                              onChange={(event) =>
-                                setDesktopFollowingMarkerColor(
-                                  event.currentTarget.value,
-                                )
-                              }
-                            ></s-color-field>
-                            <TocSliderField
-                              name="desktopFollowingMarkerBorderRadius"
-                              label="Roundness"
-                              range={SLIDER_RANGES.markerRadius}
-                              value={desktopFollowingMarkerBorderRadius}
-                              onValueChange={
-                                setDesktopFollowingMarkerBorderRadius
-                              }
-                            />
-                            <TocSliderField
-                              name="desktopFollowingMarkerWidth"
-                              label="Width"
-                              range={SLIDER_RANGES.markerSize}
-                              value={desktopFollowingMarkerWidth}
-                              onValueChange={setDesktopFollowingMarkerWidth}
-                            />
-                            <TocSliderField
-                              name="desktopFollowingMarkerHeight"
-                              label="Height"
-                              range={SLIDER_RANGES.markerSize}
-                              value={desktopFollowingMarkerHeight}
-                              onValueChange={setDesktopFollowingMarkerHeight}
-                            />
-                            <TocSliderField
-                              name="desktopFollowingMarkerOffset"
-                              label="Offset"
-                              range={SLIDER_RANGES.markerOffset}
-                              value={desktopFollowingMarkerOffset}
-                              onValueChange={setDesktopFollowingMarkerOffset}
-                            />
-                          </>
-                        ) : null}
-                        {desktopCrawlingSnakeSelected ? (
-                          <>
-                            <s-color-field
-                              name="desktopCrawlingSnakeColor"
-                              label="Color"
-                              alpha
-                              value={desktopCrawlingSnakeColor}
-                              onInput={(event) =>
-                                setDesktopCrawlingSnakeColor(
-                                  event.currentTarget.value,
-                                )
-                              }
-                              onChange={(event) =>
-                                setDesktopCrawlingSnakeColor(
-                                  event.currentTarget.value,
-                                )
-                              }
-                            ></s-color-field>
-                            <TocSliderField
-                              name="desktopCrawlingSnakeWidth"
-                              label="Width"
-                              range={SLIDER_RANGES.markerSize}
-                              value={desktopCrawlingSnakeWidth}
-                              onValueChange={setDesktopCrawlingSnakeWidth}
-                            />
-                            <TocSliderField
-                              name="desktopCrawlingSnakeHeight"
-                              label="Height"
-                              range={SLIDER_RANGES.markerSize}
-                              value={desktopCrawlingSnakeHeight}
-                              onValueChange={setDesktopCrawlingSnakeHeight}
-                            />
-                            <TocSliderField
-                              name="desktopCrawlingSnakeOffset"
-                              label="Offset"
-                              range={SLIDER_RANGES.markerOffset}
-                              value={desktopCrawlingSnakeOffset}
-                              onValueChange={setDesktopCrawlingSnakeOffset}
-                            />
-
-                          </>
-                        ) : null}
-                        {desktopJumpingMarkerSelected ? (
-                          <>
-                            <s-color-field
-                              name="desktopJumpingMarkerColor"
-                              label="Color"
-                              alpha
-                              value={desktopJumpingMarkerColor}
-                              onInput={(event) =>
-                                setDesktopJumpingMarkerColor(
-                                  event.currentTarget.value,
-                                )
-                              }
-                              onChange={(event) =>
-                                setDesktopJumpingMarkerColor(
-                                  event.currentTarget.value,
-                                )
-                              }
-                            ></s-color-field>
-                            <TocSliderField
-                              name="desktopJumpingMarkerBorderRadius"
-                              label="Roundness"
-                              range={SLIDER_RANGES.markerRadius}
-                              value={desktopJumpingMarkerBorderRadius}
-                              onValueChange={
-                                setDesktopJumpingMarkerBorderRadius
-                              }
-                            />
-                            <TocSliderField
-                              name="desktopJumpingMarkerWidth"
-                              label="Width"
-                              range={SLIDER_RANGES.markerSize}
-                              value={desktopJumpingMarkerWidth}
-                              onValueChange={setDesktopJumpingMarkerWidth}
-                            />
-                            <TocSliderField
-                              name="desktopJumpingMarkerHeight"
-                              label="Height"
-                              range={SLIDER_RANGES.markerSize}
-                              value={desktopJumpingMarkerHeight}
-                              onValueChange={setDesktopJumpingMarkerHeight}
-                            />
-                            <TocSliderField
-                              name="desktopJumpingMarkerOffset"
-                              label="Offset"
-                              range={SLIDER_RANGES.markerOffset}
-                              value={desktopJumpingMarkerOffset}
-                              onValueChange={setDesktopJumpingMarkerOffset}
-                            />
-                          </>
-                        ) : null}
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}HeadingsFontSize`}
+                          label="Font size"
+                          range={SLIDER_RANGES.fontSize}
+                          value={activeDeviceForm.headings.fontSize}
+                          onValueChange={activeDeviceForm.headings.setFontSize}
+                        />
+                      </div>,
+                    )}
+                    {renderDeviceSection(
+                      "border",
+                      <div className="toc-compact-fields">
+                        <s-color-field
+                          name={`${activeDeviceForm.namePrefix}BorderColor`}
+                          label="Border color"
+                          alpha
+                          value={activeDeviceForm.border.color}
+                          onInput={(event) =>
+                            activeDeviceForm.border.setColor(
+                              event.currentTarget.value,
+                            )
+                          }
+                          onChange={(event) =>
+                            activeDeviceForm.border.setColor(
+                              event.currentTarget.value,
+                            )
+                          }
+                        ></s-color-field>
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}BorderWidth`}
+                          label="Corder width"
+                          range={SLIDER_RANGES.borderWidth}
+                          value={activeDeviceForm.border.width}
+                          onValueChange={activeDeviceForm.border.setWidth}
+                        />
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}BorderRadius`}
+                          label="Cornder radius"
+                          range={SLIDER_RANGES.borderRadius}
+                          value={activeDeviceForm.border.radius}
+                          onValueChange={activeDeviceForm.border.setRadius}
+                        />
+                      </div>,
+                    )}
+                    {renderDeviceSection(
+                      "shadow",
+                      <s-stack direction="block" gap="base">
+                        <s-select
+                          name={`${activeDeviceForm.namePrefix}ShadowPreset`}
+                          label="Shadow style"
+                          value={activeDeviceForm.shadow.preset}
+                          onChange={(event) => {
+                            const value = normalizeShadowPreset(
+                              event.currentTarget.value,
+                            );
+                            activeDeviceForm.shadow.setPreset(value);
+                          }}
+                        >
+                          {SHADOW_PRESET_OPTIONS.map((option) => (
+                            <s-option key={option.value} value={option.value}>
+                              {option.label}
+                            </s-option>
+                          ))}
+                        </s-select>
+                        <s-color-field
+                          name={`${activeDeviceForm.namePrefix}ShadowColor`}
+                          label="Shadow color"
+                          alpha
+                          value={activeDeviceForm.shadow.color}
+                          onInput={(event) =>
+                            activeDeviceForm.shadow.setColor(
+                              event.currentTarget.value,
+                            )
+                          }
+                          onChange={(event) =>
+                            activeDeviceForm.shadow.setColor(
+                              event.currentTarget.value,
+                            )
+                          }
+                        ></s-color-field>
                       </s-stack>,
-                      { allowApplyAction: false },
-                    )
-                    : null}
-                </>
-              ) : null}
-              {actionData?.userErrors?.length ? (
-                <s-paragraph>
-                  {actionData.userErrors
-                    .map((error: { message: string }) => error.message)
-                    .join(" ")}
-                </s-paragraph>
-              ) : null}
-            </s-stack>
+                    )}
+                    {renderDeviceSection(
+                      "padding",
+                      <div className="toc-compact-fields-four">
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}PaddingTop`}
+                          label="Top"
+                          range={SLIDER_RANGES.padding}
+                          value={activeDeviceForm.padding.top}
+                          onValueChange={activeDeviceForm.padding.setTop}
+                        />
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}PaddingBottom`}
+                          label="Bottom"
+                          range={SLIDER_RANGES.padding}
+                          value={activeDeviceForm.padding.bottom}
+                          onValueChange={activeDeviceForm.padding.setBottom}
+                        />
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}PaddingLeft`}
+                          label="Left"
+                          range={SLIDER_RANGES.padding}
+                          value={activeDeviceForm.padding.left}
+                          onValueChange={activeDeviceForm.padding.setLeft}
+                        />
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}PaddingRight`}
+                          label="Right"
+                          range={SLIDER_RANGES.padding}
+                          value={activeDeviceForm.padding.right}
+                          onValueChange={activeDeviceForm.padding.setRight}
+                        />
+                      </div>,
+                    )}
+                    {renderDeviceSection(
+                      "offset",
+                      <div className="toc-compact-fields-four">
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}OffsetTop`}
+                          label="Top"
+                          range={SLIDER_RANGES.layoutOffset}
+                          value={activeDeviceForm.offset.top}
+                          onValueChange={activeDeviceForm.offset.setTop}
+                        />
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}OffsetBottom`}
+                          label="Bottom"
+                          range={SLIDER_RANGES.layoutOffset}
+                          value={activeDeviceForm.offset.bottom}
+                          onValueChange={activeDeviceForm.offset.setBottom}
+                        />
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}OffsetLeft`}
+                          label="Left"
+                          range={SLIDER_RANGES.layoutOffset}
+                          value={activeDeviceForm.offset.left}
+                          onValueChange={activeDeviceForm.offset.setLeft}
+                        />
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}OffsetRight`}
+                          label="Right"
+                          range={SLIDER_RANGES.layoutOffset}
+                          value={activeDeviceForm.offset.right}
+                          onValueChange={activeDeviceForm.offset.setRight}
+                        />
+                      </div>,
+                    )}
+                    {renderDeviceSection(
+                      "scroll",
+                      <s-stack direction="block" gap="base">
+                        <s-checkbox
+                          name={`${activeDeviceForm.namePrefix}SmoothScroll`}
+                          label="Enable smooth scroll"
+                          details="Smoothly scroll to the selected heading when a table of contents link is clicked."
+                          checked={activeDeviceForm.scroll.smoothScroll}
+                          onChange={(event) =>
+                            activeDeviceForm.scroll.setSmoothScroll(
+                              event.currentTarget.checked,
+                            )
+                          }
+                        ></s-checkbox>
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}ScrollOffset`}
+                          label="Scroll offset"
+                          details="Top offset in pixels"
+                          range={SLIDER_RANGES.scrollOffset}
+                          value={activeDeviceForm.scroll.offset}
+                          onValueChange={activeDeviceForm.scroll.setOffset}
+                        />
+                      </s-stack>,
+                    )}
+                    {renderDeviceSection(
+                      "showButton",
+                      <s-stack direction="block" gap="base">
+                        <s-checkbox
+                          name={`${activeDeviceForm.namePrefix}ShowButton`}
+                          label="Enable show more"
+                          checked={activeDeviceForm.showButton.enabled}
+                          onChange={(event) =>
+                            activeDeviceForm.showButton.setEnabled(
+                              event.currentTarget.checked,
+                            )
+                          }
+                        ></s-checkbox>
+                        <TocSliderField
+                          name={`${activeDeviceForm.namePrefix}ShowButtonHeight`}
+                          label="Collapsed height"
+                          details="Show the button when the table of contents exceeds this height."
+                          range={SLIDER_RANGES.collapsedHeight}
+                          disabled={!isShowMoreEnabled}
+                          value={activeDeviceForm.showButton.height}
+                          onValueChange={activeDeviceForm.showButton.setHeight}
+                        />
+                        <div className="toc-subsection">
+                          <p className="toc-subsection-title">Text</p>
+                          <div className="toc-compact-fields-two">
+                            <s-text-field
+                              name={`${activeDeviceForm.namePrefix}ShowMoreButtonText`}
+                              label="Show more"
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.showMoreText}
+                              onInput={(event) =>
+                                activeDeviceForm.showButton.setShowMoreText(
+                                  event.currentTarget.value,
+                                )
+                              }
+                              onChange={(event) =>
+                                activeDeviceForm.showButton.setShowMoreText(
+                                  event.currentTarget.value,
+                                )
+                              }
+                            ></s-text-field>
+                            <s-text-field
+                              name={`${activeDeviceForm.namePrefix}ShowLessButtonText`}
+                              label="Show less"
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.showLessText}
+                              onInput={(event) =>
+                                activeDeviceForm.showButton.setShowLessText(
+                                  event.currentTarget.value,
+                                )
+                              }
+                              onChange={(event) =>
+                                activeDeviceForm.showButton.setShowLessText(
+                                  event.currentTarget.value,
+                                )
+                              }
+                            ></s-text-field>
+                          </div>
+                        </div>
+                        <div className="toc-subsection">
+                          <p className="toc-subsection-title">Padding</p>
+                          <div className="toc-compact-fields-two">
+                            <TocSliderField
+                              name={`${activeDeviceForm.namePrefix}ShowButtonPaddingTop`}
+                              label="Top"
+                              range={SLIDER_RANGES.padding}
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.paddingTop}
+                              onValueChange={
+                                activeDeviceForm.showButton.setPaddingTop
+                              }
+                            />
+                            <TocSliderField
+                              name={`${activeDeviceForm.namePrefix}ShowButtonPaddingBottom`}
+                              label="Bottom"
+                              range={SLIDER_RANGES.padding}
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.paddingBottom}
+                              onValueChange={
+                                activeDeviceForm.showButton.setPaddingBottom
+                              }
+                            />
+                            <TocSliderField
+                              name={`${activeDeviceForm.namePrefix}ShowButtonPaddingLeft`}
+                              label="Left"
+                              range={SLIDER_RANGES.padding}
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.paddingLeft}
+                              onValueChange={
+                                activeDeviceForm.showButton.setPaddingLeft
+                              }
+                            />
+                            <TocSliderField
+                              name={`${activeDeviceForm.namePrefix}ShowButtonPaddingRight`}
+                              label="Right"
+                              range={SLIDER_RANGES.padding}
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.paddingRight}
+                              onValueChange={
+                                activeDeviceForm.showButton.setPaddingRight
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="toc-subsection">
+                          <p className="toc-subsection-title">Font</p>
+                          <div className="toc-compact-fields">
+                            <s-color-field
+                              name={`${activeDeviceForm.namePrefix}ShowButtonFontColor`}
+                              label="Color"
+                              alpha
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.fontColor}
+                              onInput={(event) =>
+                                activeDeviceForm.showButton.setFontColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                              onChange={(event) =>
+                                activeDeviceForm.showButton.setFontColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                            ></s-color-field>
+                            <s-select
+                              name={`${activeDeviceForm.namePrefix}ShowButtonFontWeight`}
+                              label="Weight"
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.fontWeight}
+                              onChange={(event) =>
+                                activeDeviceForm.showButton.setFontWeight(
+                                  event.currentTarget.value,
+                                )
+                              }
+                            >
+                              {FONT_WEIGHT_OPTIONS.map((option) => (
+                                <s-option
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </s-option>
+                              ))}
+                            </s-select>
+                            <TocSliderField
+                              name={`${activeDeviceForm.namePrefix}ShowButtonFontSize`}
+                              label="Size"
+                              range={SLIDER_RANGES.fontSize}
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.fontSize}
+                              onValueChange={
+                                activeDeviceForm.showButton.setFontSize
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="toc-subsection">
+                          <p className="toc-subsection-title">Border</p>
+                          <div className="toc-compact-fields">
+                            <s-color-field
+                              name={`${activeDeviceForm.namePrefix}ShowButtonBorderColor`}
+                              label="Color"
+                              alpha
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.borderColor}
+                              onInput={(event) =>
+                                activeDeviceForm.showButton.setBorderColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                              onChange={(event) =>
+                                activeDeviceForm.showButton.setBorderColor(
+                                  event.currentTarget.value,
+                                )
+                              }
+                            ></s-color-field>
+                            <TocSliderField
+                              name={`${activeDeviceForm.namePrefix}ShowButtonBorderWidth`}
+                              label="Width"
+                              range={SLIDER_RANGES.borderWidth}
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.borderWidth}
+                              onValueChange={
+                                activeDeviceForm.showButton.setBorderWidth
+                              }
+                            />
+                            <TocSliderField
+                              name={`${activeDeviceForm.namePrefix}ShowButtonBorderRadius`}
+                              label="Corner radius"
+                              range={SLIDER_RANGES.borderRadius}
+                              disabled={!isShowMoreEnabled}
+                              value={activeDeviceForm.showButton.borderRadius}
+                              onValueChange={
+                                activeDeviceForm.showButton.setBorderRadius
+                              }
+                            />
+                          </div>
+                        </div>
+                      </s-stack>,
+                    )}
+                    {activeTab === "desktop"
+                      ? renderDeviceSection(
+                          "animation",
+                          <s-stack direction="block" gap="base">
+                            <s-select
+                              name="desktopAnimationType"
+                              label="Type"
+                              value={desktopAnimationType}
+                              onChange={(event) => {
+                                setDesktopAnimationType(
+                                  normalizeAnimationType(
+                                    event.currentTarget.value,
+                                  ),
+                                );
+                              }}
+                            >
+                              {ANIMATION_TYPE_OPTIONS.map((option) => (
+                                <s-option
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </s-option>
+                              ))}
+                            </s-select>
+                            {desktopFollowingMarkerSelected ? (
+                              <>
+                                <s-color-field
+                                  name="desktopFollowingMarkerColor"
+                                  label="Color"
+                                  alpha
+                                  value={desktopFollowingMarkerColor}
+                                  onInput={(event) =>
+                                    setDesktopFollowingMarkerColor(
+                                      event.currentTarget.value,
+                                    )
+                                  }
+                                  onChange={(event) =>
+                                    setDesktopFollowingMarkerColor(
+                                      event.currentTarget.value,
+                                    )
+                                  }
+                                ></s-color-field>
+                                <TocSliderField
+                                  name="desktopFollowingMarkerBorderRadius"
+                                  label="Roundness"
+                                  range={SLIDER_RANGES.markerRadius}
+                                  value={desktopFollowingMarkerBorderRadius}
+                                  onValueChange={
+                                    setDesktopFollowingMarkerBorderRadius
+                                  }
+                                />
+                                <TocSliderField
+                                  name="desktopFollowingMarkerWidth"
+                                  label="Width"
+                                  range={SLIDER_RANGES.markerSize}
+                                  value={desktopFollowingMarkerWidth}
+                                  onValueChange={setDesktopFollowingMarkerWidth}
+                                />
+                                <TocSliderField
+                                  name="desktopFollowingMarkerHeight"
+                                  label="Height"
+                                  range={SLIDER_RANGES.markerSize}
+                                  value={desktopFollowingMarkerHeight}
+                                  onValueChange={
+                                    setDesktopFollowingMarkerHeight
+                                  }
+                                />
+                                <TocSliderField
+                                  name="desktopFollowingMarkerOffset"
+                                  label="Offset"
+                                  range={SLIDER_RANGES.markerOffset}
+                                  value={desktopFollowingMarkerOffset}
+                                  onValueChange={
+                                    setDesktopFollowingMarkerOffset
+                                  }
+                                />
+                              </>
+                            ) : null}
+                            {desktopCrawlingSnakeSelected ? (
+                              <>
+                                <s-color-field
+                                  name="desktopCrawlingSnakeColor"
+                                  label="Color"
+                                  alpha
+                                  value={desktopCrawlingSnakeColor}
+                                  onInput={(event) =>
+                                    setDesktopCrawlingSnakeColor(
+                                      event.currentTarget.value,
+                                    )
+                                  }
+                                  onChange={(event) =>
+                                    setDesktopCrawlingSnakeColor(
+                                      event.currentTarget.value,
+                                    )
+                                  }
+                                ></s-color-field>
+                                <TocSliderField
+                                  name="desktopCrawlingSnakeWidth"
+                                  label="Width"
+                                  range={SLIDER_RANGES.markerSize}
+                                  value={desktopCrawlingSnakeWidth}
+                                  onValueChange={setDesktopCrawlingSnakeWidth}
+                                />
+                                <TocSliderField
+                                  name="desktopCrawlingSnakeHeight"
+                                  label="Height"
+                                  range={SLIDER_RANGES.markerSize}
+                                  value={desktopCrawlingSnakeHeight}
+                                  onValueChange={setDesktopCrawlingSnakeHeight}
+                                />
+                                <TocSliderField
+                                  name="desktopCrawlingSnakeOffset"
+                                  label="Offset"
+                                  range={SLIDER_RANGES.markerOffset}
+                                  value={desktopCrawlingSnakeOffset}
+                                  onValueChange={setDesktopCrawlingSnakeOffset}
+                                />
+                              </>
+                            ) : null}
+                            {desktopJumpingMarkerSelected ? (
+                              <>
+                                <s-color-field
+                                  name="desktopJumpingMarkerColor"
+                                  label="Color"
+                                  alpha
+                                  value={desktopJumpingMarkerColor}
+                                  onInput={(event) =>
+                                    setDesktopJumpingMarkerColor(
+                                      event.currentTarget.value,
+                                    )
+                                  }
+                                  onChange={(event) =>
+                                    setDesktopJumpingMarkerColor(
+                                      event.currentTarget.value,
+                                    )
+                                  }
+                                ></s-color-field>
+                                <TocSliderField
+                                  name="desktopJumpingMarkerBorderRadius"
+                                  label="Roundness"
+                                  range={SLIDER_RANGES.markerRadius}
+                                  value={desktopJumpingMarkerBorderRadius}
+                                  onValueChange={
+                                    setDesktopJumpingMarkerBorderRadius
+                                  }
+                                />
+                                <TocSliderField
+                                  name="desktopJumpingMarkerWidth"
+                                  label="Width"
+                                  range={SLIDER_RANGES.markerSize}
+                                  value={desktopJumpingMarkerWidth}
+                                  onValueChange={setDesktopJumpingMarkerWidth}
+                                />
+                                <TocSliderField
+                                  name="desktopJumpingMarkerHeight"
+                                  label="Height"
+                                  range={SLIDER_RANGES.markerSize}
+                                  value={desktopJumpingMarkerHeight}
+                                  onValueChange={setDesktopJumpingMarkerHeight}
+                                />
+                                <TocSliderField
+                                  name="desktopJumpingMarkerOffset"
+                                  label="Offset"
+                                  range={SLIDER_RANGES.markerOffset}
+                                  value={desktopJumpingMarkerOffset}
+                                  onValueChange={setDesktopJumpingMarkerOffset}
+                                />
+                              </>
+                            ) : null}
+                          </s-stack>,
+                          { allowApplyAction: false },
+                        )
+                      : null}
+                  </>
+                ) : null}
+                {actionData?.userErrors?.length ? (
+                  <s-paragraph>
+                    {actionData.userErrors
+                      .map((error: { message: string }) => error.message)
+                      .join(" ")}
+                  </s-paragraph>
+                ) : null}
+              </s-stack>
             </Form>
             {renderPreviewPanel()}
           </div>

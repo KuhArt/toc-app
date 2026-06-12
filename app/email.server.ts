@@ -101,14 +101,9 @@ export async function sendWelcomeEmail({
 }) {
   const safeGreetingName = shopName ? `${escapeHtml(shopName)} team` : "there";
   const textGreetingName = shopName ? `${shopName} team` : "there";
-  const trimmedAppUrl = appUrl?.replace(/\/$/, "");
-  const safeAppUrl = trimmedAppUrl ? escapeHtml(trimmedAppUrl) : "";
-  const safeDocsUrl = trimmedAppUrl ? escapeHtml(`${trimmedAppUrl}/docs`) : "";
+  const safeDocsUrl = "https://tocito.pompych.com/docs";
   const supportEmail = getSupportEmail();
   const safeSupportEmail = escapeHtml(supportEmail);
-  const appLink = safeAppUrl
-    ? `<p><a href="${safeAppUrl}">Explore Tocito</a></p>`
-    : "";
   const docsLink = safeDocsUrl
     ? `<p><a href="${safeDocsUrl}">Read the documentation</a></p>`
     : "";
@@ -120,20 +115,20 @@ export async function sendWelcomeEmail({
       <p>Hi ${safeGreetingName},</p>
       <p>Thank you for choosing Tocito.</p>
       <p>We hope Tocito satisfies your needs and helps your customers navigate your articles more easily.</p>
-      ${appLink}
       ${docsLink}
       <p>If you need help, reply to this email or contact ${safeSupportEmail}.</p>
-      <p>Have a good day and happy customers.</p>
+      <p>Have a good day and happy customers,</p>
+      <p>Tocito team.</p>
     `,
     text: [
       `Hi ${textGreetingName},`,
       "",
       "Thank you for choosing Tocito.",
       "We hope Tocito satisfies your needs and helps your customers navigate your articles more easily.",
-      trimmedAppUrl ? `Explore Tocito: ${trimmedAppUrl}` : "",
-      trimmedAppUrl ? `Read the documentation: ${trimmedAppUrl}/docs` : "",
+      "Read the documentation: https://tocito.pompych.com/docs",
       `If you need help, reply to this email or contact ${supportEmail}.`,
       "Have a good day and happy customers!",
+      "Tocito team",
     ]
       .filter(Boolean)
       .join("\n"),

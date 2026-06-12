@@ -38,7 +38,7 @@
 
 {% if should_render_toc %}
   <script id="toc-config" type="application/json">
-    {{ cfg | json }}
+    {% if cfg == blank %}{}{% else %}{{ cfg | json }}{% endif %}
   </script>
   <script id="toc-animation-assets" type="application/json">
     {

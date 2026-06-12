@@ -52,6 +52,17 @@ npm run lint
 npm run build
 ```
 
+## Shopify pricing details
+
+Configure two public plans in the Shopify Partner Dashboard:
+
+- Basic: $1/month or $10/year after a 7-day free trial.
+- Lifetime: $12 one-time payment for permanent access.
+
+The in-app pricing page is available at `/app/pricing`. Basic merchants can buy
+Lifetime later; after Lifetime is approved, the app cancels any active Basic
+subscription.
+
 ## Production
 
 The app expects PostgreSQL through Prisma.
