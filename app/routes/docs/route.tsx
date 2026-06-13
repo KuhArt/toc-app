@@ -371,6 +371,10 @@ export default function DocsRoute() {
             <ol>
               <li>Open Tocito in Shopify admin.</li>
               <li>
+                Choose a plan and approve it in Shopify. You can start with a
+                free trial before deciding to purchase.
+              </li>
+              <li>
                 Click <span className={styles.appButton}>Activate</span>.
               </li>
               <li>Enable the Tocito app embed in the Shopify theme editor.</li>
