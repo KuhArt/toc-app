@@ -105,7 +105,7 @@ export async function sendWelcomeEmail({
   const supportEmail = getSupportEmail();
   const safeSupportEmail = escapeHtml(supportEmail);
   const docsLink = safeDocsUrl
-    ? `<p><a href="${safeDocsUrl}">Read the documentation</a></p>`
+    ? `<p><a href="${safeDocsUrl}">the documentation</a></p>`
     : "";
 
   return sendEmail({
@@ -115,7 +115,7 @@ export async function sendWelcomeEmail({
       <p>Hi ${safeGreetingName},</p>
       <p>Thank you for choosing Tocito.</p>
       <p>We hope Tocito satisfies your needs and helps your customers navigate your articles more easily.</p>
-      ${docsLink}
+      <p>For more information check ${docsLink}</p>
       <p>If you need help, reply to this email or contact ${safeSupportEmail}.</p>
       <p>Have a good day and happy customers,</p>
       <p>Tocito team.</p>
