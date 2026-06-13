@@ -1,7 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { redirect, useLoaderData } from "react-router";
-
-import { login } from "../../shopify.server";
+import { redirect } from "react-router";
 
 import styles from "./styles.module.css";
 
@@ -11,12 +9,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     throw redirect(`/app?${url.searchParams.toString()}`);
   }
 
-  return { showForm: Boolean(login) };
+  return null;
 };
 
 export default function App() {
-  const { showForm } = useLoaderData<typeof loader>();
-
   return (
     <div className={styles.index}>
       <div className={styles.content}>
@@ -27,30 +23,9 @@ export default function App() {
             Table of contents for Shopify blog posts.
           </p>
         </div>
-        {showForm && (
-          <form
-            className={styles.form}
-            method="post"
-            action="/auth/login"
-            target="_top"
-          >
-            <label className={styles.label}>
-              <span>Shop domain</span>
-              <input
-                className={styles.input}
-                type="text"
-                name="shop"
-                placeholder="example.myshopify.com"
-                autoComplete="organization"
-              />
-            </label>
-            <button className={styles.button} type="submit">
-              Log in
-            </button>
-          </form>
-        )}
         <p className={styles.note}>
-          Installed merchants can manage Tocito from Shopify admin.
+          Installed merchants can manage Tocito from Shopify admin. New
+          installs must start from Shopify.
         </p>
       </div>
     </div>
