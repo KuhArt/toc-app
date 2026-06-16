@@ -13,8 +13,16 @@ import {
 } from "./billing-plans";
 import prisma from "./db.server";
 
-export function isTestBilling() {
-  return process.env.NODE_ENV !== "production";
+const ALWAYS_TEST_BILLING_SHOPS = ["tocito-test-store-4.myshopify.com", "tocito-test-store-6.myshopify.com", "tocito-test-store-7.myshopify.com", "tocito-test-store-8.myshopify.com", "tocito-test-store-9.myshopify.com", "tocito-test-store-10.myshopify.com"];
+
+export function isTestBilling(shop?: string | null) {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    Boolean(
+      shop &&
+        ALWAYS_TEST_BILLING_SHOPS.includes(shop.trim().toLowerCase()),
+    )
+  );
 }
 
 const scopes = (process.env.SCOPES || "")

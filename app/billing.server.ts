@@ -57,6 +57,23 @@ export function getActivePlanLabels(billingCheck: BillingCheck) {
   return labels;
 }
 
+export function getEmbeddedAdminAppUrl(shop: string, pathname: string) {
+  const apiKey = process.env.SHOPIFY_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("SHOPIFY_API_KEY is required to build Admin app URLs.");
+  }
+
+  const cleanShopName = shop.replace(/\.myshopify\.com$/i, "");
+  const appPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const adminUrl = new URL(
+    `/store/${cleanShopName}/apps/${apiKey}${appPath}`,
+    "https://admin.shopify.com",
+  );
+
+  return adminUrl.toString();
+}
+
 export function buildEmbeddedAppPath(request: Request, pathname: string) {
   const url = new URL(request.url);
   const embeddedParams = new URLSearchParams();
@@ -79,10 +96,11 @@ export function buildEmbeddedAppPath(request: Request, pathname: string) {
 export async function cancelBasicSubscriptionsAfterLifetimePurchase(
   request: Request,
 ) {
-  const { billing } = await authenticate.admin(request);
+  const { billing, session } = await authenticate.admin(request);
+  const isTest = isTestBilling(session.shop);
   const billingCheck = await billing.check({
     plans: [...BILLING_PLANS],
-    isTest: isTestBilling(),
+    isTest,
   });
 
   if (!billingCheck.oneTimePurchases.some(isLifetimePurchase)) {
@@ -95,7 +113,7 @@ export async function cancelBasicSubscriptionsAfterLifetimePurchase(
       .map((subscription) =>
         billing.cancel({
           subscriptionId: subscription.id,
-          isTest: isTestBilling(),
+          isTest,
           prorate: true,
         }),
       ),
@@ -103,6 +121,6 @@ export async function cancelBasicSubscriptionsAfterLifetimePurchase(
 
   return billing.check({
     plans: [...BILLING_PLANS],
-    isTest: isTestBilling(),
+    isTest,
   });
 }

@@ -1,5 +1,10 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useActionData, useLoaderData } from "react-router";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
+import { useActionData, useLoaderData, useRouteError } from "react-router";
+import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import {
   BASIC_ANNUAL_PLAN,
@@ -13,8 +18,8 @@ import {
 import db from "../../db.server";
 import { authenticate, isTestBilling } from "../../shopify.server";
 import {
-  buildEmbeddedAppPath,
   cancelBasicSubscriptionsAfterLifetimePurchase,
+  getEmbeddedAdminAppUrl,
   isBasicSubscription,
   isLifetimePurchase,
 } from "../../billing.server";
@@ -199,6 +204,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { billing, session } = await authenticate.admin(request);
+  const isTest = isTestBilling(session.shop);
   const formData = await request.formData();
   const plan = formData.get("plan");
 
@@ -212,7 +218,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const billingCheck = await billing.check({
     plans: [BASIC_MONTHLY_PLAN, BASIC_ANNUAL_PLAN, LIFETIME_PLAN],
-    isTest: isTestBilling(),
+    isTest,
   });
   const hasExistingPaidAccess =
     billingCheck.appSubscriptions.some(isBasicSubscription) ||
@@ -231,13 +237,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     !hasExistingPaidAccess &&
     !shopBillingState.billingTrialUsedAt;
 
-  await billing.request({
+  return await billing.request({
     plan,
-    isTest: isTestBilling(),
-    returnUrl: new URL(
-      buildEmbeddedAppPath(request, "/app/pricing"),
-      request.url,
-    ).toString(),
+    isTest,
+    returnUrl: getEmbeddedAdminAppUrl(session.shop, "/app/pricing/approve"),
     ...(isBasicPlan(plan) ? { trialDays: shouldGiveBasicTrial ? 7 : 0 } : {}),
   });
 };
@@ -280,3 +283,11 @@ export default function Pricing() {
     </s-page>
   );
 }
+
+export function ErrorBoundary() {
+  return boundary.error(useRouteError());
+}
+
+export const headers: HeadersFunction = (headersArgs) => {
+  return boundary.headers(headersArgs);
+};

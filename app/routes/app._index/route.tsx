@@ -37,7 +37,7 @@ import {
 } from "../../components/PricingPlanCards";
 import db from "../../db.server";
 import {
-  buildEmbeddedAppPath,
+  getEmbeddedAdminAppUrl,
   hasPaidAccess,
   isBasicSubscription,
   isLifetimePurchase,
@@ -181,10 +181,11 @@ function CrispChat() {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin, billing } = await authenticate.admin(request);
+  const { admin, billing, session } = await authenticate.admin(request);
+  const isTest = isTestBilling(session.shop);
   const billingCheck = await billing.check({
     plans: [...BILLING_PLANS],
-    isTest: isTestBilling(),
+    isTest,
   });
   const activeBasicSubscription =
     billingCheck.appSubscriptions.find(isBasicSubscription);
@@ -224,6 +225,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, billing, session } = await authenticate.admin(request);
+  const isTest = isTestBilling(session.shop);
   const formData = await request.formData();
   const requestedPlan = formData.get("plan");
 
@@ -234,7 +236,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const billingCheck = await billing.check({
       plans: [...BILLING_PLANS],
-      isTest: isTestBilling(),
+      isTest,
     });
     const hasExistingPaidAccess =
       billingCheck.appSubscriptions.some(isBasicSubscription) ||
@@ -255,11 +257,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     return await billing.request({
       plan: requestedPlan,
-      isTest: isTestBilling(),
-      returnUrl: new URL(
-        buildEmbeddedAppPath(request, "/app/pricing"),
-        request.url,
-      ).toString(),
+      isTest,
+      returnUrl: getEmbeddedAdminAppUrl(session.shop, "/app/pricing/approve"),
       ...(isBasicPlan(requestedPlan)
         ? { trialDays: shouldGiveBasicTrial ? 7 : 0 }
         : {}),
@@ -268,7 +267,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const billingCheck = await billing.check({
     plans: [...BILLING_PLANS],
-    isTest: isTestBilling(),
+    isTest,
   });
 
   if (!hasPaidAccess(billingCheck)) {

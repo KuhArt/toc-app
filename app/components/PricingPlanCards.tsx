@@ -222,7 +222,7 @@ export function PricingPlanCards({
               <span className="toc-price-amount">{basicPrice}</span>
               <span className="toc-price-cycle">{basicPriceCycle}</span>
             </div>
-            <Form className="toc-pricing-form" method="post" reloadDocument>
+            <Form className="toc-pricing-form" method="post">
               <input type="hidden" name="plan" value={selectedBasicPlan} />
               <FillButton
                 disabled={
@@ -279,7 +279,7 @@ export function PricingPlanCards({
               <span className="toc-price-amount">$12</span>
               <span className="toc-price-cycle">once</span>
             </div>
-            <Form className="toc-pricing-form" method="post" reloadDocument>
+            <Form className="toc-pricing-form" method="post">
               <input type="hidden" name="plan" value={LIFETIME_PLAN} />
               <FillButton
                 disabled={
